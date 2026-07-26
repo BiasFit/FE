@@ -1,0 +1,117 @@
+import type { DiagnosisForm } from "../app/types";
+
+export const personaForms: Record<
+  DiagnosisForm["personaId"],
+  DiagnosisForm
+> = {
+  P1: {
+    personaId: "P1",
+    height: 158,
+    topSize: "S",
+    bottomSize: "S",
+    bodyType: "웨이브",
+    fitConcerns: ["전체 기장·비율", "밑위·하의 길이"],
+    fitNote:
+      "긴 바지나 치마를 입으면 비율이 답답해 보여서, 하의 길이를 고를 때 자주 고민해요.",
+    preferredStyle: "로맨틱",
+    avoidedStyle: "스트릿",
+    keywords: ["부드러운", "사랑스러운", "자연스러운"],
+    designElements: ["리본", "셔링", "데님 소재감"],
+    preferredItems: [
+      "A라인·플레어 스커트",
+      "메리제인 슈즈",
+      "기본 가디건",
+    ],
+    avoidedElements: ["정장처럼 딱딱한 룩"],
+    budgetCode: 2,
+    budgetApproach: "가성비 중심",
+    tpo: "개강·새학기",
+  },
+  P2: {
+    personaId: "P2",
+    height: 163,
+    topSize: "M",
+    bottomSize: "M",
+    bodyType: "내추럴",
+    fitConcerns: ["힙·허벅지 여유", "어깨선·소매 길이"],
+    fitNote:
+      "힙과 허벅지가 편하고 어깨선이 어색하지 않은 기본 코디를 찾고 있어요.",
+    preferredStyle: "오피스 & 비즈니스캐주얼",
+    avoidedStyle: "로맨틱",
+    keywords: ["단정한", "깔끔한", "클래식한"],
+    designElements: ["테일러드 구조", "톤온톤 색감", "체크 패턴"],
+    preferredItems: ["셔츠", "슬랙스", "니트 베스트"],
+    avoidedElements: ["지나치게 편한 일상복 느낌"],
+    budgetCode: 3,
+    budgetApproach: "균형형",
+    tpo: "등교·일상",
+  },
+  P3: {
+    personaId: "P3",
+    height: 166,
+    topSize: "S~M",
+    bottomSize: "M",
+    bodyType: "스트레이트",
+    fitConcerns: ["어깨선·소매 길이", "가슴·상체 여유"],
+    fitNote:
+      "재킷이나 셔츠를 입으면 어깨가 넓어 보이거나 상체가 답답하게 느껴져요.",
+    preferredStyle: "오피스 & 비즈니스캐주얼",
+    avoidedStyle: "스트릿",
+    keywords: ["단정한", "신뢰감 있는", "부드러운"],
+    designElements: ["테일러드 구조", "정돈된 단색 디자인", "셔링"],
+    preferredItems: ["셔츠", "재킷", "리본·셔링 블라우스"],
+    avoidedElements: ["리본·프릴 장식이 많은 룩"],
+    budgetCode: 4,
+    budgetApproach: "품질·소재 우선",
+    tpo: "발표·면접",
+  },
+  P4: {
+    personaId: "P4",
+    height: 157,
+    topSize: "S",
+    bottomSize: "S",
+    bodyType: "웨이브",
+    fitConcerns: ["전체 기장·비율", "밑위·하의 길이"],
+    fitNote:
+      "사진에서 다리가 짧아 보이지 않도록 하의 길이와 전체 비율을 조절하고 싶어요.",
+    preferredStyle: "캐주얼",
+    avoidedStyle: "오피스 & 비즈니스캐주얼",
+    keywords: ["편안한", "자연스러운", "부드러운"],
+    designElements: ["심플한 무지 디자인", "데님 소재감", "리본"],
+    preferredItems: [
+      "반팔 티셔츠",
+      "기본 가디건",
+      "A라인·플레어 스커트",
+    ],
+    avoidedElements: ["힙하고 튀는 스트릿 분위기"],
+    budgetCode: 2,
+    budgetApproach: "가성비 중심",
+    tpo: "여행·사진",
+  },
+  P5: {
+    personaId: "P5",
+    height: 165,
+    topSize: "M",
+    bottomSize: "M",
+    bodyType: "내추럴",
+    fitConcerns: ["가슴·상체 여유", "어깨선·소매 길이"],
+    fitNote:
+      "여행 중 오래 움직여도 상체가 답답하지 않고 어깨선이 자연스러운 옷을 원해요.",
+    preferredStyle: "오피스 & 비즈니스캐주얼",
+    avoidedStyle: "로맨틱",
+    keywords: ["단정한", "깔끔한", "클래식한"],
+    designElements: ["테일러드 구조", "톤온톤 색감", "체크 패턴"],
+    preferredItems: ["셔츠", "슬랙스", "니트 베스트"],
+    avoidedElements: ["지나치게 편한 일상복 느낌"],
+    budgetCode: 3,
+    budgetApproach: "균형형",
+    tpo: "여행·사진",
+  },
+};
+
+export const requestCopy = {
+  personal:
+    "개강 첫 주에 입을 옷이 필요해요. 너무 꾸민 느낌보다는 편하게 학교에 갈 수 있으면서 사진에도 괜찮은 코디를 받고 싶어요.",
+  group:
+    "친구와 사진을 많이 찍을 예정이라 어느 정도 연결감은 있었으면 해요. 각자의 취향은 유지하면서 오래 걸어도 편한 코디로 부탁해요.",
+};

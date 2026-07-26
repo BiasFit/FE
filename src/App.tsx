@@ -1,5 +1,15 @@
+import { HashRouter } from "react-router-dom";
+import { AppRouter } from "./app/AppRouter";
+import { AppStateProvider } from "./app/AppStateProvider";
+
 function App() {
-  return <main className="p-6">BiasFit FE</main>;
+  return (
+    <HashRouter>
+      <AppStateProvider>
+        <AppRouter />
+      </AppStateProvider>
+    </HashRouter>
+  );
 }
 
 export default App;

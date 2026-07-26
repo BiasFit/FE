@@ -1,3 +1,4 @@
+@import "./styles/biasfit.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
