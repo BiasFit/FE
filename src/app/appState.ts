@@ -1,4 +1,4 @@
-import type { DiagnosisForm, MemberId } from "./types";
+import type { BudgetRange, DiagnosisForm, MemberId } from "./types";
 import { personaForms, requestCopy } from "../data/personas";
 
 export interface AppState {
@@ -15,6 +15,10 @@ export interface AppState {
   selectedInfluencerScore: number;
   activeRequestId: string;
   requestText: Record<"personal" | "group", string>;
+  requestBudget: {
+    personal: BudgetRange;
+    group: Record<MemberId, BudgetRange>;
+  };
 }
 
 export type AppAction =
@@ -36,7 +40,8 @@ export type AppAction =
       type: "updateRequest";
       mode: AppState["mode"];
       value: string;
-    };
+    }
+  | { type: "submitRequest" };
 
 const copyForm = (form: DiagnosisForm): DiagnosisForm => ({
   ...form,
@@ -65,6 +70,22 @@ export function createInitialState(): AppState {
     selectedInfluencerScore: 89,
     activeRequestId: "P1-2026-001",
     requestText: { ...requestCopy },
+    requestBudget: {
+      personal: {
+        minCode: personaForms.P1.budgetMinCode,
+        maxCode: personaForms.P1.budgetMaxCode,
+      },
+      group: {
+        A: {
+          minCode: personaForms.P4.budgetMinCode,
+          maxCode: personaForms.P4.budgetMaxCode,
+        },
+        B: {
+          minCode: personaForms.P5.budgetMinCode,
+          maxCode: personaForms.P5.budgetMaxCode,
+        },
+      },
+    },
   };
 }
 
@@ -105,6 +126,26 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return {
         ...state,
         requestText: { ...state.requestText, [action.mode]: action.value },
+      };
+    case "submitRequest":
+      return {
+        ...state,
+        requestBudget: {
+          personal: {
+            minCode: state.personal.budgetMinCode,
+            maxCode: state.personal.budgetMaxCode,
+          },
+          group: {
+            A: {
+              minCode: state.group.members.A.budgetMinCode,
+              maxCode: state.group.members.A.budgetMaxCode,
+            },
+            B: {
+              minCode: state.group.members.B.budgetMinCode,
+              maxCode: state.group.members.B.budgetMaxCode,
+            },
+          },
+        },
       };
     default:
       return state;

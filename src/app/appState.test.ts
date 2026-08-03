@@ -39,4 +39,18 @@ describe("appReducer", () => {
     expect(updated.activeRequestId).toBe("G1-2026-004");
     expect(updated.personal).toEqual(initial.personal);
   });
+
+  it("captures the current budget range when a request is sent", () => {
+    const initial = createInitialState();
+    const changed = appReducer(initial, {
+      type: "updatePersonal",
+      patch: { budgetMinCode: 2, budgetMaxCode: 4 },
+    });
+    const submitted = appReducer(changed, { type: "submitRequest" });
+
+    expect(submitted.requestBudget.personal).toEqual({
+      minCode: 2,
+      maxCode: 4,
+    });
+  });
 });

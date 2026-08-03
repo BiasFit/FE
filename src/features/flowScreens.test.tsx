@@ -11,7 +11,7 @@ describe("user feature screens", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: /옷을 고를 때 먼저 보는 핏 기준을 알려주세요/,
+        name: /옷을 고를 때 고민되는 핏을 알려주세요/,
       }),
     ).toBeInTheDocument();
     expect(screen.getByRole("spinbutton", { name: "키" })).toHaveValue(158);
@@ -35,7 +35,7 @@ describe("user feature screens", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: /나와 잘 맞는 스타일을 한눈에 비교해 보세요/,
+        name: /나와 잘 맞는 스타일메이트를 비교해 보세요/,
       }),
     ).toBeInTheDocument();
     expect(screen.getAllByRole("radio")).toHaveLength(3);
@@ -74,7 +74,7 @@ describe("user feature screens", () => {
     window.location.hash = "#/user/outfit";
     render(<App />);
     expect(
-      await screen.findByRole("button", { name: /코디 카드 다운로드/ }),
+      await screen.findByRole("button", { name: /이미지로 저장하기/ }),
     ).toBeVisible();
   });
 });
@@ -99,7 +99,15 @@ describe("influencer feature screens", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("스타일 진단 결과")).toBeVisible();
     expect(screen.getByText("부탁해요 카드")).toBeVisible();
-    expect(screen.getByRole("textbox", { name: "상의" })).toBeVisible();
-    expect(screen.getByRole("button", { name: /전달하기/ })).toBeVisible();
+    expect(screen.getByRole("textbox", { name: "상의 제품명" })).toBeVisible();
+    expect(screen.getByRole("textbox", { name: "상의 상품 링크" })).toBeVisible();
+    expect(screen.queryByRole("textbox", { name: "신발" })).not.toBeInTheDocument();
+    expect(screen.getByText(/요청 예산/)).toBeVisible();
+    const deliver = screen.getByRole("button", { name: /전달하기/ });
+    expect(deliver).toBeEnabled();
+    fireEvent.change(screen.getByRole("textbox", { name: "상의 상품 링크" }), {
+      target: { value: "잘못된 링크" },
+    });
+    expect(deliver).toBeDisabled();
   });
 });

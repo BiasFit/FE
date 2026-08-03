@@ -1,0 +1,26 @@
+import { describe, expect, it } from "vitest";
+import { isValidOutfitDraft, isValidProductUrl } from "./outfit";
+
+describe("outfit product validation", () => {
+  it("accepts only complete products with http or https links", () => {
+    expect(isValidProductUrl("https://shop.test/top/1")).toBe(true);
+    expect(isValidProductUrl("http://shop.test/bottom/2")).toBe(true);
+    expect(isValidProductUrl("shop.test/top/1")).toBe(false);
+    expect(isValidProductUrl("javascript:alert(1)")).toBe(false);
+
+    expect(
+      isValidOutfitDraft({
+        top: { name: "가디건", url: "https://shop.test/top/1" },
+        bottom: { name: "스커트", url: "https://shop.test/bottom/2" },
+        message: "코디 설명",
+      }),
+    ).toBe(true);
+    expect(
+      isValidOutfitDraft({
+        top: { name: "가디건", url: "잘못된 링크" },
+        bottom: { name: "스커트", url: "https://shop.test/bottom/2" },
+        message: "코디 설명",
+      }),
+    ).toBe(false);
+  });
+});

@@ -6,7 +6,8 @@ export function SiteNav() {
   const influencerFlow = location.pathname.startsWith("/influencer");
   const internalUserFlow =
     location.pathname.startsWith("/user") &&
-    location.pathname !== "/user/login";
+    location.pathname !== "/user/login" &&
+    location.pathname !== "/user/signup";
   const progressByPath: Record<string, string> = {
     "/user/coaching": "01 / 05",
     "/user/body": "01 / 05",
@@ -31,7 +32,7 @@ export function SiteNav() {
           <span className="nav-caption">
             {influencerFlow
               ? "스타일메이트 워크스페이스"
-              : "나에게 맞는 스타일 기준을 찾아요."}
+              : "내 취향과 핏에 맞는 코디를 받아보세요."}
           </span>
           {internalUserFlow ? (
             <button className="nav-link nav-progress" type="button" disabled>

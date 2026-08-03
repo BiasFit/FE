@@ -10,13 +10,13 @@ export function HomeScreen() {
       <div className="home-wrap">
         <div className="home-copy">
           <h1>
-            나에게 맞는
+            내 취향과 핏에 맞는
             <br />
-            스타일 기준을 찾아요.
+            코디를 받아보세요.
           </h1>
           <p>
-            체형·취향·예산·TPO를 하나의 Style DNA로 정리하고, 나와 비슷한
-            고민을 잘 아는 스타일메이트를 만나보세요.
+            핏 고민, 취향, 예산, 입을 상황을 알려주면 나에게 맞는
+            스타일메이트가 코디를 제안해요.
           </p>
           <div className="home-actions">
             <button
@@ -24,7 +24,7 @@ export function HomeScreen() {
               type="button"
               onClick={() => navigate("/user/login")}
             >
-              Style DNA 시작하기 <span aria-hidden="true">→</span>
+              내 스타일 진단 시작하기 <span aria-hidden="true">→</span>
             </button>
           </div>
           <p className="home-note">
@@ -67,9 +67,9 @@ export function UserLoginScreen() {
           <div className="work-head">
             <p className="eyebrow">USER START</p>
             <h1 className="page-title">
-              나의 Style DNA를
+              먼저 스타일 진단을
               <br />
-              시작해 볼까요?
+              시작할게요.
             </h1>
             <p className="page-desc">
               테스트 계정으로 로그인하고 개인 또는 그룹 코칭을 선택할 수
@@ -114,6 +114,14 @@ export function UserLoginScreen() {
               >
                 P1 더미 계정으로 시작하기
               </button>
+              <button
+                className="btn-ghost signup-login-link"
+                type="button"
+                disabled={loggingIn}
+                onClick={() => navigate("/signup")}
+              >
+                처음이신가요? 회원가입
+              </button>
             </div>
           </div>
         </div>
@@ -137,7 +145,7 @@ export function CoachingScreen() {
         </aside>
         <div className="work-panel">
           <div className="work-head">
-            <h1 className="page-title">어떤 코칭을 받을까요?</h1>
+            <h1 className="page-title">어떤 코디가 필요하세요?</h1>
             <p className="page-desc">
               혼자만의 기준을 찾거나, 두 사람의 취향을 함께 살릴 수 있어요.
             </p>
@@ -147,13 +155,13 @@ export function CoachingScreen() {
               {[
                 {
                   mode: "personal" as const,
-                  title: "개인 코칭",
-                  copy: "내 체형·취향·예산·TPO를 기준으로 스타일메이트를 찾아요.",
+                  title: "나만의 코디",
+                  copy: "내 핏 고민과 취향에 맞는 코디를 받아요.",
                 },
                 {
                   mode: "group" as const,
-                  title: "2인 그룹 코칭",
-                  copy: "두 사람의 취향을 덮어쓰지 않고 각자의 기준과 연결점을 찾아요.",
+                  title: "둘이 함께 입는 코디",
+                  copy: "각자의 취향은 살리고, 함께 보일 때 조화로운 코디를 받아요.",
                 },
               ].map((option) => (
                 <button

@@ -5,6 +5,11 @@ import {
   UserLoginScreen,
 } from "../features/user/StartScreens";
 import {
+  InfluencerSignupScreen,
+  SignupRoleScreen,
+  UserSignupScreen,
+} from "../features/auth/SignupScreens";
+import {
   DeliveredScreen,
   InfluencerDetailScreen,
   InfluencerLoginScreen,
@@ -43,7 +48,9 @@ export function AppRouter() {
       <main className="app" id="main">
         <Routes>
           <Route path="/" element={<HomeScreen />} />
+          <Route path="/signup" element={<SignupRoleScreen />} />
           <Route path="/user/login" element={<UserLoginScreen />} />
+          <Route path="/user/signup" element={<UserSignupScreen />} />
           <Route path="/user/coaching" element={<CoachingScreen />} />
           <Route path="/user/body" element={<BodyScreen />} />
           <Route path="/user/style" element={<StyleScreen />} />
@@ -60,6 +67,10 @@ export function AppRouter() {
           <Route
             path="/influencer/login"
             element={<InfluencerLoginScreen />}
+          />
+          <Route
+            path="/influencer/signup"
+            element={<InfluencerSignupScreen />}
           />
           <Route
             path="/influencer/profile"

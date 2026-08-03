@@ -1,7 +1,9 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppState } from "../../app/AppStateProvider";
+import type { ProductItem } from "../../app/types";
 import { influencers } from "../../data/influencers";
+import { budgetRangeLabel } from "../../data/options";
 import { FlowShell } from "../../shared/FlowShell";
 
 function useSelectedMate() {
@@ -36,7 +38,7 @@ export function MatchScreen() {
             다른 사람 선택
           </button>
           <button className="btn-primary" type="button" onClick={() => navigate("/user/request")}>
-            확정하기 <span aria-hidden="true">✓</span>
+            요청서 작성하기 <span aria-hidden="true">✓</span>
           </button>
         </>
       }
@@ -59,7 +61,7 @@ export function MatchScreen() {
       <dl className="summary-list card">
         <div className="summary-row"><dt>코칭 유형</dt><dd>{state.mode === "personal" ? "개인 코칭" : "2인 그룹 코칭"}</dd></div>
         <div className="summary-row"><dt>TPO</dt><dd>{tpo}</dd></div>
-        <div className="summary-row"><dt>예산 기준</dt><dd>{state.mode === "personal" ? "3만~6만 원 · 가성비 중심" : "P4 3만~6만 원 · P5 6만~9만 원"}</dd></div>
+        <div className="summary-row"><dt>예산 기준</dt><dd>{state.mode === "personal" ? `${budgetRangeLabel(state.personal.budgetMinCode, state.personal.budgetMaxCode)} · ${state.personal.budgetApproach}` : `P4 ${budgetRangeLabel(state.group.members.A.budgetMinCode, state.group.members.A.budgetMaxCode)} · P5 ${budgetRangeLabel(state.group.members.B.budgetMinCode, state.group.members.B.budgetMaxCode)}`}</dd></div>
         <div className="summary-row"><dt>핏 기준</dt><dd>{state.mode === "personal" ? `${form.bodyType} · ${form.fitConcerns.join(" · ")}` : "P4 하의 길이/비율 · P5 상체 여유/어깨선"}</dd></div>
         <div className="summary-row"><dt>스타일 기준</dt><dd>{state.mode === "personal" ? `${form.preferredStyle} 선호 · ${form.avoidedStyle}은 피하고 싶음` : "P4 캐주얼 · P5 오피스 & 비즈니스캐주얼"}</dd></div>
       </dl>
@@ -84,6 +86,7 @@ export function RequestScreen() {
       return;
     }
     setError(false);
+    dispatch({ type: "submitRequest" });
     setSending(true);
     window.setTimeout(() => navigate("/user/wait"), 700);
   };
@@ -98,7 +101,7 @@ export function RequestScreen() {
           조금 더 부탁해 주세요.
         </>
       }
-      description="Style DNA에 없는 구체적인 상황이나 고민만 자유롭게 적으면 돼요."
+      description="꼭 반영하고 싶은 상황, 보유 아이템, 피하고 싶은 느낌을 적어주세요."
       actions={
         <>
           <button className="btn-ghost" type="button" onClick={() => navigate("/user/match")}>
@@ -127,6 +130,17 @@ export function RequestScreen() {
           </p>
         </div>
       </details>
+      <div className="soft-card request-budget-summary">
+        <strong>함께 보내는 원하는 가격대</strong>
+        {state.mode === "personal" ? (
+          <p>{budgetRangeLabel(state.personal.budgetMinCode, state.personal.budgetMaxCode)}</p>
+        ) : (
+          <p>
+            P4 {budgetRangeLabel(state.group.members.A.budgetMinCode, state.group.members.A.budgetMaxCode)} · P5 {budgetRangeLabel(state.group.members.B.budgetMinCode, state.group.members.B.budgetMaxCode)}
+          </p>
+        )}
+        <p className="helper">스타일 진단에서 선택한 예산이 요청서와 함께 전달돼요.</p>
+      </div>
       <div className={`request-letter ${error ? "is-error" : ""}`} style={{ marginTop: 18 }}>
         <label className="field">
           <span className="field-label">부탁해요 카드 <span className="required">필수</span></span>
@@ -144,7 +158,7 @@ export function RequestScreen() {
             }}
           />
         </label>
-        <p className="helper">구체적인 상황, 보유 아이템, 피하고 싶은 느낌을 함께 적을 수 있어요.</p>
+        <p className="helper">꼭 반영하고 싶은 상황, 보유 아이템, 피하고 싶은 느낌을 적어주세요.</p>
         {error ? <p className="error-copy" style={{ display: "block" }}>부탁해요 카드 내용을 입력해 주세요.</p> : null}
       </div>
     </FlowShell>
@@ -162,7 +176,7 @@ export function WaitScreen() {
             <div className="status-icon">◷</div>
             <span className="badge">전송 완료</span>
             <h2 style={{ marginTop: 14 }}>스타일메이트가<br />코디 카드를 만들고 있어요.</h2>
-            <p>부탁해요 카드와 Style DNA가 안전하게 전달됐어요. 데모에서는 바로 완성된 결과를 확인할 수 있어요.</p>
+            <p>부탁해요 카드와 스타일 진단 결과가 전달됐어요. 코디가 완성되면 결과 화면에서 확인할 수 있어요.</p>
             <button className="btn-primary" type="button" onClick={() => navigate("/user/outfit")}>
               완성된 코디 카드 보기 <span aria-hidden="true">→</span>
             </button>
@@ -211,7 +225,7 @@ export function OutfitScreen() {
       actions={
         <>
           <button className="btn-primary" type="button" disabled={saving} onClick={download}>
-            {saving ? "이미지 만드는 중…" : "코디 카드 다운로드"}
+            {saving ? "이미지 만드는 중…" : "이미지로 저장하기"}
           </button>
         </>
       }
@@ -221,16 +235,19 @@ export function OutfitScreen() {
           <article className="outfit-card">
             <div className="outfit-cover" role="img" aria-label="개강 캠퍼스 코디 이미지" />
             <div className="outfit-content">
-              <div className="outfit-head"><div><span className="badge">개강·새학기</span><h2>부드러운 캠퍼스 레이어드</h2><p className="helper">{mate.name} · 3만~6만 원</p></div><span className="badge dark">개인 코칭</span></div>
-              <OutfitItems top="소프트 핑크 가디건" bottom="아이보리 A라인 스커트" shoes="화이트 메리제인" />
+              <div className="outfit-head"><div><span className="badge">개강·새학기</span><h2>부드러운 캠퍼스 레이어드</h2><p className="helper">{mate.name} · {budgetRangeLabel(state.requestBudget.personal.minCode, state.requestBudget.personal.maxCode)}</p></div><span className="badge dark">개인 코칭</span></div>
+              <OutfitItems
+                top={{ name: "소프트 핑크 가디건", url: "https://example.com/products/pink-cardigan" }}
+                bottom={{ name: "아이보리 A라인 스커트", url: "https://example.com/products/a-line-skirt" }}
+              />
               <div className="coach-message"><h3>P1님께 전하는 말</h3><p>허리선이 자연스럽게 잡히는 짧은 가디건과 무릎 위 A라인 스커트로 전체 비율을 정리했어요. 너무 꾸민 느낌이 부담스럽다면 이너를 기본 티셔츠로 바꿔도 좋아요.</p></div>
             </div>
           </article>
         ) : (
           <div>
             <div className="group-result-grid">
-              <article className="outfit-card"><div className="outfit-cover" style={{ backgroundImage: "var(--photo-1)" }} /><div className="outfit-content"><span className="badge">구성원 A · P4</span><h2>라이트 캐주얼 여행룩</h2><OutfitItems top="블루 가디건" bottom="A라인 스커트" shoes="화이트 스니커즈" /></div></article>
-              <article className="outfit-card"><div className="outfit-cover" style={{ backgroundImage: "var(--photo-4)" }} /><div className="outfit-content"><span className="badge">구성원 B · P5</span><h2>클린 레이어드 여행룩</h2><OutfitItems top="옥스퍼드 셔츠" bottom="와이드 슬랙스" shoes="레더 스니커즈" /></div></article>
+              <article className="outfit-card"><div className="outfit-cover" style={{ backgroundImage: "var(--photo-1)" }} /><div className="outfit-content"><span className="badge">구성원 A · P4</span><h2>라이트 캐주얼 여행룩</h2><OutfitItems top={{ name: "블루 가디건", url: "https://example.com/products/blue-cardigan" }} bottom={{ name: "A라인 스커트", url: "https://example.com/products/travel-skirt" }} /></div></article>
+              <article className="outfit-card"><div className="outfit-cover" style={{ backgroundImage: "var(--photo-4)" }} /><div className="outfit-content"><span className="badge">구성원 B · P5</span><h2>클린 레이어드 여행룩</h2><OutfitItems top={{ name: "옥스퍼드 셔츠", url: "https://example.com/products/oxford-shirt" }} bottom={{ name: "와이드 슬랙스", url: "https://example.com/products/wide-slacks" }} /></div></article>
             </div>
             <div className="coach-message" style={{ marginTop: 14 }}><h3>P4님과 P5님께 전하는 말</h3><p>두 코디 모두 소프트 블루와 화이트를 공통 색으로 잡고, 상체는 가벼운 레이어드로 연결했어요. 실루엣은 각자의 핏 기준을 유지해 사진에서는 조화롭고 실제 착용은 편안하게 구성했습니다.</p></div>
           </div>
@@ -240,12 +257,16 @@ export function OutfitScreen() {
   );
 }
 
-function OutfitItems({ top, bottom, shoes }: { top: string; bottom: string; shoes: string }) {
+function OutfitItems({ top, bottom }: { top: ProductItem; bottom: ProductItem }) {
   return (
     <div className="item-list">
-      <div className="item"><small>상의</small><strong>{top}</strong></div>
-      <div className="item"><small>하의</small><strong>{bottom}</strong></div>
-      <div className="item"><small>신발</small><strong>{shoes}</strong></div>
+      {([['상의', top], ['하의', bottom]] as const).map(([label, product]) => (
+        <div className="item" key={label}>
+          <small>{label}</small>
+          <strong>{product.name}</strong>
+          <a href={product.url} target="_blank" rel="noreferrer">상품 링크 보기</a>
+        </div>
+      ))}
     </div>
   );
 }

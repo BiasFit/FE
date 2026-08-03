@@ -2,7 +2,8 @@ import type { GroupOutfitDraft, PersonalOutfitDraft } from "../app/types";
 
 export type OutfitDraft = PersonalOutfitDraft | GroupOutfitDraft;
 
-const DRAFT_PREFIX = "biasfit:outfit-draft:v1";
+// v2 stores structured top/bottom products with URLs; v1 string drafts are incompatible.
+const DRAFT_PREFIX = "biasfit:outfit-draft:v2";
 
 export function draftStorageKey(influencerId: string, requestId: string) {
   return `${DRAFT_PREFIX}:${influencerId}:${requestId}`;

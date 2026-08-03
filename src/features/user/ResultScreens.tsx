@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import type { AppState } from "../../app/appState";
 import type { DiagnosisForm } from "../../app/types";
 import { useAppState } from "../../app/AppStateProvider";
-import { budgets } from "../../data/options";
+import { budgetRangeLabel } from "../../data/options";
 import { influencers } from "../../data/influencers";
 import {
   STYLE_NAMES,
@@ -69,9 +69,9 @@ export function LoadingDnaScreen() {
           <div className="work-body" style={{ textAlign: "center", paddingTop: 120 }}>
             <div className="loading-ring" aria-label="Style DNA 계산 중" />
             <h1 className="page-title" style={{ marginTop: 28 }}>
-              Style DNA를 만들고 있어요.
+              추천 기준을 정리하고 있어요.
             </h1>
-            <p className="page-desc">입력한 취향 신호와 핏 기준을 정리하는 중이에요.</p>
+            <p className="page-desc">취향, 핏, 예산과 입을 상황을 함께 살펴보고 있어요.</p>
           </div>
         </div>
       </div>
@@ -155,7 +155,7 @@ export function DnaScreen() {
           <div className="criteria-grid">
             <div className="criterion"><div><strong>{state.personal.bodyType}</strong><p>{state.personal.fitConcerns.join(" · ")}</p></div></div>
             <div className="criterion"><div><strong>{state.personal.preferredStyle} / {state.personal.avoidedStyle}</strong><p>선호 / 피하고 싶은 스타일</p></div></div>
-            <div className="criterion"><div><strong>{budgets.find((budget) => budget.code === state.personal.budgetCode)?.label}</strong><p>{state.personal.budgetApproach}</p></div></div>
+            <div className="criterion"><div><strong>{budgetRangeLabel(state.personal.budgetMinCode, state.personal.budgetMaxCode)}</strong><p>{state.personal.budgetApproach}</p></div></div>
             <div className="criterion"><div><strong>{state.personal.tpo}</strong><p>지금 필요한 TPO</p></div></div>
           </div>
           <details className="disclosure">
@@ -207,19 +207,19 @@ export function Top3Screen() {
       eyebrow="STYLEMATE TOP 3"
       title={
         <>
-          나와 잘 맞는 스타일을
+          나와 잘 맞는 스타일메이트를
           <br />
-          한눈에 비교해 보세요.
+          비교해 보세요.
         </>
       }
-      description="점수는 외모 평가가 아니라 스타일 고민과 추천 방향의 적합도예요."
+      description="매칭 적합도는 입력한 취향·핏·예산과 스타일메이트의 강점이 얼마나 맞는지 보여줘요."
       actions={
         <>
           <button className="btn-secondary" type="button" onClick={() => navigate("/user/body")}>
             조건 수정
           </button>
           <button className="btn-primary" type="button" onClick={() => navigate("/user/match")}>
-            선택한 스타일메이트 보기 <span aria-hidden="true">→</span>
+            이 스타일메이트에게 요청하기 <span aria-hidden="true">→</span>
           </button>
         </>
       }

@@ -116,7 +116,7 @@ export const avoidedElements = [
 ];
 
 export const budgets = [
-  { code: 1, label: "1만~3만 원" },
+  { code: 1, label: "3만 원 미만" },
   { code: 2, label: "3만~6만 원" },
   { code: 3, label: "6만~9만 원" },
   { code: 4, label: "9만~12만 원" },
@@ -124,6 +124,17 @@ export const budgets = [
   { code: 6, label: "15만~18만 원" },
   { code: 7, label: "18만 원 이상" },
 ];
+
+export function budgetRangeLabel(minCode: number, maxCode: number) {
+  const safeMin = Math.max(1, Math.min(minCode, maxCode, budgets.length));
+  const safeMax = Math.min(budgets.length, Math.max(minCode, maxCode, 1));
+  if (safeMin === safeMax) {
+    return budgets.find((budget) => budget.code === safeMin)?.label ?? "";
+  }
+  const minLabel = safeMin === 1 ? "3만 원 미만" : `${(safeMin - 1) * 3}만`;
+  const maxLabel = safeMax === 7 ? "18만 원 이상" : `${safeMax * 3}만 원`;
+  return `${minLabel}~${maxLabel}`;
+}
 
 export const budgetApproaches = [
   "가성비 중심",

@@ -11,15 +11,20 @@ describe("outfit draft storage", () => {
 
   it("scopes a draft to influencer and request identifiers", () => {
     expect(draftStorageKey("stylemate-01", "P1-2026-001")).toBe(
-      "biasfit:outfit-draft:v1:stylemate-01:P1-2026-001",
+      "biasfit:outfit-draft:v2:stylemate-01:P1-2026-001",
     );
   });
 
   it("saves, restores and clears a scoped draft", () => {
     const draft = {
-      top: "소프트 핑크 가디건",
-      bottom: "아이보리 A라인 스커트",
-      shoes: "화이트 메리제인",
+      top: {
+        name: "소프트 핑크 가디건",
+        url: "https://shop.test/top/1",
+      },
+      bottom: {
+        name: "아이보리 A라인 스커트",
+        url: "https://shop.test/bottom/1",
+      },
       message: "편안하게 선택할 수 있는 조합이에요.",
     };
 

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import type { GroupOutfitDraft, PersonalOutfitDraft } from "../../app/types";
+import type { GroupOutfitDraft, OutfitFields as OutfitFieldValues, PersonalOutfitDraft } from "../../app/types";
 import { useAppState } from "../../app/AppStateProvider";
-import { fitConcerns, styleOptions } from "../../data/options";
+import { budgetRangeLabel, fitConcerns, styleOptions } from "../../data/options";
 import { personaForms } from "../../data/personas";
+import { isValidOutfitDraft, isValidProductUrl } from "../../domain/outfit";
 import {
   clearDraft,
   loadDraft,
@@ -11,28 +12,26 @@ import {
   type OutfitDraft,
 } from "../../storage/drafts";
 import { ChipChoices, FlowShell } from "../../shared/FlowShell";
+import { BudgetRangeSlider } from "../../shared/BudgetRangeSlider";
 
 const personalDefault: PersonalOutfitDraft = {
-  top: "아이보리 셔링 블라우스",
-  bottom: "세미 A라인 데님 스커트",
-  shoes: "낮은 굽 메리제인",
+  top: { name: "아이보리 셔링 블라우스", url: "https://example.com/products/ivory-blouse" },
+  bottom: { name: "세미 A라인 데님 스커트", url: "https://example.com/products/denim-skirt" },
   message:
     "상의 디테일은 부드럽게 살리고, 하의는 허리선이 잘 보이는 길이로 골라 전체 비율이 답답하지 않도록 했어요.",
 };
 
 const groupDefault: GroupOutfitDraft = {
   memberA: {
-    top: "오프화이트 반팔 티셔츠",
-    bottom: "연청 A라인 스커트",
-    shoes: "화이트 스니커즈",
+    top: { name: "오프화이트 반팔 티셔츠", url: "https://example.com/products/off-white-tshirt" },
+    bottom: { name: "연청 A라인 스커트", url: "https://example.com/products/light-denim-skirt" },
   },
   memberB: {
-    top: "오프화이트 린넨 셔츠",
-    bottom: "네이비 와이드 슬랙스",
-    shoes: "화이트 스니커즈",
+    top: { name: "오프화이트 린넨 셔츠", url: "https://example.com/products/linen-shirt" },
+    bottom: { name: "네이비 와이드 슬랙스", url: "https://example.com/products/navy-slacks" },
   },
   message:
-    "각자의 취향은 유지하고 오프화이트 상의와 화이트 신발로 연결감을 만들었어요.",
+    "각자의 취향은 유지하고 오프화이트 상의와 소프트 블루 포인트로 연결감을 만들었어요.",
 };
 
 export function InfluencerLoginScreen() {
@@ -67,6 +66,13 @@ export function InfluencerLoginScreen() {
         <button className="btn-secondary" type="button" onClick={() => navigate("/influencer/profile")}>
           프로필 미완료 계정으로 시작
         </button>
+        <button
+          className="btn-ghost signup-login-link"
+          type="button"
+          onClick={() => navigate("/signup")}
+        >
+          처음이신가요? 회원가입
+        </button>
       </div>
     </FlowShell>
   );
@@ -81,7 +87,8 @@ export function InfluencerProfileScreen() {
     "밑위·하의 길이",
     "전체 기장·비율",
   ]);
-  const [prices, setPrices] = useState(["3만~6만 원", "6만~9만 원"]);
+  const [budgetMinCode, setBudgetMinCode] = useState(2);
+  const [budgetMaxCode, setBudgetMaxCode] = useState(3);
   const [budgetApproach, setBudgetApproach] = useState("가성비 중심");
   const [occasions, setOccasions] = useState([
     "개강·새학기",
@@ -90,15 +97,6 @@ export function InfluencerProfileScreen() {
   ]);
   const [coachingType, setCoachingType] = useState("개인·2인 그룹 모두");
   const [showError, setShowError] = useState(false);
-  const priceOptions = [
-    "1만~3만 원",
-    "3만~6만 원",
-    "6만~9만 원",
-    "9만~12만 원",
-    "12만~15만 원",
-    "15만~18만 원",
-    "18만 원 이상",
-  ];
   const profileTpos = [
     "개강·새학기",
     "등교·일상",
@@ -109,7 +107,6 @@ export function InfluencerProfileScreen() {
   const valid =
     primaryStyle !== secondaryStyle &&
     concerns.length > 0 &&
-    prices.length > 0 &&
     occasions.length > 0;
   return (
     <FlowShell
@@ -144,7 +141,8 @@ export function InfluencerProfileScreen() {
                   secondaryStyle,
                   bodyType,
                   concerns,
-                  prices,
+                  budgetMinCode,
+                  budgetMaxCode,
                   budgetApproach,
                   occasions,
                   coachingType,
@@ -175,8 +173,15 @@ export function InfluencerProfileScreen() {
         <ChipChoices values={fitConcerns} selected={concerns} max={2} onChange={setConcerns} />
       </div>
       <div className="field">
-        <div className="field-label choice-title">제안 가능한 가격대 <span className="choice-count">1~3개</span></div>
-        <ChipChoices values={priceOptions} selected={prices} max={3} onChange={setPrices} />
+        <div className="field-label choice-title">제안 가능한 가격대</div>
+        <BudgetRangeSlider
+          minCode={budgetMinCode}
+          maxCode={budgetMaxCode}
+          onChange={({ minCode, maxCode }) => {
+            setBudgetMinCode(minCode);
+            setBudgetMaxCode(maxCode);
+          }}
+        />
       </div>
       <div className="field">
         <div className="field-label">예산 접근 방식 <span className="required">1개</span></div>
@@ -312,6 +317,7 @@ export function InfluencerDetailScreen() {
   const [draft, setDraft] = useState<OutfitDraft>(initial);
   const [draftState, setDraftState] = useState("모든 변경사항 저장됨");
   const [modal, setModal] = useState(false);
+  const draftValid = isValidOutfitDraft(draft);
 
   useEffect(() => {
     setDraftState("저장 중…");
@@ -322,16 +328,29 @@ export function InfluencerDetailScreen() {
     return () => window.clearTimeout(timer);
   }, [draft, state.activeRequestId]);
 
-  const setPersonal = (key: keyof PersonalOutfitDraft, value: string) => {
-    if (!isGroupDraft(draft)) setDraft({ ...draft, [key]: value });
+  const setPersonal = (
+    key: "top" | "bottom",
+    field: "name" | "url",
+    value: string,
+  ) => {
+    if (!isGroupDraft(draft)) {
+      setDraft({ ...draft, [key]: { ...draft[key], [field]: value } });
+    }
   };
   const setGroup = (
     member: "memberA" | "memberB",
-    key: "top" | "bottom" | "shoes",
+    key: "top" | "bottom",
+    field: "name" | "url",
     value: string,
   ) => {
     if (isGroupDraft(draft)) {
-      setDraft({ ...draft, [member]: { ...draft[member], [key]: value } });
+      setDraft({
+        ...draft,
+        [member]: {
+          ...draft[member],
+          [key]: { ...draft[member][key], [field]: value },
+        },
+      });
     }
   };
 
@@ -356,7 +375,7 @@ export function InfluencerDetailScreen() {
             >
               임시저장
             </button>
-            <button className="btn-primary" type="button" onClick={() => setModal(true)}>
+            <button className="btn-primary" type="button" disabled={!draftValid} onClick={() => setModal(true)}>
               전달하기 <span aria-hidden="true">→</span>
             </button>
           </>
@@ -397,6 +416,14 @@ export function InfluencerDetailScreen() {
           <h2 className="section-title">부탁해요 카드</h2>
           <div className="request-letter">
             <p>{state.requestText[group ? "group" : "personal"]}</p>
+            <div className="request-budget-line">
+              <strong>요청 예산</strong>
+              <span>
+                {group
+                  ? `P4 ${budgetRangeLabel(state.requestBudget.group.A.minCode, state.requestBudget.group.A.maxCode)} · P5 ${budgetRangeLabel(state.requestBudget.group.B.minCode, state.requestBudget.group.B.maxCode)}`
+                  : budgetRangeLabel(state.requestBudget.personal.minCode, state.requestBudget.personal.maxCode)}
+              </span>
+            </div>
           </div>
         </section>
         <section className="compose-section">
@@ -404,17 +431,17 @@ export function InfluencerDetailScreen() {
           {!isGroupDraft(draft) ? (
             <OutfitFields
               values={draft}
-              onChange={(key, value) => setPersonal(key, value)}
+              onChange={(key, field, value) => setPersonal(key, field, value)}
             />
           ) : (
             <div className="group-result-grid">
               <div className="soft-card">
                 <h3>구성원 A · P4</h3>
-                <OutfitFields values={draft.memberA} onChange={(key, value) => setGroup("memberA", key, value)} />
+                <OutfitFields values={draft.memberA} onChange={(key, field, value) => setGroup("memberA", key, field, value)} />
               </div>
               <div className="soft-card">
                 <h3>구성원 B · P5</h3>
-                <OutfitFields values={draft.memberB} onChange={(key, value) => setGroup("memberB", key, value)} />
+                <OutfitFields values={draft.memberB} onChange={(key, field, value) => setGroup("memberB", key, field, value)} />
               </div>
             </div>
           )}
@@ -426,13 +453,18 @@ export function InfluencerDetailScreen() {
               onChange={(event) => setDraft({ ...draft, message: event.target.value })}
             />
           </label>
+          {!draftValid ? (
+            <p className="error-copy outfit-error" style={{ display: "block" }}>
+              상의와 하의의 제품명, http:// 또는 https://로 시작하는 상품 링크를 모두 입력해 주세요.
+            </p>
+          ) : null}
         </section>
       </FlowShell>
       {modal ? (
         <div className="modal-backdrop open" role="presentation">
           <div className="modal" role="dialog" aria-modal="true" aria-labelledby="deliver-title">
             <h2 id="deliver-title">코디 카드를 전달할까요?</h2>
-            <p>전달 후에는 내용을 수정하거나 다시 전송할 수 없어요. 상의·하의·신발과 전하는 말을 마지막으로 확인해 주세요.</p>
+            <p>전달 후에는 내용을 수정하거나 다시 전송할 수 없어요. 상의·하의 상품과 전하는 말을 마지막으로 확인해 주세요.</p>
             <div className="modal-actions">
               <button className="btn-secondary" type="button" onClick={() => setModal(false)}>계속 작성</button>
               <button
@@ -457,25 +489,44 @@ function OutfitFields({
   values,
   onChange,
 }: {
-  values: { top: string; bottom: string; shoes: string };
-  onChange: (key: "top" | "bottom" | "shoes", value: string) => void;
+  values: OutfitFieldValues;
+  onChange: (
+    key: "top" | "bottom",
+    field: "name" | "url",
+    value: string,
+  ) => void;
 }) {
   return (
     <>
       {([
         ["top", "상의"],
         ["bottom", "하의"],
-        ["shoes", "신발"],
       ] as const).map(([key, label]) => (
-        <label className="field" key={key}>
-          <span className="field-label">{label}</span>
-          <input
-            className="text-input"
-            aria-label={label}
-            value={values[key]}
-            onChange={(event) => onChange(key, event.target.value)}
-          />
-        </label>
+        <div className="product-fields" key={key}>
+          <label className="field">
+            <span className="field-label">{label} 제품명</span>
+            <input
+              className="text-input"
+              aria-label={`${label} 제품명`}
+              value={values[key].name}
+              onChange={(event) => onChange(key, "name", event.target.value)}
+            />
+          </label>
+          <label className={`field ${values[key].url && !isValidProductUrl(values[key].url) ? "is-error" : ""}`}>
+            <span className="field-label">{label} 상품 링크</span>
+            <input
+              className="text-input"
+              aria-label={`${label} 상품 링크`}
+              type="url"
+              placeholder="https://example.com/product"
+              value={values[key].url}
+              onChange={(event) => onChange(key, "url", event.target.value)}
+            />
+            {values[key].url && !isValidProductUrl(values[key].url) ? (
+              <span className="error-copy" style={{ display: "block" }}>유효한 http/https 링크를 입력해 주세요.</span>
+            ) : null}
+          </label>
+        </div>
       ))}
     </>
   );
@@ -507,9 +558,8 @@ export function DeliveredScreen() {
             <span className="badge dark">전달 완료</span>
           </div>
           <div className="item-list">
-            <div className="item"><small>상의</small><strong>소프트 블루 가디건 + 화이트 티</strong></div>
-            <div className="item"><small>하의</small><strong>라이트 그레이 A라인 스커트</strong></div>
-            <div className="item"><small>신발</small><strong>화이트 스니커즈</strong></div>
+            <div className="item"><small>상의</small><strong>소프트 블루 가디건 + 화이트 티</strong><a href="https://example.com/products/blue-cardigan" target="_blank" rel="noreferrer">상품 링크 보기</a></div>
+            <div className="item"><small>하의</small><strong>라이트 그레이 A라인 스커트</strong><a href="https://example.com/products/gray-skirt" target="_blank" rel="noreferrer">상품 링크 보기</a></div>
           </div>
           <div className="soft-card"><strong>보유 아이템 대체 팁</strong><p className="helper" style={{ marginTop: 7 }}>블루 가디건 대신 비슷한 채도의 셔츠를 열어 입어도 전체 인상이 유지돼요.</p></div>
           <div className="coach-message" style={{ marginTop: 14 }}><h3>P2님께 전한 말</h3><p>수업과 약속 사이에 오래 입어도 편하도록 가벼운 레이어드와 익숙한 스니커즈를 중심으로 구성했어요. 상의 색감만 맞추면 가지고 있는 아이템으로도 충분히 재현할 수 있어요.</p></div>

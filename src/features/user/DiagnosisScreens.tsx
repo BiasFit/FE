@@ -5,7 +5,6 @@ import {
   avoidedElements,
   bodyTypes,
   budgetApproaches,
-  budgets,
   designElements,
   fitConcerns,
   keywords,
@@ -14,6 +13,7 @@ import {
   tpos,
 } from "../../data/options";
 import { ChipChoices, FlowShell, MemberSwitch } from "../../shared/FlowShell";
+import { BudgetRangeSlider } from "../../shared/BudgetRangeSlider";
 
 function useCurrentDiagnosis() {
   const { state, dispatch } = useAppState();
@@ -74,9 +74,9 @@ export function BodyScreen() {
       eyebrow="입력 1 / 5 · 체형과 핏"
       title={
         <>
-          옷을 고를 때 먼저 보는
+          옷을 고를 때 고민되는
           <br />
-          핏 기준을 알려주세요.
+          핏을 알려주세요.
         </>
       }
       description="체형 정보는 스타일 선택을 돕는 참고 기준으로만 사용해요."
@@ -275,10 +275,9 @@ export function StyleScreen() {
           선호 스타일 <span className="required">1개 선택</span>
         </div>
         <div className="style-grid" role="radiogroup" aria-label="선호 스타일">
-          {styleOptions.map((style, index) => (
+          {styleOptions.map((style) => (
             <button
               className={`style-card ${form.preferredStyle === style.name ? "selected" : ""}`}
-              style={index === 4 ? { gridColumn: "1/-1" } : undefined}
               type="button"
               role="radio"
               aria-checked={form.preferredStyle === style.name}
@@ -301,7 +300,7 @@ export function StyleScreen() {
       </div>
       <div className="avoid-style-panel">
         <div className="field-label choice-title">
-          피하고 싶은 스타일 <span className="choice-count">1개 선택</span>
+          이번 코디에서 피하고 싶은 분위기 <span className="choice-count">1개 선택</span>
         </div>
         <p className="helper">선호 스타일과 같은 항목은 선택할 수 없어요.</p>
         <div className="chip-wrap" style={{ marginTop: 12 }}>
@@ -342,7 +341,7 @@ export function SignalsScreen() {
           조금 더 구체적으로 골라요.
         </>
       }
-      description="각 영역에서 정확히 3개씩 선택하면 Style DNA가 더 선명해져요."
+      description="각 영역에서 필수로 3가지씩 선택하면 Style DNA가 더 선명해져요."
       actions={
         <Actions
           back="/user/style"
@@ -360,7 +359,7 @@ export function SignalsScreen() {
       {groups.map(([label, values, selected, key]) => (
         <div className="field" key={key}>
           <div className="field-label choice-title">
-            {label} <span className="choice-count">정확히 3개</span>
+            {label} <span className="choice-count">3개 선택 필수</span>
           </div>
           <ChipChoices
             values={values}
@@ -397,32 +396,28 @@ export function BudgetScreen() {
       eyebrow="입력 4 / 5 · 예산"
       title={
         <>
-          한 벌을 고를 때 편안한
+          코디 1세트 기준
           <br />
-          예산 범위를 알려주세요.
+          예산을 알려주세요.
         </>
       }
-      description="상의·하의·신발을 포함한 코디 1개 기준이에요."
+      description="상의 1개와 하의 1개 조합의 최소·최고 금액을 선택해요."
       actions={<Actions back="/user/signals" next="/user/tpo" nextLabel="마지막 조건 고르기" />}
     >
       <MemberSwitch />
       <div className="field">
-        <div className="field-label">코디 1개 기준 예산</div>
-        <div className="card-grid" role="radiogroup" aria-label="예산 구간">
-          {budgets.map((budget) => (
-            <button
-              className={`option-card ${form.budgetCode === budget.code ? "selected" : ""}`}
-              role="radio"
-              aria-checked={form.budgetCode === budget.code}
-              type="button"
-              key={budget.code}
-              onClick={() => update({ budgetCode: budget.code })}
-            >
-              <strong>{budget.label}</strong>
-              <p>상의·하의·신발 포함</p>
-            </button>
-          ))}
-        </div>
+        <div className="field-label">원하는 가격대</div>
+        <BudgetRangeSlider
+          minCode={form.budgetMinCode}
+          maxCode={form.budgetMaxCode}
+          onChange={({ minCode, maxCode }) =>
+            update({
+              budgetMinCode: minCode,
+              budgetMaxCode: maxCode,
+              budgetCode: Math.round((minCode + maxCode) / 2),
+            })
+          }
+        />
       </div>
       <div className="field">
         <div className="field-label">예산 접근 방식</div>
@@ -503,6 +498,12 @@ export function TpoScreen() {
             <p>대학생활의 실제 선택 장면</p>
           </button>
         ))}
+      </div>
+      <div className="soft-card">
+        <strong>입력한 정보는 이렇게 사용해요</strong>
+        <p className="helper" style={{ marginTop: 7 }}>
+          입력한 정보는 추천 이유를 만드는 데만 사용돼요.
+        </p>
       </div>
     </FlowShell>
   );
