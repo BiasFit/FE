@@ -94,6 +94,13 @@ export function isRetryableLinkStatus(status: number) {
   return status === 401 || status === 403 || status === 429 || status >= 500;
 }
 
+export function classifyLinkStatus(status: number): LinkCheck["status"] {
+  if (status >= 200 && status < 400) return "pass";
+  if (isRetryableLinkStatus(status)) return "operations_review";
+  if ([404, 410].includes(status)) return "needs_revision";
+  return "failed";
+}
+
 async function fetchWithRetry(url: URL, method: "HEAD" | "GET") {
   let lastError: unknown;
   for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -139,7 +146,8 @@ async function checkSingleLink(
 ): Promise<LinkCheck> {
   try {
     const { status, finalUrl } = await inspectUrl(inputUrl);
-    if (status >= 200 && status < 400) {
+    const linkStatus = classifyLinkStatus(status);
+    if (linkStatus === "pass") {
       return {
         memberId,
         itemType,
@@ -150,7 +158,7 @@ async function checkSingleLink(
         action: "조치 없음",
       };
     }
-    if ([401, 403, 429].includes(status) || status >= 500) {
+    if (linkStatus === "operations_review") {
       return {
         memberId,
         itemType,
@@ -159,6 +167,17 @@ async function checkSingleLink(
         status: "operations_review",
         reason: `자동 점검 제한 또는 일시 오류 (${status})`,
         action: "운영진 검토",
+      };
+    }
+    if (linkStatus === "needs_revision") {
+      return {
+        memberId,
+        itemType,
+        inputUrl,
+        finalUrl,
+        status: "needs_revision",
+        reason: `제품 페이지를 찾을 수 없습니다. (${status})`,
+        action: "링크 수정",
       };
     }
     return {

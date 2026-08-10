@@ -60,12 +60,14 @@ export interface StyleDnaExplanationRequest {
 export interface PersonalStyleDnaExplanation {
   mode: "personal";
   personalStyleDnaSummary: string;
+  personalStyleDnaSummaryEvidenceRefs: string[];
   personalMatchingPoints: EvidenceText[];
 }
 
 export interface GroupStyleDnaExplanation {
   mode: "group";
   groupStyleDnaSummary: string;
+  groupStyleDnaSummaryEvidenceRefs: string[];
   groupCombination: {
     score: number;
     directionSimilarity: number;
@@ -124,7 +126,7 @@ export interface LinkCheck {
   memberId: "personal" | "A" | "B";
   inputUrl: string;
   finalUrl: string | null;
-  status: "pass" | "operations_review" | "failed";
+  status: "pass" | "needs_revision" | "operations_review" | "failed";
   reason: string;
   action: "조치 없음" | "운영진 검토" | "링크 수정";
 }
@@ -207,6 +209,12 @@ function validateSummary(summary: unknown, min: number, max: number) {
   }
 }
 
+function validateEvidenceRefs(value: unknown, field: string) {
+  if (!isStringArray(value) || value.length === 0) {
+    throw new Error(`${field} requires non-empty evidenceRefs`);
+  }
+}
+
 function validatePoints(value: unknown, field: string) {
   if (!Array.isArray(value) || value.length < 2 || value.length > 3) {
     throw new Error(`${field} must contain 2-3 points`);
@@ -222,11 +230,19 @@ export function validateStyleDnaExplanation(
   if (!isRecord(value)) throw new Error("Style DNA response must be an object");
   if (value.mode === "personal") {
     validateSummary(value.personalStyleDnaSummary, 15, 35);
+    validateEvidenceRefs(
+      value.personalStyleDnaSummaryEvidenceRefs,
+      "personalStyleDnaSummary",
+    );
     validatePoints(value.personalMatchingPoints, "personalMatchingPoints");
     return value as unknown as PersonalStyleDnaExplanation;
   }
   if (value.mode === "group") {
     validateSummary(value.groupStyleDnaSummary, 20, 45);
+    validateEvidenceRefs(
+      value.groupStyleDnaSummaryEvidenceRefs,
+      "groupStyleDnaSummary",
+    );
     validatePoints(value.groupMatchingPoints, "groupMatchingPoints");
     if (!isRecord(value.groupCombination)) {
       throw new Error("groupCombination is required");
@@ -246,6 +262,7 @@ export function validateStyleDnaExplanation(
       throw new Error("groupCombination is invalid");
     }
     const refs = [
+      ...(value.groupStyleDnaSummaryEvidenceRefs as string[]),
       ...combination.evidenceRefs,
       ...(value.groupMatchingPoints as EvidenceText[]).flatMap(
         (point) => point.evidenceRefs,
@@ -272,6 +289,18 @@ export function validateMatchExplanations(
   const candidates = new Map(
     request.rankedInfluencers.map((candidate) => [candidate.influencerId, candidate]),
   );
+  const ranks = new Set<number>();
+  for (const candidate of request.rankedInfluencers) {
+    if (
+      candidate.rank < 1 ||
+      candidate.rank > request.rankedInfluencers.length ||
+      ranks.has(candidate.rank) ||
+      candidate.matchScore !== candidate.breakdown.matchScore
+    ) {
+      throw new Error("fixed TOP 3 score or rank is invalid");
+    }
+    ranks.add(candidate.rank);
+  }
   const seen = new Set<string>();
   for (const explanation of value.explanations) {
     if (
@@ -297,6 +326,15 @@ export function validateMatchExplanations(
     );
     if (!explanation.evidenceRefs.every((ref) => allowedRefs.has(ref))) {
       throw new Error("AI used evidence outside the calculated match result");
+    }
+    const strongestScore = Math.max(
+      candidate.breakdown.style,
+      candidate.breakdown.fit,
+      candidate.breakdown.budget,
+      candidate.breakdown.tpo,
+    );
+    if (candidate.breakdown[explanation.strongestCategory as keyof MatchBreakdown] !== strongestScore) {
+      throw new Error("AI changed the strongest match category");
     }
     if (request.mode === "group") {
       const hasA = explanation.evidenceRefs.some((ref) => ref.startsWith("A."));
@@ -350,6 +388,7 @@ export const personalStyleDnaSchema = {
   properties: {
     mode: { type: "string", const: "personal" },
     personalStyleDnaSummary: { type: "string" },
+    personalStyleDnaSummaryEvidenceRefs: { type: "array", items: { type: "string" }, minItems: 1 },
     personalMatchingPoints: {
       type: "array",
       minItems: 2,
@@ -357,7 +396,7 @@ export const personalStyleDnaSchema = {
       items: evidenceTextSchema,
     },
   },
-  required: ["mode", "personalStyleDnaSummary", "personalMatchingPoints"],
+  required: ["mode", "personalStyleDnaSummary", "personalStyleDnaSummaryEvidenceRefs", "personalMatchingPoints"],
 } as const;
 
 export const groupStyleDnaSchema = {
@@ -366,6 +405,7 @@ export const groupStyleDnaSchema = {
   properties: {
     mode: { type: "string", const: "group" },
     groupStyleDnaSummary: { type: "string" },
+    groupStyleDnaSummaryEvidenceRefs: { type: "array", items: { type: "string" }, minItems: 1 },
     groupCombination: {
       type: "object",
       additionalProperties: false,
@@ -396,6 +436,7 @@ export const groupStyleDnaSchema = {
   required: [
     "mode",
     "groupStyleDnaSummary",
+    "groupStyleDnaSummaryEvidenceRefs",
     "groupCombination",
     "groupMatchingPoints",
   ],

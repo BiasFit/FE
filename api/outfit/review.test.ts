@@ -4,6 +4,7 @@ import type {
   OutfitReviewRequest,
 } from "../../src/domain/aiContracts";
 import {
+  classifyLinkStatus,
   isBlockedHostname,
   isRetryableLinkStatus,
 } from "../_lib/link-checker";
@@ -64,6 +65,30 @@ describe("outfit review orchestration", () => {
     expect(result.reviewStatus).toBe("blocked");
   });
 
+  it("requires a link revision for 404 and 410 pages", async () => {
+    const result = await reviewOutfitCard(request, {
+      reviewLanguage: async () => ({ issues: [] }),
+      checkLinks: async () => [
+        { ...passingLinks[0], status: "needs_revision", action: "링크 수정" },
+        passingLinks[1],
+      ],
+    });
+
+    expect(result.reviewStatus).toBe("needs_revision");
+  });
+
+  it("sends rate limits and repeated server failures to operations review", async () => {
+    const result = await reviewOutfitCard(request, {
+      reviewLanguage: async () => ({ issues: [] }),
+      checkLinks: async () => [
+        { ...passingLinks[0], status: "operations_review", action: "운영진 검토" },
+        passingLinks[1],
+      ],
+    });
+
+    expect(result.reviewStatus).toBe("operations_review");
+  });
+
   it("requires revision when OpenAI finds unsafe language", async () => {
     const result = await reviewOutfitCard(request, {
       reviewLanguage: async () => ({
@@ -97,5 +122,9 @@ describe("link checker security", () => {
     expect(isRetryableLinkStatus(429)).toBe(true);
     expect(isRetryableLinkStatus(503)).toBe(true);
     expect(isRetryableLinkStatus(404)).toBe(false);
+    expect(classifyLinkStatus(404)).toBe("needs_revision");
+    expect(classifyLinkStatus(410)).toBe("needs_revision");
+    expect(classifyLinkStatus(401)).toBe("operations_review");
+    expect(classifyLinkStatus(503)).toBe("operations_review");
   });
 });

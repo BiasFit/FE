@@ -6,7 +6,7 @@ import type {
   MemberId,
   PriorityOption,
 } from "./types";
-import { personaForms, requestCopy } from "../data/personas";
+import { personaForms } from "../data/personas";
 
 export interface AppState {
   mode: "personal" | "group";
@@ -83,10 +83,10 @@ export function createInitialState(): AppState {
         B: copyForm(personaForms.P5),
       },
     },
-    selectedInfluencerId: "stylemate-01",
-    selectedInfluencerScore: 89,
-    activeRequestId: "P1-2026-001",
-    requestText: { ...requestCopy },
+    selectedInfluencerId: "",
+    selectedInfluencerScore: 0,
+    activeRequestId: "",
+    requestText: { personal: "", group: "" },
     requestBudget: {
       personal: {
         minCode: personaForms.P1.budgetMinCode,
@@ -112,9 +112,13 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     priorityOptions: [],
     priorityStatus: "idle" as const,
   };
+  const invalidateSelectedInfluencer = {
+    selectedInfluencerId: "",
+    selectedInfluencerScore: 0,
+  };
   switch (action.type) {
     case "setMode":
-      return { ...state, mode: action.mode, ...invalidatePriority };
+      return { ...state, mode: action.mode, ...invalidatePriority, ...invalidateSelectedInfluencer };
     case "setActiveMember":
       return { ...state, activeMember: action.member };
     case "setPriorityLoading":
@@ -128,12 +132,13 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case "setPriorityError":
       return { ...state, priorityStatus: "error", priorityOptions: [] };
     case "selectMatchPriority":
-      return { ...state, matchPriority: action.priority };
+      return { ...state, matchPriority: action.priority, ...invalidateSelectedInfluencer };
     case "updatePersonal":
       return {
         ...state,
         personal: { ...state.personal, ...action.patch },
         ...invalidatePriority,
+        ...invalidateSelectedInfluencer,
       };
     case "updateGroupMember":
       return {
@@ -149,12 +154,14 @@ export function appReducer(state: AppState, action: AppAction): AppState {
           },
         },
         ...invalidatePriority,
+        ...invalidateSelectedInfluencer,
       };
     case "updateGroup":
       return {
         ...state,
         group: { ...state.group, ...action.patch },
         ...invalidatePriority,
+        ...invalidateSelectedInfluencer,
       };
     case "selectInfluencer":
       return {
@@ -173,6 +180,10 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case "submitRequest":
       return {
         ...state,
+        activeRequestId:
+          state.mode === "group"
+            ? "LOCAL-GROUP-REQUEST"
+            : "LOCAL-PERSONAL-REQUEST",
         requestBudget: {
           personal: {
             minCode: state.personal.budgetMinCode,

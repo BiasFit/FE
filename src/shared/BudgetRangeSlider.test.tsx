@@ -7,7 +7,7 @@ describe("BudgetRangeSlider", () => {
     const onChange = vi.fn();
     render(<BudgetRangeSlider minCode={2} maxCode={3} onChange={onChange} />);
 
-    expect(screen.getByText("3만~9만 원")).toBeVisible();
+    expect(screen.getByText("3만 원~9만 원")).toBeVisible();
 
     const minimumSlider = screen.getByRole("slider", { name: "최소 예산" });
     fireEvent.focus(minimumSlider);

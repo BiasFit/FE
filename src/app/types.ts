@@ -43,10 +43,10 @@ export interface DiagnosisForm {
   budgetMinCode: number;
   budgetMaxCode: number;
   budgetApproach:
-    | "가성비 중심"
-    | "균형형"
-    | "품질·소재 우선"
-    | "투자 아이템 중심";
+    | "총액 절약형"
+    | "일상 활용형"
+    | "소재·품질 우선형"
+    | "포인트 아이템 투자형";
   tpo: string;
 }
 

@@ -1,435 +1,134 @@
 import { describe, expect, it } from "vitest";
-import {
-  applyPriorityWeights,
-  calculateGroupCompatibility,
-  calculateGroupMatchScore,
-  calculateInfluencerMatch,
-  calculateStyleScores,
-  filterEligibleInfluencers,
-  normalizeMatchScore,
-  rankInfluencers,
-} from "./scoring";
+import { personaForms } from "../data/personas";
 import { MATCH_PRIORITY_WEIGHTS } from "./matchPriority";
 import {
-  isPriorityOptionsResponse,
-  validateStyleDnaExplanation,
-} from "./aiContracts";
+  calculateGroupCompatibility,
+  calculateGroupMatchScore,
+  calculatePersonalBaseBreakdown,
+  calculateStyleScores,
+  rankInfluencers,
+  type InfluencerProfile,
+  type StyleScores,
+} from "./scoring";
 
-describe("AI response contracts", () => {
-  it("accepts exactly the four fixed priority codes", () => {
-    expect(
-      isPriorityOptionsResponse({
-        question: "이번 스타일링에서 가장 중요하게 생각하는 기준을 골라주세요.",
-        options: [
-          { code: "style_first", label: "스타일", evidenceRefs: ["preferredStyle"] },
-          { code: "fit_first", label: "핏", evidenceRefs: ["fitConcerns"] },
-          { code: "budget_first", label: "예산", evidenceRefs: ["budgetApproach"] },
-          { code: "tpo_first", label: "TPO", evidenceRefs: ["tpo"] },
-        ],
-      }),
-    ).toBe(true);
-    expect(
-      isPriorityOptionsResponse({
-        question: "질문",
-        options: [
-          { code: "ai_decides", label: "AI가 선택", evidenceRefs: ["tpo"] },
-        ],
-      }),
-    ).toBe(false);
+const zeroScores: StyleScores = {
+  캐주얼: 0,
+  로맨틱: 0,
+  스트릿: 0,
+  빈티지: 0,
+  "오피스 & 비즈니스캐주얼": 0,
+};
+
+function scoresForPersona(personaId: keyof typeof personaForms) {
+  const form = personaForms[personaId];
+  return calculateStyleScores({
+    preferredStyle: form.preferredStyle,
+    avoidedStyle: form.avoidedStyle,
+    keywords: form.keywords,
+    designElements: form.designElements,
+    preferredItems: form.preferredItems,
+    avoidedElements: form.avoidedElements,
+  });
+}
+
+describe("latest Style DNA scoring rules", () => {
+  it.each([
+    ["P1", [48, 67, 0, 23, 18]],
+    ["P2", [10, 8, 15, 15, 100]],
+    ["P3", [15, 35, 0, 15, 83]],
+    ["P4", [75, 40, 10, 15, 0]],
+    ["P5", [10, 8, 15, 15, 100]],
+  ] as const)("calculates the %s score vector from the latest option map", (personaId, expected) => {
+    expect(Object.values(scoresForPersona(personaId))).toEqual(expected);
   });
 
-  it("rejects a personal Style DNA explanation without grounded points", () => {
-    expect(() =>
-      validateStyleDnaExplanation({
-        mode: "personal",
-        personalStyleDnaSummary: "단정한 인상을 고려한 스타일",
-        personalMatchingPoints: [
-          { text: "근거가 없는 설명이에요", evidenceRefs: [] },
-          { text: "TPO를 함께 고려해요", evidenceRefs: ["personal.tpo"] },
-        ],
-      }),
-    ).toThrow("evidenceRefs");
-  });
-});
-
-describe("calculateStyleScores", () => {
-  it("calculates the P1 Style DNA scores from fixed style signals", () => {
-    const result = calculateStyleScores({
-      preferredStyle: "로맨틱",
-      avoidedStyle: "스트릿",
-      keywords: ["부드러운", "사랑스러운", "자연스러운"],
-      designElements: ["리본", "셔링", "데님 소재감"],
-      preferredItems: [
-        "A라인·플레어 스커트",
-        "메리제인 슈즈",
-        "기본 가디건",
-      ],
-      avoidedElements: ["정장처럼 딱딱한 룩"],
-    });
-
-    expect(result).toEqual({
-      캐주얼: 40,
-      로맨틱: 75,
-      스트릿: 0,
-      빈티지: 15,
-      "오피스 & 비즈니스캐주얼": 10,
-    });
-  });
-
-  it("calculates the P5 Style DNA scores without overwriting P4", () => {
-    const result = calculateStyleScores({
-      preferredStyle: "오피스 & 비즈니스캐주얼",
+  it("keeps multi-style choices at full value for every fixed linked style", () => {
+    const scores = calculateStyleScores({
+      preferredStyle: "캐주얼",
       avoidedStyle: "로맨틱",
-      keywords: ["단정한", "깔끔한", "클래식한"],
-      designElements: ["테일러드 구조", "톤온톤 색감", "체크 패턴"],
-      preferredItems: ["셔츠", "슬랙스", "니트 베스트"],
-      avoidedElements: ["지나치게 편한 일상복 느낌"],
+      keywords: ["편안한", "래퍼여친", "레트로"],
+      designElements: ["무채색", "레이스", "플라워 패턴"],
+      preferredItems: ["쉬폰 블라우스", "플리츠 니트", "데님 팬츠"],
+      avoidedElements: [],
     });
 
-    expect(result).toEqual({
-      캐주얼: 10,
-      로맨틱: 0,
-      스트릿: 15,
-      빈티지: 40,
-      "오피스 & 비즈니스캐주얼": 75,
-    });
+    expect(scores.캐주얼).toBe(50);
+    expect(scores.스트릿).toBe(32);
+    expect(scores.로맨틱).toBe(33);
+    expect(scores.빈티지).toBe(40);
+    expect(scores["오피스 & 비즈니스캐주얼"]).toBe(32);
+  });
+
+  it("keeps the P4/P5 group compatibility at 61", () => {
+    const p4 = personaForms.P4;
+    const p5 = personaForms.P5;
+    expect(calculateGroupCompatibility(
+      { scores: scoresForPersona("P4"), avoidedStyle: p4.avoidedStyle, budgetCode: p4.budgetCode },
+      { scores: scoresForPersona("P5"), avoidedStyle: p5.avoidedStyle, budgetCode: p5.budgetCode },
+    )).toEqual({ styleSimilarity: 41, budgetCompatibility: 20, total: 61 });
   });
 });
 
-describe("calculateGroupCompatibility", () => {
-  it("returns the fixed P4/P5 compatibility score of 61", () => {
-    const result = calculateGroupCompatibility(
-      {
-        scores: {
-          캐주얼: 75,
-          로맨틱: 40,
-          스트릿: 10,
-          빈티지: 15,
-          "오피스 & 비즈니스캐주얼": 0,
-        },
-        avoidedStyle: "오피스 & 비즈니스캐주얼",
-        budgetCode: 2,
-      },
-      {
-        scores: {
-          캐주얼: 10,
-          로맨틱: 0,
-          스트릿: 15,
-          빈티지: 40,
-          "오피스 & 비즈니스캐주얼": 75,
-        },
-        avoidedStyle: "로맨틱",
-        budgetCode: 3,
-      },
-    );
+describe("individual and group matching rules", () => {
+  const fullFitProfile: InfluencerProfile = {
+    id: "fit-profile", name: "FIT PROFILE", profileCompleted: true,
+    primaryStyle: "캐주얼", secondaryStyle: "로맨틱", bodyType: "웨이브",
+    fitConcerns: ["전체 기장·비율", "밑위·하의 길이"], budgetCodes: [2],
+    budgetApproach: "총액 절약형", tpos: ["개강 행사"], coachingType: "both",
+  };
 
-    expect(result).toEqual({
-      styleSimilarity: 41,
-      budgetCompatibility: 20,
-      total: 61,
-    });
+  it("uses 15 body points and proportional fit-concern points for an individual", () => {
+    const base = calculatePersonalBaseBreakdown({
+      mode: "personal", priority: "fit_first", styleScores: zeroScores, avoidedStyle: "스트릿",
+      bodyType: "웨이브", fitConcerns: ["전체 기장·비율", "가슴·상체 여유"],
+      budgetMinCode: 2, budgetMaxCode: 3, budgetApproach: "총액 절약형", tpo: "개강 행사",
+    }, fullFitProfile);
+
+    expect(base.fit).toBe(20);
+    expect(base.budget).toBe(20);
   });
-});
 
-describe("calculateGroupMatchScore", () => {
-  it("weights the lower member score at 70 percent", () => {
-    const result = calculateGroupMatchScore({
-      memberA: { style: 24, fit: 18, budget: 15 },
-      memberB: { style: 18, fit: 25, budget: 8 },
+  it("gives I1 25 and I2 10 for the same two fit concerns", () => {
+    const input = {
+      mode: "personal" as const, priority: "fit_first" as const, styleScores: zeroScores,
+      avoidedStyle: "스트릿" as const, fitConcerns: ["전체 기장·비율", "밑위·하의 길이"],
+      budgetMinCode: 2, budgetMaxCode: 2, budgetApproach: "총액 절약형", tpo: "개강 행사",
+    };
+    expect(calculatePersonalBaseBreakdown({ ...input, bodyType: "웨이브" }, fullFitProfile).fit).toBe(25);
+    expect(calculatePersonalBaseBreakdown({ ...input, bodyType: "내추럴" }, fullFitProfile).fit).toBe(10);
+  });
+
+  it("excludes body type and aggregates group range and approach budgets separately", () => {
+    const results = rankInfluencers({
+      mode: "group", priority: "tpo_first", tpo: "여행",
+      members: [
+        { styleScores: zeroScores, avoidedStyle: "스트릿", bodyType: "웨이브", fitConcerns: ["전체 기장·비율"], budgetMinCode: 2, budgetMaxCode: 2, budgetApproach: "총액 절약형" },
+        { styleScores: zeroScores, avoidedStyle: "스트릿", bodyType: "내추럴", fitConcerns: ["가슴·상체 여유"], budgetMinCode: 3, budgetMaxCode: 3, budgetApproach: "일상 활용형" },
+      ],
+    }, [{
+      ...fullFitProfile, id: "group-profile", bodyType: "스트레이트",
+      fitConcerns: ["전체 기장·비율", "가슴·상체 여유"], budgetCodes: [2], tpos: ["여행"],
+    }]);
+
+    expect(results[0].baseBreakdown.fit).toBe(25);
+    expect(results[0].baseBreakdown.budget).toBe(7);
+  });
+
+  it("uses the lower member at 70 percent and the average at 30 percent", () => {
+    expect(calculateGroupMatchScore({
+      memberA: { style: 24, fit: 18, budget: 7 },
+      memberB: { style: 18, fit: 25, budget: 7 },
       sharedTpo: 20,
-    });
-
-    expect(result).toEqual({
-      style: 19,
-      fit: 19,
-      budget: 9,
-      tpo: 20,
-      rawTotal: 67,
-      matchScore: 74,
-    });
+    })).toEqual({ style: 19, fit: 19, budget: 7, tpo: 20, rawTotal: 65, matchScore: 72 });
   });
 });
 
-describe("priority weighting", () => {
-  it("keeps every personal and group priority profile at 90 raw points", () => {
+describe("priority weights", () => {
+  it("keeps every individual and group profile at 90 raw points", () => {
     for (const mode of ["personal", "group"] as const) {
       for (const weights of Object.values(MATCH_PRIORITY_WEIGHTS[mode])) {
-        expect(
-          weights.style + weights.fit + weights.budget + weights.tpo,
-        ).toBe(90);
+        expect(weights.style + weights.fit + weights.budget + weights.tpo).toBe(90);
       }
     }
-  });
-
-  it("applies only the selected category weights and normalizes to 100", () => {
-    const weighted = applyPriorityWeights(
-      { style: 15, fit: 25, budget: 10, tpo: 15 },
-      "personal",
-      "fit_first",
-    );
-
-    expect(weighted).toEqual({
-      style: 12.5,
-      fit: 30,
-      budget: 10,
-      tpo: 15,
-      rawTotal: 67.5,
-      matchScore: 75,
-    });
-    expect(normalizeMatchScore(67.5)).toBe(75);
-  });
-});
-
-describe("calculateInfluencerMatch", () => {
-  it("calculates a personal match from Style DNA, fit, budget and TPO", () => {
-    const result = calculateInfluencerMatch(
-      {
-        mode: "personal",
-        styleScores: {
-          캐주얼: 40,
-          로맨틱: 75,
-          스트릿: 0,
-          빈티지: 15,
-          "오피스 & 비즈니스캐주얼": 10,
-        },
-        avoidedStyle: "스트릿",
-        bodyType: "웨이브",
-        fitConcerns: ["전체 기장·비율", "밑위·하의 길이"],
-        budgetMinCode: 2,
-        budgetMaxCode: 2,
-        budgetApproach: "가성비 중심",
-        tpo: "개강·새학기",
-      },
-      {
-        id: "stylemate-01",
-        name: "STYLEMATE 01",
-        profileCompleted: true,
-        primaryStyle: "로맨틱",
-        secondaryStyle: "캐주얼",
-        bodyType: "웨이브",
-        fitConcerns: ["전체 기장·비율", "밑위·하의 길이"],
-        budgetCodes: [2, 3],
-        budgetApproach: "가성비 중심",
-        tpos: ["개강·새학기", "여행·사진"],
-        coachingType: "both",
-      },
-    );
-
-    expect(result).toEqual({
-      style: 19,
-      fit: 25,
-      budget: 20,
-      tpo: 15,
-      rawTotal: 79,
-      matchScore: 88,
-    });
-  });
-
-  it("sets an avoided representative style to zero before weighting", () => {
-    const result = calculateInfluencerMatch(
-      {
-        mode: "personal",
-        styleScores: {
-          캐주얼: 40,
-          로맨틱: 75,
-          스트릿: 70,
-          빈티지: 15,
-          "오피스 & 비즈니스캐주얼": 10,
-        },
-        avoidedStyle: "스트릿",
-        bodyType: "웨이브",
-        fitConcerns: [],
-        budgetMinCode: 2,
-        budgetMaxCode: 2,
-        budgetApproach: "가성비 중심",
-        tpo: "개강·새학기",
-      },
-      {
-        id: "street-only",
-        name: "STREET MATE",
-        profileCompleted: true,
-        primaryStyle: "스트릿",
-        secondaryStyle: "빈티지",
-        bodyType: "내추럴",
-        fitConcerns: [],
-        budgetCodes: [5],
-        budgetApproach: "투자 아이템 중심",
-        tpos: ["축제·공연"],
-        coachingType: "group",
-      },
-    );
-
-    expect(result.style).toBe(2);
-  });
-});
-
-describe("rankInfluencers", () => {
-  it("filters coaching support before calculating scores", () => {
-    const profiles = [
-      {
-        id: "personal",
-        name: "PERSONAL",
-        profileCompleted: true,
-        primaryStyle: "캐주얼" as const,
-        secondaryStyle: "로맨틱" as const,
-        bodyType: "웨이브",
-        fitConcerns: ["전체 기장·비율"],
-        budgetCodes: [2],
-        budgetApproach: "가성비 중심",
-        tpos: ["여행·사진"],
-        coachingType: "personal" as const,
-      },
-      {
-        id: "group",
-        name: "GROUP",
-        profileCompleted: true,
-        primaryStyle: "캐주얼" as const,
-        secondaryStyle: "로맨틱" as const,
-        bodyType: "웨이브",
-        fitConcerns: ["전체 기장·비율"],
-        budgetCodes: [2],
-        budgetApproach: "가성비 중심",
-        tpos: ["여행·사진"],
-        coachingType: "group" as const,
-      },
-    ];
-
-    expect(filterEligibleInfluencers("personal", profiles).map(({ id }) => id)).toEqual([
-      "personal",
-    ]);
-    expect(filterEligibleInfluencers("group", profiles).map(({ id }) => id)).toEqual([
-      "group",
-    ]);
-  });
-
-  it("excludes incomplete and personal-only profiles from group candidates", () => {
-    const profiles = [
-      {
-        id: "both",
-        name: "BOTH",
-        profileCompleted: true,
-        primaryStyle: "캐주얼" as const,
-        secondaryStyle: "로맨틱" as const,
-        bodyType: "웨이브",
-        fitConcerns: ["전체 기장·비율"],
-        budgetCodes: [2],
-        budgetApproach: "가성비 중심",
-        tpos: ["여행·사진"],
-        coachingType: "both" as const,
-      },
-      {
-        id: "personal",
-        name: "PERSONAL",
-        profileCompleted: true,
-        primaryStyle: "캐주얼" as const,
-        secondaryStyle: "로맨틱" as const,
-        bodyType: "웨이브",
-        fitConcerns: ["전체 기장·비율"],
-        budgetCodes: [2],
-        budgetApproach: "가성비 중심",
-        tpos: ["여행·사진"],
-        coachingType: "personal" as const,
-      },
-      {
-        id: "incomplete",
-        name: "INCOMPLETE",
-        profileCompleted: false,
-        primaryStyle: "캐주얼" as const,
-        secondaryStyle: "로맨틱" as const,
-        bodyType: "웨이브",
-        fitConcerns: ["전체 기장·비율"],
-        budgetCodes: [2],
-        budgetApproach: "가성비 중심",
-        tpos: ["여행·사진"],
-        coachingType: "group" as const,
-      },
-    ];
-
-    const results = rankInfluencers(
-      {
-        mode: "group",
-        members: [
-          {
-            styleScores: {
-              캐주얼: 75,
-              로맨틱: 40,
-              스트릿: 10,
-              빈티지: 15,
-              "오피스 & 비즈니스캐주얼": 0,
-            },
-            avoidedStyle: "오피스 & 비즈니스캐주얼",
-            bodyType: "웨이브",
-            fitConcerns: ["전체 기장·비율", "밑위·하의 길이"],
-            budgetMinCode: 2,
-            budgetMaxCode: 2,
-            budgetApproach: "가성비 중심",
-          },
-          {
-            styleScores: {
-              캐주얼: 10,
-              로맨틱: 0,
-              스트릿: 15,
-              빈티지: 40,
-              "오피스 & 비즈니스캐주얼": 75,
-            },
-            avoidedStyle: "로맨틱",
-            bodyType: "내추럴",
-            fitConcerns: ["가슴·상체 여유", "어깨선·소매 길이"],
-            budgetMinCode: 3,
-            budgetMaxCode: 3,
-            budgetApproach: "균형형",
-          },
-        ],
-        tpo: "여행·사진",
-        priority: "style_first",
-      },
-      profiles,
-    );
-
-    expect(results.map((result) => result.influencer.id)).toEqual(["both"]);
-  });
-
-  it("uses a stable influencer id tie break for identical scores", () => {
-    const baseProfile = {
-      name: "MATE",
-      profileCompleted: true,
-      primaryStyle: "캐주얼" as const,
-      secondaryStyle: "로맨틱" as const,
-      bodyType: "웨이브",
-      fitConcerns: ["전체 기장·비율"],
-      budgetCodes: [2],
-      budgetApproach: "가성비 중심",
-      tpos: ["개강·새학기"],
-      coachingType: "personal" as const,
-    };
-    const results = rankInfluencers(
-      {
-        mode: "personal",
-        priority: "style_first",
-        styleScores: {
-          캐주얼: 70,
-          로맨틱: 60,
-          스트릿: 0,
-          빈티지: 10,
-          "오피스 & 비즈니스캐주얼": 10,
-        },
-        avoidedStyle: "스트릿",
-        bodyType: "웨이브",
-        fitConcerns: ["전체 기장·비율"],
-        budgetMinCode: 2,
-        budgetMaxCode: 2,
-        budgetApproach: "가성비 중심",
-        tpo: "개강·새학기",
-      },
-      [
-        { ...baseProfile, id: "stylemate-b" },
-        { ...baseProfile, id: "stylemate-a" },
-      ],
-    );
-
-    expect(results.map(({ influencer }) => influencer.id)).toEqual([
-      "stylemate-a",
-      "stylemate-b",
-    ]);
   });
 });

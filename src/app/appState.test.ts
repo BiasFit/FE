@@ -2,6 +2,28 @@ import { describe, expect, it } from "vitest";
 import { appReducer, createInitialState } from "./appState";
 
 describe("appReducer", () => {
+  it("starts without a preselected stylemate score", () => {
+    const initial = createInitialState();
+
+    expect(initial.selectedInfluencerId).toBe("");
+    expect(initial.selectedInfluencerScore).toBe(0);
+  });
+
+  it("clears a selected stylemate when diagnosis input changes", () => {
+    const selected = appReducer(createInitialState(), {
+      type: "selectInfluencer",
+      influencerId: "stylemate-02",
+      score: 57,
+    });
+    const updated = appReducer(selected, {
+      type: "updatePersonal",
+      patch: { height: 168 },
+    });
+
+    expect(updated.selectedInfluencerId).toBe("");
+    expect(updated.selectedInfluencerScore).toBe(0);
+  });
+
   it("keeps group member inputs independent", () => {
     const initial = createInitialState();
     const updated = appReducer(initial, {
@@ -26,7 +48,7 @@ describe("appReducer", () => {
 
     expect(updated.selectedInfluencerId).toBe("stylemate-02");
     expect(updated.personal.height).toBe(158);
-    expect(initial.selectedInfluencerId).toBe("stylemate-01");
+    expect(initial.selectedInfluencerId).toBe("");
   });
 
   it("keeps the selected assigned request in app state", () => {
@@ -52,5 +74,6 @@ describe("appReducer", () => {
       minCode: 2,
       maxCode: 4,
     });
+    expect(submitted.activeRequestId).toBe("LOCAL-PERSONAL-REQUEST");
   });
 });

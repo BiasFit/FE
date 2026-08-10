@@ -38,11 +38,17 @@ export async function createMatchExplanations(
 export default async function handler(request: ApiRequest, response: ApiResponse) {
   if (!requirePost(request, response)) return;
   try {
-    const result = await createMatchExplanations(
-      readJsonBody(request) as MatchExplanationsRequest,
-    );
+    const input = readJsonBody(request) as MatchExplanationsRequest;
+    let result: MatchExplanationsResponse;
+    try {
+      result = await createMatchExplanations(input);
+    } catch (firstError) {
+      console.log("[BiasFit AI4] retrying match explanations", firstError);
+      result = await createMatchExplanations(input);
+    }
     response.status(200).json(result);
   } catch (error) {
+    console.error("[BiasFit AI4] match-explanations failed", error);
     sendApiError(response, error);
   }
 }
