@@ -1,4 +1,5 @@
 import { budgetRangeLabel, budgets } from "../data/options";
+import { Slider } from "../components/ui/slider";
 
 interface BudgetRangeSliderProps {
   minCode: number;
@@ -7,49 +8,39 @@ interface BudgetRangeSliderProps {
 }
 
 export function BudgetRangeSlider({ minCode, maxCode, onChange }: BudgetRangeSliderProps) {
-  const max = budgets.length;
-  const minPercent = ((minCode - 1) / (max - 1)) * 100;
-  const maxPercent = ((maxCode - 1) / (max - 1)) * 100;
+  const sliderValue: [number, number] = [minCode - 1, maxCode];
+  const boundaryLabels = [
+    "3만 원 미만",
+    "3만 원",
+    "6만 원",
+    "9만 원",
+    "12만 원",
+    "15만 원",
+    "18만 원",
+    "18만 원 이상",
+  ];
 
   return (
     <div className="budget-range">
       <output className="budget-range-value" aria-live="polite">
         {budgetRangeLabel(minCode, maxCode)}
       </output>
-      <div
-        className="budget-range-track"
-        style={{
-          background: `linear-gradient(to right, var(--input) ${minPercent}%, var(--primary) ${minPercent}%, var(--primary) ${maxPercent}%, var(--input) ${maxPercent}%)`,
-        }}
-      >
-        <input
-          aria-label="최소 예산"
-          type="range"
-          min={1}
-          max={max}
-          step={1}
-          value={minCode}
-          onChange={(event) => {
-            const next = Number(event.target.value);
-            onChange({ minCode: next, maxCode: Math.max(next, maxCode) });
-          }}
-        />
-        <input
-          aria-label="최대 예산"
-          type="range"
-          min={1}
-          max={max}
-          step={1}
-          value={maxCode}
-          onChange={(event) => {
-            const next = Number(event.target.value);
-            onChange({ minCode: Math.min(minCode, next), maxCode: next });
-          }}
-        />
-      </div>
-      <div className="budget-range-ends" aria-hidden="true">
-        <span>3만 원 미만</span>
-        <span>18만 원 이상</span>
+      <Slider
+        value={sliderValue}
+        min={0}
+        max={budgets.length}
+        step={1}
+        minStepsBetweenThumbs={1}
+        thumbLabels={["최소 예산", "최대 예산"]}
+        className="budget-range-slider"
+        onValueChange={([start, end]) =>
+          onChange({ minCode: start + 1, maxCode: end })
+        }
+      />
+      <div className="budget-range-boundaries" aria-hidden="true">
+        {boundaryLabels.map((label) => (
+          <span key={label}>{label}</span>
+        ))}
       </div>
       <p className="helper">상의 1개와 하의 1개 조합 기준 · 3만 원 단위</p>
     </div>

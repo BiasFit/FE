@@ -14,6 +14,7 @@ import {
 } from "../../data/options";
 import { ChipChoices, FlowShell, MemberSwitch } from "../../shared/FlowShell";
 import { BudgetRangeSlider } from "../../shared/BudgetRangeSlider";
+import { PriorityQuestion } from "./PriorityQuestion";
 
 function useCurrentDiagnosis() {
   const { state, dispatch } = useAppState();
@@ -477,7 +478,12 @@ export function TpoScreen() {
           <button className="btn-ghost" type="button" onClick={() => navigate("/user/budget")}>
             이전
           </button>
-          <button className="btn-primary" type="button" onClick={() => navigate("/user/loading")}>
+          <button
+            className="btn-primary"
+            type="button"
+            disabled={!state.matchPriority || state.priorityStatus !== "success"}
+            onClick={() => navigate("/user/loading")}
+          >
             Style DNA 결과 보기 <span aria-hidden="true">→</span>
           </button>
         </>
@@ -499,6 +505,13 @@ export function TpoScreen() {
           </button>
         ))}
       </div>
+      <PriorityQuestion
+        request={{
+          mode: state.mode,
+          personal: state.personal,
+          group: state.group,
+        }}
+      />
       <div className="soft-card">
         <strong>입력한 정보는 이렇게 사용해요</strong>
         <p className="helper" style={{ marginTop: 7 }}>

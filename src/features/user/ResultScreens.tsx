@@ -1,20 +1,32 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { AppState } from "../../app/appState";
-import type { DiagnosisForm } from "../../app/types";
+import type { DiagnosisForm, MatchPriority } from "../../app/types";
 import { useAppState } from "../../app/AppStateProvider";
 import { budgetRangeLabel } from "../../data/options";
 import { influencers } from "../../data/influencers";
+import type {
+  MatchExplanation,
+  MatchExplanationsRequest,
+  StyleDnaExplanationRequest,
+} from "../../domain/aiContracts";
 import {
   STYLE_NAMES,
   calculateGroupCompatibility,
   calculateStyleScores,
-  rankInfluencers,
   type PersonalMatchInput,
   type RankMatchInput,
+  type RankedInfluencer,
   type StyleScores,
 } from "../../domain/scoring";
+import { MATCH_PRIORITY_WEIGHTS } from "../../domain/matchPriority";
+import {
+  getMatchExplanations,
+  getTopThree,
+} from "../../lib/biasfitApi";
 import { FlowShell } from "../../shared/FlowShell";
+import { MatchReason } from "./MatchReason";
+import { StyleDnaExplanation } from "./StyleDnaExplanation";
 
 function scoresFor(form: DiagnosisForm) {
   return calculateStyleScores({
@@ -27,27 +39,68 @@ function scoresFor(form: DiagnosisForm) {
   });
 }
 
-function personalInput(form: DiagnosisForm): PersonalMatchInput {
+function personalInput(
+  form: DiagnosisForm,
+  priority: MatchPriority,
+): PersonalMatchInput & { priority: MatchPriority } {
   return {
     mode: "personal",
+    priority,
     styleScores: scoresFor(form),
     avoidedStyle: form.avoidedStyle,
     bodyType: form.bodyType,
     fitConcerns: form.fitConcerns,
-    budgetCode: form.budgetCode,
+    budgetMinCode: form.budgetMinCode,
+    budgetMaxCode: form.budgetMaxCode,
     budgetApproach: form.budgetApproach,
     tpo: form.tpo,
   };
 }
 
 function rankInput(state: AppState): RankMatchInput {
-  if (state.mode === "personal") return personalInput(state.personal);
+  const priority = state.matchPriority ?? "style_first";
+  if (state.mode === "personal") return personalInput(state.personal, priority);
   const members = (["A", "B"] as const).map((member) => {
-    const form = state.group.members[member];
-    const { mode: _mode, tpo: _tpo, ...input } = personalInput(form);
+    const { mode: _mode, priority: _priority, tpo: _tpo, ...input } =
+      personalInput(state.group.members[member], priority);
     return input;
   });
-  return { mode: "group", members: [members[0], members[1]], tpo: state.group.tpo };
+  return {
+    mode: "group",
+    priority,
+    members: [members[0], members[1]],
+    tpo: state.group.tpo,
+  };
+}
+
+function styleDnaRequest(
+  state: AppState,
+  compatibility: ReturnType<typeof calculateGroupCompatibility>,
+): StyleDnaExplanationRequest {
+  const priority = state.matchPriority ?? "style_first";
+  if (state.mode === "personal") {
+    return {
+      mode: "personal",
+      priority,
+      members: [
+        {
+          memberId: "personal",
+          form: state.personal,
+          styleScores: scoresFor(state.personal),
+        },
+      ],
+    };
+  }
+  return {
+    mode: "group",
+    priority,
+    members: (["A", "B"] as const).map((memberId) => ({
+      memberId,
+      form: state.group.members[memberId],
+      styleScores: scoresFor(state.group.members[memberId]),
+    })),
+    groupCompatibility: compatibility,
+  };
 }
 
 export function LoadingDnaScreen() {
@@ -68,9 +121,7 @@ export function LoadingDnaScreen() {
         <div className="work-panel">
           <div className="work-body" style={{ textAlign: "center", paddingTop: 120 }}>
             <div className="loading-ring" aria-label="Style DNA 계산 중" />
-            <h1 className="page-title" style={{ marginTop: 28 }}>
-              추천 기준을 정리하고 있어요.
-            </h1>
+            <h1 className="page-title" style={{ marginTop: 28 }}>추천 기준을 정리하고 있어요.</h1>
             <p className="page-desc">취향, 핏, 예산과 입을 상황을 함께 살펴보고 있어요.</p>
           </div>
         </div>
@@ -85,9 +136,7 @@ function ScoreBoard({ scores }: { scores: StyleScores }) {
       {STYLE_NAMES.map((style) => (
         <div className="score-row" key={style}>
           <span className="score-label">{style}</span>
-          <span className="score-track">
-            <span className="score-fill" style={{ width: `${scores[style]}%` }} />
-          </span>
+          <span className="score-track"><span className="score-fill" style={{ width: `${scores[style]}%` }} /></span>
           <strong className="score-value">{scores[style]}</strong>
         </div>
       ))}
@@ -102,52 +151,28 @@ export function DnaScreen() {
   const groupA = scoresFor(state.group.members.A);
   const groupB = scoresFor(state.group.members.B);
   const compatibility = calculateGroupCompatibility(
-    {
-      scores: groupA,
-      avoidedStyle: state.group.members.A.avoidedStyle,
-      budgetCode: state.group.members.A.budgetCode,
-    },
-    {
-      scores: groupB,
-      avoidedStyle: state.group.members.B.avoidedStyle,
-      budgetCode: state.group.members.B.budgetCode,
-    },
+    { scores: groupA, avoidedStyle: state.group.members.A.avoidedStyle, budgetCode: state.group.members.A.budgetCode },
+    { scores: groupB, avoidedStyle: state.group.members.B.avoidedStyle, budgetCode: state.group.members.B.budgetCode },
   );
+  const explanationRequest = styleDnaRequest(state, compatibility);
 
   return (
     <FlowShell
       step={3}
       eyebrow="MY STYLE DNA"
-      title={
-        state.mode === "personal" ? (
-          <>
-            부드럽고 단정한
-            <br />
-            캠퍼스 밸런스
-          </>
-        ) : (
-          <>
-            서로 다른 취향을 잇는
-            <br />
-            여행 시밀러 밸런스
-          </>
-        )
-      }
+      title={<>나의 Style DNA<br />진단 결과</>}
       description="매칭에 사용하는 구조화된 스타일 기준이에요."
       actions={
         <>
-          <button className="btn-secondary" type="button" onClick={() => navigate("/user/body")}>
-            입력 수정
-          </button>
-          <button className="btn-primary" type="button" onClick={() => navigate("/user/top3")}>
-            스타일메이트 TOP 3 보기 <span aria-hidden="true">→</span>
-          </button>
+          <button className="btn-secondary" type="button" onClick={() => navigate("/user/body")}>입력 수정</button>
+          <button className="btn-primary" type="button" onClick={() => navigate("/user/top3")}>스타일메이트 TOP 3 보기 <span aria-hidden="true">→</span></button>
         </>
       }
     >
       <div className="dna-strip">
-        <img src="/assets/biasfit-style-dna-direction-3-strip.png" alt="로맨틱, 캐주얼, 단정한 캠퍼스 스타일 무드" />
+        <img src="/assets/biasfit-style-dna-direction-3-strip.png" alt="스타일 무드 참고 이미지" />
       </div>
+      <StyleDnaExplanation request={explanationRequest} />
       {state.mode === "personal" ? (
         <>
           <ScoreBoard scores={personalScores} />
@@ -158,36 +183,16 @@ export function DnaScreen() {
             <div className="criterion"><div><strong>{budgetRangeLabel(state.personal.budgetMinCode, state.personal.budgetMaxCode)}</strong><p>{state.personal.budgetApproach}</p></div></div>
             <div className="criterion"><div><strong>{state.personal.tpo}</strong><p>지금 필요한 TPO</p></div></div>
           </div>
-          <details className="disclosure">
-            <summary>선택한 취향 상세 보기</summary>
-            <div className="detail-content">
-              <div className="detail-row"><strong>선호 키워드</strong><p className="helper">{state.personal.keywords.join(" · ")}</p></div>
-              <div className="detail-row"><strong>선호 디자인·아이템</strong><p className="helper">{state.personal.designElements.join(", ")} · {state.personal.preferredItems.join(", ")}</p></div>
-              <div className="detail-row"><strong>매칭에 중요한 포인트</strong><p className="helper">하의 길이와 전체 비율을 잘 다루고, 개강 TPO를 가성비 중심으로 제안하는 스타일메이트를 우선해요.</p></div>
-            </div>
-          </details>
         </>
       ) : (
         <>
           <div className="group-result-grid">
-            <div className="soft-card">
-              <h2 className="sub-title">구성원 A · P4</h2>
-              <ScoreBoard scores={groupA} />
-            </div>
-            <div className="soft-card">
-              <h2 className="sub-title">구성원 B · P5</h2>
-              <ScoreBoard scores={groupB} />
-            </div>
+            <div className="soft-card"><h2 className="sub-title">구성원 A · P4</h2><ScoreBoard scores={groupA} /></div>
+            <div className="soft-card"><h2 className="sub-title">구성원 B · P5</h2><ScoreBoard scores={groupB} /></div>
           </div>
           <div className="compatibility">
             <span className="compat-score"><strong>{compatibility.total}</strong></span>
-            <div>
-              <strong>그룹 스타일 조합도</strong>
-              <p>
-                스타일 방향 {compatibility.styleSimilarity}/70 · 예산 조율{" "}
-                {compatibility.budgetCompatibility}/30
-              </p>
-            </div>
+            <div><strong>그룹 스타일 조합도</strong><p>스타일 방향 {compatibility.styleSimilarity}/70 · 예산 조율 {compatibility.budgetCompatibility}/30</p></div>
           </div>
         </>
       )}
@@ -195,32 +200,87 @@ export function DnaScreen() {
   );
 }
 
+function explanationRequest(
+  mode: AppState["mode"],
+  priority: MatchPriority,
+  ranked: RankedInfluencer[],
+): MatchExplanationsRequest {
+  return {
+    mode,
+    priority,
+    rankedInfluencers: ranked.map(({ influencer, rank, breakdown, matchedEvidence }) => ({
+      influencerId: influencer.id,
+      rank,
+      matchScore: breakdown.matchScore,
+      breakdown,
+      matchedEvidence,
+    })),
+  };
+}
+
 export function Top3Screen() {
   const navigate = useNavigate();
   const { state, dispatch } = useAppState();
-  const ranked = rankInfluencers(rankInput(state), influencers);
+  const input = useMemo(() => rankInput(state), [state]);
+  const inputKey = JSON.stringify(input);
+  const [ranked, setRanked] = useState<RankedInfluencer[]>([]);
+  const [rankStatus, setRankStatus] = useState<"loading" | "success" | "error">("loading");
+  const [rankRetry, setRankRetry] = useState(0);
+  const [reasons, setReasons] = useState<Record<string, MatchExplanation>>({});
+  const [reasonStatus, setReasonStatus] = useState<"loading" | "success" | "error">("loading");
+  const [reasonRetry, setReasonRetry] = useState(0);
+  const priority = input.priority;
+  const weights = MATCH_PRIORITY_WEIGHTS[state.mode][priority];
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setRankStatus("loading");
+    setRanked([]);
+    void getTopThree(input, controller.signal)
+      .then(({ rankedInfluencers }) => {
+        setRanked(rankedInfluencers);
+        setRankStatus("success");
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setRankStatus("error");
+      });
+    return () => controller.abort();
+  }, [inputKey, rankRetry]);
+
+  const rankedKey = JSON.stringify(ranked);
+  useEffect(() => {
+    if (ranked.length === 0) return;
+    const controller = new AbortController();
+    setReasonStatus("loading");
+    void getMatchExplanations(
+      explanationRequest(state.mode, priority, ranked),
+      controller.signal,
+    )
+      .then(({ explanations }) => {
+        setReasons(
+          Object.fromEntries(explanations.map((reason) => [reason.influencerId, reason])),
+        );
+        setReasonStatus("success");
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setReasonStatus("error");
+      });
+    return () => controller.abort();
+  }, [rankedKey, reasonRetry]);
 
   return (
     <FlowShell
       step={4}
       wide
       eyebrow="STYLEMATE TOP 3"
-      title={
-        <>
-          나와 잘 맞는 스타일메이트를
-          <br />
-          비교해 보세요.
-        </>
-      }
+      title={<>나와 잘 맞는 스타일메이트를<br />비교해 보세요.</>}
       description="매칭 적합도는 입력한 취향·핏·예산과 스타일메이트의 강점이 얼마나 맞는지 보여줘요."
       actions={
         <>
-          <button className="btn-secondary" type="button" onClick={() => navigate("/user/body")}>
-            조건 수정
-          </button>
-          <button className="btn-primary" type="button" onClick={() => navigate("/user/match")}>
-            이 스타일메이트에게 요청하기 <span aria-hidden="true">→</span>
-          </button>
+          <button className="btn-secondary" type="button" onClick={() => navigate("/user/body")}>조건 수정</button>
+          <button className="btn-primary" type="button" disabled={ranked.length === 0} onClick={() => navigate("/user/match")}>이 스타일메이트에게 요청하기 <span aria-hidden="true">→</span></button>
         </>
       }
     >
@@ -234,6 +294,11 @@ export function Top3Screen() {
           </p>
         </div>
       </details>
+      {rankStatus === "loading" ? <div className="soft-card">TOP 3를 계산하고 있어요.</div> : null}
+      {rankStatus === "error" ? (
+        <div className="soft-card"><p className="error-copy" style={{ display: "block" }}>TOP 3를 불러오지 못했어요.</p><button className="btn-secondary" type="button" onClick={() => setRankRetry((value) => value + 1)}>다시 시도</button></div>
+      ) : null}
+      {reasonStatus === "error" && ranked.length > 0 ? <button className="btn-secondary" type="button" onClick={() => setReasonRetry((value) => value + 1)}>추천 근거 다시 시도</button> : null}
       <div className="match-grid" style={{ marginTop: 18 }} role="radiogroup" aria-label="스타일메이트 TOP 3">
         {ranked.map(({ influencer, breakdown }, index) => {
           const selected = state.selectedInfluencerId === influencer.id;
@@ -245,47 +310,22 @@ export function Top3Screen() {
               role="radio"
               aria-checked={selected}
               key={influencer.id}
-              onClick={() => dispatch({ type: "selectInfluencer", influencerId: influencer.id, score: breakdown.total })}
+              onClick={() => dispatch({ type: "selectInfluencer", influencerId: influencer.id, score: breakdown.matchScore })}
             >
-              <span className="match-photo">
-                <span className="rank">TOP {index + 1}</span>
-              </span>
+              <span className="match-photo"><span className="rank">TOP {index + 1}</span></span>
               <span className="match-content">
                 <span className="match-top">
-                  <span>
-                    <small>{view.tagline}</small>
-                    <h3>{influencer.name}</h3>
-                  </span>
-                  <span className="match-score">
-                    {breakdown.total}
-                    <small>% 매칭</small>
-                  </span>
+                  <span><small>{view.tagline}</small><h3>{influencer.name}</h3></span>
+                  <span className="match-score">{breakdown.matchScore}<small>% 매칭</small></span>
                 </span>
                 <p>{view.description}</p>
-                <span className="facts">
-                  <span className="fact">◇ {view.price}</span>
-                  <span className="fact">◇ {view.occasions}</span>
-                </span>
+                <span className="facts"><span className="fact">◇ {view.price}</span><span className="fact">◇ {view.occasions}</span></span>
                 <span className="reason-bars">
-                  <span className="reason-bar">
-                    스타일 취향 <b>{breakdown.style}/30</b>
-                    <span className="mini-track">
-                      <span className="mini-fill" style={{ width: `${(breakdown.style / 30) * 100}%` }} />
-                    </span>
-                  </span>
-                  <span className="reason-bar">
-                    체형·핏 <b>{breakdown.fit}/25</b>
-                    <span className="mini-track">
-                      <span className="mini-fill" style={{ width: `${(breakdown.fit / 25) * 100}%` }} />
-                    </span>
-                  </span>
-                  <span className="reason-bar">
-                    예산·TPO <b>{breakdown.budget + breakdown.tpo}/35</b>
-                    <span className="mini-track">
-                      <span className="mini-fill" style={{ width: `${((breakdown.budget + breakdown.tpo) / 35) * 100}%` }} />
-                    </span>
-                  </span>
+                  <span className="reason-bar">스타일 취향 <b>{breakdown.style}/{weights.style}</b><span className="mini-track"><span className="mini-fill" style={{ width: `${(breakdown.style / weights.style) * 100}%` }} /></span></span>
+                  <span className="reason-bar">체형·핏 <b>{breakdown.fit}/{weights.fit}</b><span className="mini-track"><span className="mini-fill" style={{ width: `${(breakdown.fit / weights.fit) * 100}%` }} /></span></span>
+                  <span className="reason-bar">예산·TPO <b>{breakdown.budget + breakdown.tpo}/{weights.budget + weights.tpo}</b><span className="mini-track"><span className="mini-fill" style={{ width: `${((breakdown.budget + breakdown.tpo) / (weights.budget + weights.tpo)) * 100}%` }} /></span></span>
                 </span>
+                <MatchReason explanation={reasons[influencer.id]} status={reasonStatus} />
               </span>
             </button>
           );

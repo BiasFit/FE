@@ -3,6 +3,18 @@ import type { StyleName, StyleScores } from "../domain/scoring";
 export type CoachingMode = "personal" | "group";
 export type MemberId = "A" | "B";
 export type AccountRole = "user" | "influencer";
+export type MatchPriority =
+  | "style_first"
+  | "fit_first"
+  | "budget_first"
+  | "tpo_first";
+export type AiRequestStatus = "idle" | "loading" | "success" | "error";
+
+export interface PriorityOption {
+  code: MatchPriority;
+  label: string;
+  evidenceRefs: string[];
+}
 
 export interface SignupForm {
   loginId: string;

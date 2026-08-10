@@ -36,7 +36,7 @@ export const influencers: StylemateView[] = [
     fitConcerns: ["밑위·하의 길이", "전체 기장·비율"],
     budgetCodes: [2, 3, 4],
     budgetApproach: "균형형",
-    tpos: ["개강·새학기", "등교·일상", "발표·면접", "여행·사진"],
+    tpos: ["개강·새학기", "등교·일상", "발표·면접"],
     coachingType: "both",
     tagline: "깔끔한 꾸안꾸",
     description:
@@ -54,7 +54,7 @@ export const influencers: StylemateView[] = [
     fitConcerns: ["전체 기장·비율", "가슴·상체 여유"],
     budgetCodes: [2, 3],
     budgetApproach: "가성비 중심",
-    tpos: ["개강·새학기", "등교·일상", "동아리·모임", "여행·사진"],
+    tpos: ["등교·일상", "동아리·모임", "여행·사진"],
     coachingType: "both",
     tagline: "보유템 활용",
     description:

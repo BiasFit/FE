@@ -9,14 +9,18 @@ describe("BudgetRangeSlider", () => {
 
     expect(screen.getByText("3만~9만 원")).toBeVisible();
 
-    fireEvent.change(screen.getByRole("slider", { name: "최소 예산" }), {
-      target: { value: "4" },
+    const minimumSlider = screen.getByRole("slider", { name: "최소 예산" });
+    fireEvent.focus(minimumSlider);
+    fireEvent.keyDown(minimumSlider, {
+      key: "ArrowRight",
     });
-    expect(onChange).toHaveBeenCalledWith({ minCode: 4, maxCode: 4 });
+    expect(onChange).toHaveBeenCalledWith({ minCode: 3, maxCode: 3 });
 
-    fireEvent.change(screen.getByRole("slider", { name: "최대 예산" }), {
-      target: { value: "1" },
+    const maximumSlider = screen.getByRole("slider", { name: "최대 예산" });
+    fireEvent.focus(maximumSlider);
+    fireEvent.keyDown(maximumSlider, {
+      key: "ArrowLeft",
     });
-    expect(onChange).toHaveBeenCalledWith({ minCode: 1, maxCode: 1 });
+    expect(onChange).toHaveBeenCalledWith({ minCode: 2, maxCode: 2 });
   });
 });

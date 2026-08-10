@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { isValidOutfitDraft, isValidProductUrl } from "./outfit";
+import {
+  isValidOutfitDraft,
+  isValidProductUrl,
+  toOutfitReviewRequest,
+} from "./outfit";
 
 describe("outfit product validation", () => {
   it("accepts only complete products with http or https links", () => {
@@ -22,5 +26,29 @@ describe("outfit product validation", () => {
         message: "코디 설명",
       }),
     ).toBe(false);
+  });
+});
+
+describe("outfit review request", () => {
+  it("preserves both group members and only top/bottom products", () => {
+    const result = toOutfitReviewRequest({
+      memberA: {
+        top: { name: "A 상의", url: "https://shop.test/a-top" },
+        bottom: { name: "A 하의", url: "https://shop.test/a-bottom" },
+      },
+      memberB: {
+        top: { name: "B 상의", url: "https://shop.test/b-top" },
+        bottom: { name: "B 하의", url: "https://shop.test/b-bottom" },
+      },
+      message: "각자의 취향을 유지한 코디예요.",
+    });
+
+    expect(result.mode).toBe("group");
+    expect(result.cards.map(({ memberId }) => memberId)).toEqual(["A", "B"]);
+    expect(result.cards[0]).toEqual({
+      memberId: "A",
+      top: { name: "A 상의", url: "https://shop.test/a-top" },
+      bottom: { name: "A 하의", url: "https://shop.test/a-bottom" },
+    });
   });
 });

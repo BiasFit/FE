@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { GroupOutfitDraft, OutfitFields as OutfitFieldValues, PersonalOutfitDraft } from "../../app/types";
+import type { OutfitReviewResponse } from "../../domain/aiContracts";
 import { useAppState } from "../../app/AppStateProvider";
 import { budgetRangeLabel, fitConcerns, styleOptions } from "../../data/options";
 import { personaForms } from "../../data/personas";
-import { isValidOutfitDraft, isValidProductUrl } from "../../domain/outfit";
+import { isValidOutfitDraft, isValidProductUrl, toOutfitReviewRequest } from "../../domain/outfit";
+import { reviewOutfit } from "../../lib/biasfitApi";
 import {
   clearDraft,
   loadDraft,
@@ -13,6 +15,7 @@ import {
 } from "../../storage/drafts";
 import { ChipChoices, FlowShell } from "../../shared/FlowShell";
 import { BudgetRangeSlider } from "../../shared/BudgetRangeSlider";
+import { OutfitReviewPanel } from "./OutfitReviewPanel";
 
 const personalDefault: PersonalOutfitDraft = {
   top: { name: "아이보리 셔링 블라우스", url: "https://example.com/products/ivory-blouse" },
@@ -317,9 +320,13 @@ export function InfluencerDetailScreen() {
   const [draft, setDraft] = useState<OutfitDraft>(initial);
   const [draftState, setDraftState] = useState("모든 변경사항 저장됨");
   const [modal, setModal] = useState(false);
+  const [reviewStatus, setReviewStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [reviewResult, setReviewResult] = useState<OutfitReviewResponse | null>(null);
   const draftValid = isValidOutfitDraft(draft);
 
   useEffect(() => {
+    setReviewStatus("idle");
+    setReviewResult(null);
     setDraftState("저장 중…");
     const timer = window.setTimeout(() => {
       saveDraft("stylemate-01", state.activeRequestId, draft);
@@ -327,6 +334,18 @@ export function InfluencerDetailScreen() {
     }, 1000);
     return () => window.clearTimeout(timer);
   }, [draft, state.activeRequestId]);
+
+  const startReview = async () => {
+    setReviewStatus("loading");
+    setReviewResult(null);
+    try {
+      const result = await reviewOutfit(toOutfitReviewRequest(draft));
+      setReviewResult(result);
+      setReviewStatus("success");
+    } catch {
+      setReviewStatus("error");
+    }
+  };
 
   const setPersonal = (
     key: "top" | "bottom",
@@ -375,7 +394,11 @@ export function InfluencerDetailScreen() {
             >
               임시저장
             </button>
-            <button className="btn-primary" type="button" disabled={!draftValid} onClick={() => setModal(true)}>
+            <button className="btn-primary" type="button" disabled={!draftValid} onClick={() => {
+              setReviewStatus("idle");
+              setReviewResult(null);
+              setModal(true);
+            }}>
               전달하기 <span aria-hidden="true">→</span>
             </button>
           </>
@@ -464,13 +487,26 @@ export function InfluencerDetailScreen() {
         <div className="modal-backdrop open" role="presentation">
           <div className="modal" role="dialog" aria-modal="true" aria-labelledby="deliver-title">
             <h2 id="deliver-title">코디 카드를 전달할까요?</h2>
-            <p>전달 후에는 내용을 수정하거나 다시 전송할 수 없어요. 상의·하의 상품과 전하는 말을 마지막으로 확인해 주세요.</p>
+            <p>안전 표현과 상의·하의 상품 링크 검수를 통과한 뒤에만 전달할 수 있어요.</p>
+            {reviewStatus === "loading" ? <p aria-live="polite">코디 카드를 검수하고 있어요.</p> : null}
+            {reviewStatus === "error" ? <p className="error-copy" style={{ display: "block" }}>검수를 완료하지 못했어요. 다시 시도해 주세요.</p> : null}
+            {reviewResult ? <OutfitReviewPanel result={reviewResult} /> : null}
             <div className="modal-actions">
               <button className="btn-secondary" type="button" onClick={() => setModal(false)}>계속 작성</button>
               <button
+                className="btn-secondary"
+                type="button"
+                disabled={reviewStatus === "loading"}
+                onClick={() => void startReview()}
+              >
+                {reviewStatus === "idle" ? "검수 시작" : "검수 다시 시도"}
+              </button>
+              <button
                 className="btn-primary"
                 type="button"
+                disabled={reviewResult?.reviewStatus !== "pass"}
                 onClick={() => {
+                  if (reviewResult?.reviewStatus !== "pass") return;
                   clearDraft("stylemate-01", state.activeRequestId);
                   navigate("/influencer/delivered");
                 }}

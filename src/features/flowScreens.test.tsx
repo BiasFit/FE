@@ -1,10 +1,94 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../App";
+import { influencers } from "../data/influencers";
+import { rankInfluencers } from "../domain/scoring";
+
+function jsonResponse(value: unknown) {
+  return new Response(JSON.stringify(value), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+beforeEach(() => {
+  localStorage.clear();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const body = init?.body ? JSON.parse(String(init.body)) : {};
+      if (url.endsWith("/api/ai/priority-options")) {
+        return jsonResponse({
+          question: "이번 스타일링에서 가장 중요하게 생각하는 기준을 골라주세요.",
+          options: [
+            { code: "style_first", label: "좋아하는 분위기를 먼저 지키고 싶어요", evidenceRefs: ["preferredStyle"] },
+            { code: "fit_first", label: "편안한 핏을 먼저 맞추고 싶어요", evidenceRefs: ["fitConcerns"] },
+            { code: "budget_first", label: "정한 예산을 먼저 지키고 싶어요", evidenceRefs: ["budgetApproach"] },
+            { code: "tpo_first", label: "필요한 상황에 먼저 맞추고 싶어요", evidenceRefs: ["tpo"] },
+          ],
+        });
+      }
+      if (url.endsWith("/api/ai/style-dna-explanation")) {
+        if (body.mode === "group") {
+          return jsonResponse({
+            mode: "group",
+            groupStyleDnaSummary: "자연스러운 A와 단정한 B의 기준을 함께 살린 스타일",
+            groupCombination: {
+              score: body.groupCompatibility.total,
+              directionSimilarity: body.groupCompatibility.styleSimilarity,
+              budgetCoordination: body.groupCompatibility.budgetCompatibility,
+              title: "각자의 무드를 살린 연결",
+              description: "각자의 분위기를 유지하면서 함께 어울리는 방향을 찾아요.",
+              evidenceRefs: ["A.preferredStyle", "B.preferredStyle"],
+            },
+            groupMatchingPoints: [
+              { text: "A와 B의 핏 고민을 함께 고려해요.", evidenceRefs: ["A.fitConcerns.0", "B.fitConcerns.0"] },
+              { text: "여행 상황을 함께 반영해요.", evidenceRefs: ["A.tpo", "B.tpo"] },
+            ],
+          });
+        }
+        return jsonResponse({
+          mode: "personal",
+          personalStyleDnaSummary: "부드러운 일상감과 비율을 함께 고려한 스타일",
+          personalMatchingPoints: [
+            { text: "전체 비율과 하의 기장을 고려해요.", evidenceRefs: ["personal.fitConcerns.0"] },
+            { text: "개강 상황과 예산을 함께 반영해요.", evidenceRefs: ["personal.tpo", "personal.budgetRange"] },
+          ],
+        });
+      }
+      if (url.endsWith("/api/matches/top-three")) {
+        return jsonResponse({ rankedInfluencers: rankInfluencers(body, influencers) });
+      }
+      if (url.endsWith("/api/ai/match-explanations")) {
+        return jsonResponse({
+          explanations: body.rankedInfluencers.map((candidate: any) => {
+            const evidence = Object.values(candidate.matchedEvidence).flat() as Array<{ ref: string }>;
+            return {
+              influencerId: candidate.influencerId,
+              strongestCategory: "fit",
+              summary: "실제 계산된 핏과 TPO 근거를 함께 반영해 추천했어요.",
+              evidenceRefs: evidence.slice(0, 1).map(({ ref }) => ref),
+            };
+          }),
+        });
+      }
+      if (url.endsWith("/api/outfit/review")) {
+        return jsonResponse({
+          reviewStatus: "pass",
+          safeLanguageIssues: [],
+          linkChecks: body.cards.flatMap((card: any) => [
+            { memberId: card.memberId, itemType: "top", inputUrl: card.top.url, finalUrl: card.top.url, status: "pass", reason: "접속 가능", action: "조치 없음" },
+            { memberId: card.memberId, itemType: "bottom", inputUrl: card.bottom.url, finalUrl: card.bottom.url, status: "pass", reason: "접속 가능", action: "조치 없음" },
+          ]),
+        });
+      }
+      return new Response("Not found", { status: 404 });
+    }),
+  );
+});
 
 describe("user feature screens", () => {
-  beforeEach(() => localStorage.clear());
-
   it("renders the body and fit input with the P1 defaults", async () => {
     window.location.hash = "#/user/body";
     render(<App />);
@@ -22,9 +106,7 @@ describe("user feature screens", () => {
     render(<App />);
 
     expect(
-      await screen.findByRole("heading", {
-        name: /부드럽고 단정한 캠퍼스 밸런스/,
-      }),
+      await screen.findByText("부드러운 일상감과 비율을 함께 고려한 스타일"),
     ).toBeInTheDocument();
     expect(screen.getByText("75", { selector: ".score-value" })).toBeVisible();
   });
@@ -38,14 +120,24 @@ describe("user feature screens", () => {
         name: /나와 잘 맞는 스타일메이트를 비교해 보세요/,
       }),
     ).toBeInTheDocument();
-    expect(screen.getAllByRole("radio")).toHaveLength(3);
+    expect(await screen.findAllByRole("radio")).toHaveLength(3);
     expect(
-      screen.getByText(
-        (_, element) =>
-          element?.classList.contains("reason-bar") === true &&
-          element.textContent?.startsWith("스타일 취향 19/30") === true,
-      ),
-    ).toBeVisible();
+      await screen.findAllByText(/실제 계산된 핏과 TPO 근거/),
+    ).toHaveLength(3);
+  });
+
+  it("requires one generated priority option before Style DNA progress", async () => {
+    window.location.hash = "#/user/tpo";
+    render(<App />);
+
+    const next = await screen.findByRole("button", { name: /Style DNA 결과 보기/ });
+    expect(next).toBeDisabled();
+    fireEvent.click(
+      await screen.findByRole("radio", {
+        name: "좋아하는 분위기를 먼저 지키고 싶어요",
+      }),
+    );
+    expect(next).toBeEnabled();
   });
 
   it("blocks progress when an exact-three style signal becomes incomplete", async () => {
@@ -109,5 +201,18 @@ describe("influencer feature screens", () => {
       target: { value: "잘못된 링크" },
     });
     expect(deliver).toBeDisabled();
+  });
+
+  it("reviews an outfit before enabling final delivery", async () => {
+    window.location.hash = "#/influencer/detail";
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /전달하기/ }));
+    fireEvent.click(screen.getByRole("button", { name: /검수 시작/ }));
+
+    expect(await screen.findByText("검수 통과")).toBeVisible();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "전달 확정" })).toBeEnabled(),
+    );
   });
 });

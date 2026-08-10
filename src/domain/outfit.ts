@@ -1,4 +1,5 @@
 import type { GroupOutfitDraft, OutfitFields, PersonalOutfitDraft } from "../app/types";
+import type { OutfitReviewRequest } from "./aiContracts";
 
 export function isValidProductUrl(value: string) {
   try {
@@ -20,4 +21,24 @@ export function isValidOutfitDraft(draft: PersonalOutfitDraft | GroupOutfitDraft
     return isValidOutfitFields(draft.memberA) && isValidOutfitFields(draft.memberB);
   }
   return isValidOutfitFields(draft);
+}
+
+export function toOutfitReviewRequest(
+  draft: PersonalOutfitDraft | GroupOutfitDraft,
+): OutfitReviewRequest {
+  if ("memberA" in draft) {
+    return {
+      mode: "group",
+      coachingMessage: draft.message,
+      cards: [
+        { memberId: "A", ...draft.memberA },
+        { memberId: "B", ...draft.memberB },
+      ],
+    };
+  }
+  return {
+    mode: "personal",
+    coachingMessage: draft.message,
+    cards: [{ memberId: "personal", top: draft.top, bottom: draft.bottom }],
+  };
 }

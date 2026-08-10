@@ -1,9 +1,19 @@
-import type { BudgetRange, DiagnosisForm, MemberId } from "./types";
+import type {
+  AiRequestStatus,
+  BudgetRange,
+  DiagnosisForm,
+  MatchPriority,
+  MemberId,
+  PriorityOption,
+} from "./types";
 import { personaForms, requestCopy } from "../data/personas";
 
 export interface AppState {
   mode: "personal" | "group";
   activeMember: MemberId;
+  matchPriority: MatchPriority | null;
+  priorityOptions: PriorityOption[];
+  priorityStatus: AiRequestStatus;
   personal: DiagnosisForm;
   group: {
     relationship: "friend" | "family" | "other";
@@ -24,6 +34,10 @@ export interface AppState {
 export type AppAction =
   | { type: "setMode"; mode: AppState["mode"] }
   | { type: "setActiveMember"; member: MemberId }
+  | { type: "setPriorityLoading" }
+  | { type: "setPriorityOptions"; options: PriorityOption[] }
+  | { type: "setPriorityError" }
+  | { type: "selectMatchPriority"; priority: MatchPriority }
   | { type: "updatePersonal"; patch: Partial<DiagnosisForm> }
   | {
       type: "updateGroupMember";
@@ -56,6 +70,9 @@ export function createInitialState(): AppState {
   return {
     mode: "personal",
     activeMember: "A",
+    matchPriority: null,
+    priorityOptions: [],
+    priorityStatus: "idle",
     personal: copyForm(personaForms.P1),
     group: {
       relationship: "friend",
@@ -90,13 +107,34 @@ export function createInitialState(): AppState {
 }
 
 export function appReducer(state: AppState, action: AppAction): AppState {
+  const invalidatePriority = {
+    matchPriority: null,
+    priorityOptions: [],
+    priorityStatus: "idle" as const,
+  };
   switch (action.type) {
     case "setMode":
-      return { ...state, mode: action.mode };
+      return { ...state, mode: action.mode, ...invalidatePriority };
     case "setActiveMember":
       return { ...state, activeMember: action.member };
+    case "setPriorityLoading":
+      return { ...state, priorityStatus: "loading", priorityOptions: [] };
+    case "setPriorityOptions":
+      return {
+        ...state,
+        priorityStatus: "success",
+        priorityOptions: action.options,
+      };
+    case "setPriorityError":
+      return { ...state, priorityStatus: "error", priorityOptions: [] };
+    case "selectMatchPriority":
+      return { ...state, matchPriority: action.priority };
     case "updatePersonal":
-      return { ...state, personal: { ...state.personal, ...action.patch } };
+      return {
+        ...state,
+        personal: { ...state.personal, ...action.patch },
+        ...invalidatePriority,
+      };
     case "updateGroupMember":
       return {
         ...state,
@@ -110,9 +148,14 @@ export function appReducer(state: AppState, action: AppAction): AppState {
             },
           },
         },
+        ...invalidatePriority,
       };
     case "updateGroup":
-      return { ...state, group: { ...state.group, ...action.patch } };
+      return {
+        ...state,
+        group: { ...state.group, ...action.patch },
+        ...invalidatePriority,
+      };
     case "selectInfluencer":
       return {
         ...state,
