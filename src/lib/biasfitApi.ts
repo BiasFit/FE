@@ -8,6 +8,10 @@ import type {
   StyleDnaExplanationRequest,
   StyleDnaExplanationResponse,
 } from "../domain/aiContracts";
+import type {
+  SavedTestResult,
+  TestResultPayload,
+} from "../domain/resultSnapshot";
 import type { RankedInfluencer, RankMatchInput } from "../domain/scoring";
 
 async function postJson<T>(url: string, body: unknown, signal?: AbortSignal) {
@@ -76,4 +80,11 @@ export function reviewOutfit(
   signal?: AbortSignal,
 ) {
   return postJson<OutfitReviewResponse>("/api/outfit/review", input, signal);
+}
+
+export function saveTestResult(
+  input: TestResultPayload,
+  signal?: AbortSignal,
+) {
+  return postJson<SavedTestResult>("/api/results/save", input, signal);
 }

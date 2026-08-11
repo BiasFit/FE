@@ -1,3 +1,4 @@
+import type { AiRequestStatus } from "../../app/types";
 import type { MatchExplanation } from "../../domain/aiContracts";
 
 export function MatchReason({
@@ -5,9 +6,9 @@ export function MatchReason({
   status,
 }: {
   explanation?: MatchExplanation;
-  status: "loading" | "success" | "error";
+  status: AiRequestStatus;
 }) {
-  if (status === "loading") {
+  if (status === "idle" || status === "loading") {
     return <span className="helper">추천 근거를 만들고 있어요.</span>;
   }
   if (status === "error" || !explanation) {

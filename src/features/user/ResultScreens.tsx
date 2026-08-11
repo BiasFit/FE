@@ -20,11 +20,14 @@ import {
   type StyleScores,
 } from "../../domain/scoring";
 import { MATCH_PRIORITY_WEIGHTS } from "../../domain/matchPriority";
+import type { TestResultPayload } from "../../domain/resultSnapshot";
 import {
   getMatchExplanations,
   getTopThree,
+  saveTestResult,
 } from "../../lib/biasfitApi";
 import { FlowShell } from "../../shared/FlowShell";
+import { anonUserKey } from "../../storage/anonUser";
 import { MatchReason } from "./MatchReason";
 import { StyleDnaExplanation } from "./StyleDnaExplanation";
 
@@ -102,6 +105,91 @@ function styleDnaRequest(
       styleScores: scoresFor(state.group.members[memberId]),
     })),
     groupCompatibility: compatibility,
+  };
+}
+
+/**
+ * 화면에 쓴 값을 그대로 모아 저장용 스냅샷을 만든다.
+ * 여기서 점수를 다시 계산하거나 AI를 다시 부르지 않는다. 준비가 덜 됐으면 null을 돌려 저장을 미룬다.
+ */
+function resultSnapshot(
+  state: AppState,
+  ranked: RankedInfluencer[],
+): TestResultPayload | null {
+  const priority = state.matchPriority;
+  const styleDna = state.styleDna;
+  if (!priority || !styleDna || ranked.length === 0) return null;
+
+  const ai = {
+    priorityOptions: state.priorityOptions,
+    styleDna,
+    matchExplanations: state.matchExplanations,
+  };
+  // 인플루언서 프로필 전체가 아니라 식별자와 점수만 남긴다.
+  const rankedInfluencers = ranked.map(
+    ({ rank, influencer, baseBreakdown, breakdown }) => ({
+      rank,
+      influencerId: influencer.id,
+      influencerName: influencer.name,
+      baseBreakdown,
+      breakdown,
+    }),
+  );
+
+  if (state.mode === "personal") {
+    return {
+      mode: "personal",
+      priority,
+      tpo: state.personal.tpo,
+      anonUserKey: anonUserKey(),
+      input: { members: [{ memberId: "personal", form: state.personal }] },
+      ai,
+      score: {
+        styleScores: [
+          { memberId: "personal", scores: scoresFor(state.personal) },
+        ],
+        rankedInfluencers,
+      },
+    };
+  }
+
+  const groupA = scoresFor(state.group.members.A);
+  const groupB = scoresFor(state.group.members.B);
+  return {
+    mode: "group",
+    priority,
+    tpo: state.group.tpo,
+    anonUserKey: anonUserKey(),
+    input: {
+      members: [
+        { memberId: "A", form: state.group.members.A },
+        { memberId: "B", form: state.group.members.B },
+      ],
+      group: {
+        relationship: state.group.relationship,
+        relationshipOther: state.group.relationshipOther,
+      },
+    },
+    ai,
+    score: {
+      styleScores: [
+        { memberId: "A", scores: groupA },
+        { memberId: "B", scores: groupB },
+      ],
+      groupCompatibility: calculateGroupCompatibility(
+        {
+          scores: groupA,
+          avoidedStyle: state.group.members.A.avoidedStyle,
+          budgetCode: state.group.members.A.budgetCode,
+        },
+        {
+          scores: groupB,
+          avoidedStyle: state.group.members.B.avoidedStyle,
+          budgetCode: state.group.members.B.budgetCode,
+        },
+      ),
+      rankedInfluencers,
+    },
   };
 }
 
@@ -239,28 +327,33 @@ export function Top3Screen() {
     [state],
   );
   const inputKey = JSON.stringify(input);
-  const [ranked, setRanked] = useState<RankedInfluencer[]>([]);
-  const [rankStatus, setRankStatus] = useState<"loading" | "success" | "error">("loading");
+  // 순위와 추천 근거는 전역 state에 둔다. 저장 시점에 이 값들이 필요하다.
+  const ranked = state.rankedInfluencers;
+  const rankStatus = state.rankStatus;
+  const reasonStatus = state.matchExplanationStatus;
   const [rankRetry, setRankRetry] = useState(0);
-  const [reasons, setReasons] = useState<Record<string, MatchExplanation>>({});
-  const [reasonStatus, setReasonStatus] = useState<"loading" | "success" | "error">("loading");
   const [reasonRetry, setReasonRetry] = useState(0);
+  const reasons = useMemo(
+    () =>
+      Object.fromEntries(
+        state.matchExplanations.map((reason) => [reason.influencerId, reason]),
+      ) as Record<string, MatchExplanation>,
+    [state.matchExplanations],
+  );
   const priority = input?.priority;
   const weights = priority ? MATCH_PRIORITY_WEIGHTS[state.mode][priority] : null;
 
   useEffect(() => {
     if (!input) return;
     const controller = new AbortController();
-    setRankStatus("loading");
-    setRanked([]);
+    dispatch({ type: "setRankingLoading" });
     void getTopThree(input, controller.signal)
-      .then(({ rankedInfluencers }) => {
-        setRanked(rankedInfluencers);
-        setRankStatus("success");
-      })
+      .then(({ rankedInfluencers }) =>
+        dispatch({ type: "setRankedInfluencers", ranked: rankedInfluencers }),
+      )
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
-        setRankStatus("error");
+        dispatch({ type: "setRankingError" });
       });
     return () => controller.abort();
   }, [inputKey, rankRetry]);
@@ -269,24 +362,37 @@ export function Top3Screen() {
   useEffect(() => {
     if (!input || ranked.length === 0) return;
     const controller = new AbortController();
-    setReasonStatus("loading");
+    dispatch({ type: "setMatchExplanationsLoading" });
     void getMatchExplanations(
       explanationRequest(state.mode, input.priority, ranked),
       controller.signal,
     )
-      .then(({ explanations }) => {
-        setReasons(
-          Object.fromEntries(explanations.map((reason) => [reason.influencerId, reason])),
-        );
-        setReasonStatus("success");
-      })
+      .then(({ explanations }) =>
+        dispatch({ type: "setMatchExplanations", explanations }),
+      )
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
         console.log("[BiasFit AI4] 추천 근거 호출 실패", error);
-        setReasonStatus("error");
+        dispatch({ type: "setMatchExplanationsError" });
       });
     return () => controller.abort();
   }, [rankedKey, reasonRetry]);
+
+  // 흐름이 끝난 시점에 화면에 쓴 값을 그대로 한 번만 저장한다.
+  // 같은 입력으로 다시 렌더링돼도 중복 행이 생기지 않게 저장한 inputKey를 기억한다.
+  const [savedKey, setSavedKey] = useState<string | null>(null);
+  useEffect(() => {
+    if (reasonStatus !== "success" || savedKey === inputKey) return;
+    const snapshot = resultSnapshot(state, ranked);
+    if (!snapshot) return;
+    setSavedKey(inputKey);
+    void saveTestResult(snapshot)
+      .then(({ id }) => dispatch({ type: "setSavedResultId", id }))
+      .catch((error: unknown) => {
+        // 저장 실패는 화면 흐름을 막지 않는다. 사용자는 그대로 다음 단계로 간다.
+        console.log("[BiasFit 저장] 진단 결과 저장 실패", error);
+      });
+  }, [inputKey, rankedKey, reasonStatus, savedKey]);
 
   if (!input || !priority || !weights) {
     return (
@@ -324,7 +430,7 @@ export function Top3Screen() {
           </p>
         </div>
       </details>
-      {rankStatus === "loading" ? <div className="soft-card">TOP 3를 계산하고 있어요.</div> : null}
+      {rankStatus === "idle" || rankStatus === "loading" ? <div className="soft-card">TOP 3를 계산하고 있어요.</div> : null}
       {rankStatus === "error" ? (
         <div className="soft-card"><p className="error-copy" style={{ display: "block" }}>TOP 3를 불러오지 못했어요.</p><button className="btn-secondary" type="button" onClick={() => setRankRetry((value) => value + 1)}>다시 시도</button></div>
       ) : null}

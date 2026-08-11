@@ -11,8 +11,12 @@ function jsonResponse(value: unknown) {
   });
 }
 
+/** /api/results/save로 실제 전송된 스냅샷. 화면 값과 저장 값이 같은지 검사할 때 쓴다. */
+const savedPayloads: any[] = [];
+
 beforeEach(() => {
   localStorage.clear();
+  savedPayloads.length = 0;
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -82,6 +86,10 @@ beforeEach(() => {
             { memberId: card.memberId, itemType: "bottom", inputUrl: card.bottom.url, finalUrl: card.bottom.url, status: "pass", reason: "접속 가능", action: "조치 없음" },
           ]),
         });
+      }
+      if (url.endsWith("/api/results/save")) {
+        savedPayloads.push(body);
+        return jsonResponse({ id: `saved-${savedPayloads.length}` });
       }
       return new Response("Not found", { status: 404 });
     }),
@@ -153,6 +161,47 @@ describe("user feature screens", () => {
     expect(
       await screen.findAllByText(/실제 계산된 핏과 TPO 근거/),
     ).toHaveLength(3);
+  });
+
+  it("saves the screen values once, without recalculating or calling OpenAI again", async () => {
+    window.location.hash = "#/user/tpo";
+    render(<App />);
+
+    fireEvent.click(
+      await screen.findByRole("radio", {
+        name: "좋아하는 분위기를 먼저 지키고 싶어요",
+      }),
+    );
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Style DNA 결과 보기/ }),
+    );
+    fireEvent.click(await screen.findByRole("button", { name: /TOP 3/ }));
+    await screen.findAllByText(/실제 계산된 핏과 TPO 근거/);
+
+    await waitFor(() => expect(savedPayloads).toHaveLength(1));
+    const saved = savedPayloads[0];
+
+    // TPO는 내부 코드로 저장한다. 한글 라벨이 들어가면 매칭이 조용히 깨진다.
+    expect(saved.tpo).toBe("new_semester");
+    expect(saved.mode).toBe("personal");
+    expect(saved.priority).toBe("style_first");
+    expect(saved.anonUserKey).toEqual(expect.any(String));
+    // 화면에 쓴 AI 결과와 점수 결과가 그대로 담겨야 한다.
+    expect(saved.ai.styleDna.personalStyleDnaSummary).toBe(
+      "부드러운 일상감과 비율을 함께 고려한 스타일",
+    );
+    expect(saved.ai.matchExplanations).toHaveLength(3);
+    expect(saved.score.rankedInfluencers).toHaveLength(3);
+    expect(saved.score.rankedInfluencers[0].influencerId).toEqual(
+      expect.any(String),
+    );
+    // 인플루언서 프로필 전체가 아니라 식별자와 점수만 남긴다.
+    expect(saved.score.rankedInfluencers[0].influencer).toBeUndefined();
+
+    const savedScore = saved.score.rankedInfluencers[0].breakdown.matchScore;
+    expect(
+      await screen.findByText(new RegExp(`^${savedScore}$`)),
+    ).toBeInTheDocument();
   });
 
   it("requires one generated priority option before Style DNA progress", async () => {
