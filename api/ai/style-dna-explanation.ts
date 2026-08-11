@@ -8,6 +8,7 @@ import {
   type StyleDnaExplanationResponse,
 } from "../../src/domain/aiContracts";
 import { tpoLabel } from "../../src/data/options";
+import { SAFE_LANGUAGE_RULES, assertSafeLanguage } from "../_lib/safe-language";
 import {
   callOpenAiStructured,
   generateWithRepair,
@@ -111,6 +112,10 @@ function validateResult(
     throw new Error("OpenAI가 진단 모드를 변경했습니다.");
   }
   if (validated.mode === "personal") {
+    assertSafeLanguage([
+      validated.personalStyleDnaSummary,
+      ...validated.personalMatchingPoints.map((point: EvidenceText) => point.text),
+    ]);
     validated.personalStyleDnaSummaryEvidenceRefs = sanitizeRefs(
       validated.personalStyleDnaSummaryEvidenceRefs,
       allowed,
@@ -127,6 +132,12 @@ function validateResult(
   const compatibility = input.groupCompatibility;
   if (!compatibility) throw new Error("그룹 조합 계산값이 없습니다.");
   const group = validated as GroupStyleDnaExplanation;
+  assertSafeLanguage([
+    group.groupStyleDnaSummary,
+    group.groupCombination.title,
+    group.groupCombination.description,
+    ...group.groupMatchingPoints.map((point) => point.text),
+  ]);
   // 요약은 스타일 신호만 근거로 쓰게 허용 목록 자체를 좁힌다.
   group.groupStyleDnaSummaryEvidenceRefs = sanitizeRefs(
     group.groupStyleDnaSummaryEvidenceRefs,
@@ -178,7 +189,7 @@ export async function createStyleDnaExplanation(
         "매칭 중요 포인트는 2~3개를 반환하고, 각 문장은 '~해요'체로 인플루언서가 무엇을 잘 다뤄야 하는지를 쓴다.",
         "'피하는 것이 좋습니다', '입지 마세요'처럼 특정 옷을 피하라고 권하는 표현을 쓰지 않는다.",
         "피하고 싶은 스타일이나 피하고 싶은 요소를 설명 근거로 직접 언급하지 않는다.",
-        "외모·몸매·등급·교정 표현을 사용하지 않는다.",
+        SAFE_LANGUAGE_RULES,
         "요약문에도 실제 근거를 summaryEvidenceRefs로 반드시 반환한다. 요약의 근거는 summaryAllowedEvidenceRefs에서만 고르고, 나머지 문장의 근거는 allowedEvidenceRefs에서만 고른다.",
         "그룹 요약의 summaryEvidenceRefs에는 'A.'로 시작하는 값과 'B.'로 시작하는 값을 각각 최소 하나씩 넣는다.",
         "그룹 조합 제목(groupCombination.title)은 공백 포함 8~24자다. 예: '각자의 무드를 살린 연결'(13자), '두 무드를 잇는 조합'(11자).",

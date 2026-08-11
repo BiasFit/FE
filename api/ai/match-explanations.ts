@@ -10,6 +10,7 @@ import {
   generateWithRepair,
   type StructuredOpenAiCaller,
 } from "../_lib/openai";
+import { SAFE_LANGUAGE_RULES, assertSafeLanguage } from "../_lib/safe-language";
 import {
   readJsonBody,
   requirePost,
@@ -67,12 +68,16 @@ export async function createMatchExplanations(
         "evidenceRefs에는 그 후보의 allowedEvidenceRefs에 있는 문자열만 담는다. 다른 경로나 지어낸 값은 금지한다.",
         "그룹이면 evidenceRefs에 A로 시작하는 근거와 B로 시작하는 근거를 각각 최소 하나씩 포함한다.",
         "점수 숫자나 내부 코드를 문장에 쓰지 않는다. '캐주얼 75점', '예산 코드 2'처럼 쓰지 말고 사용자가 이해할 수 있는 말로 바꾼다.",
-        "외모·몸매 평가나 정답·실패·부적합 같은 판정 표현을 사용하지 않는다.",
+        SAFE_LANGUAGE_RULES,
         "입력에 있는 모든 후보를 각각 한 번씩만 반환한다.",
       ].join(" "),
       input: modelInput(input),
     },
-    (result) => validateMatchExplanations(result, input),
+    (result) => {
+      const validated = validateMatchExplanations(result, input);
+      assertSafeLanguage(validated.explanations.map((item) => item.summary));
+      return validated;
+    },
     { label: "AI4" },
   );
 }
