@@ -351,9 +351,9 @@ export function Top3Screen() {
                 <p>{view.description}</p>
                 <span className="facts"><span className="fact">◇ {view.price}</span><span className="fact">◇ {view.occasions}</span></span>
                 <span className="reason-bars">
-                  <span className="reason-bar">스타일 취향 <b>{breakdown.style}/{weights.style}</b><span className="mini-track"><span className="mini-fill" style={{ width: `${(breakdown.style / weights.style) * 100}%` }} /></span></span>
-                  <span className="reason-bar">체형·핏 <b>{breakdown.fit}/{weights.fit}</b><span className="mini-track"><span className="mini-fill" style={{ width: `${(breakdown.fit / weights.fit) * 100}%` }} /></span></span>
-                  <span className="reason-bar">예산·TPO <b>{breakdown.budget + breakdown.tpo}/{weights.budget + weights.tpo}</b><span className="mini-track"><span className="mini-fill" style={{ width: `${((breakdown.budget + breakdown.tpo) / (weights.budget + weights.tpo)) * 100}%` }} /></span></span>
+                  <span className="reason-bar">스타일 취향 <b>{Math.round(breakdown.style)}/{weights.style}</b><span className="mini-track"><span className="mini-fill" style={{ width: `${(breakdown.style / weights.style) * 100}%` }} /></span></span>
+                  <span className="reason-bar">체형·핏 <b>{Math.round(breakdown.fit)}/{weights.fit}</b><span className="mini-track"><span className="mini-fill" style={{ width: `${(breakdown.fit / weights.fit) * 100}%` }} /></span></span>
+                  <span className="reason-bar">예산·TPO <b>{Math.round(breakdown.budget + breakdown.tpo)}/{weights.budget + weights.tpo}</b><span className="mini-track"><span className="mini-fill" style={{ width: `${((breakdown.budget + breakdown.tpo) / (weights.budget + weights.tpo)) * 100}%` }} /></span></span>
                 </span>
                 <MatchReason explanation={reasons[influencer.id]} status={reasonStatus} />
               </span>
