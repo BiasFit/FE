@@ -6,6 +6,7 @@ import {
   type PriorityOptionsResponse,
 } from "../../src/domain/aiContracts";
 import { tpoLabel } from "../../src/data/options";
+import { GROUNDING_RULES, assertGrounded } from "../_lib/grounding";
 import { SAFE_LANGUAGE_RULES, assertSafeLanguage } from "../_lib/safe-language";
 import {
   callOpenAiStructured,
@@ -23,6 +24,26 @@ import {
 const LABEL_MIN_LENGTH = 10;
 // 그룹 선택지는 A와 B의 조건을 함께 담아야 해서 개인보다 길어진다.
 const LABEL_MAX_LENGTH = 45;
+
+/** 이번 요청에서 근거로 삼을 수 있는 입력 폼. */
+function requestForms(input: PriorityOptionsRequest) {
+  return input.mode === "personal"
+    ? [input.personal]
+    : [input.group.members.A, input.group.members.B];
+}
+
+/** 사용자가 실제로 고른 값만 모아 모델에 내려 준다. */
+function selectedVocabulary(input: PriorityOptionsRequest) {
+  return requestForms(input).map((form) => ({
+    preferredStyle: form.preferredStyle,
+    keywords: form.keywords,
+    designElements: form.designElements,
+    preferredItems: form.preferredItems,
+    fitConcerns: form.fitConcerns,
+    budgetApproach: form.budgetApproach,
+    tpo: tpoLabel(form.tpo),
+  }));
+}
 
 /** 모델에게는 TPO 내부 코드 대신 사람이 읽는 라벨을 보낸다. */
 function withTpoLabels(input: PriorityOptionsRequest) {
@@ -113,7 +134,9 @@ function validateResult(
       `선택지 문구는 ${LABEL_MIN_LENGTH}~${LABEL_MAX_LENGTH}자의 한 문장이어야 합니다: ${shortLabels.join(", ")}`,
     );
   }
-  assertSafeLanguage(normalizedResult.options.map((option) => option.label));
+  const labels = normalizedResult.options.map((option) => option.label);
+  assertSafeLanguage(labels);
+  assertGrounded(labels, requestForms(input));
   const refs = normalizedResult.options.flatMap((option) => option.evidenceRefs);
   const invalidRefs = refs.filter((ref) => !allowedRefs.has(ref));
   if (invalidRefs.length > 0) {
@@ -151,6 +174,7 @@ export async function createPriorityOptions(
         "예시 - style_first: '좋아하는 빈티지한 분위기를 가장 먼저 지키고 싶어요' / fit_first: '이동할 때 편안한 착용감과 전체 기장 균형이 중요해요' / budget_first: '정한 예산 안에서 활용도 높은 구성이 중요해요' / tpo_first: '발표·면접에 어울리는 단정하고 신뢰감 있는 인상이 중요해요'",
         "사용자 입력의 취향·핏 고민·예산·TPO만 사용하고 새로운 사실을 추정하지 않는다.",
         "사용자가 고르지 않은 색상·소재·아이템을 문장에 넣지 않는다.",
+        GROUNDING_RULES,
         SAFE_LANGUAGE_RULES,
         "각 선택지의 evidenceRefs는 allowedEvidenceRefs 배열에 있는 문자열을 한 개 이상 그대로 사용한다. 다른 경로·라벨·추론값은 금지한다.",
         // 모드별 규칙을 섞어 주면 개인 요청에도 A/B·group 경로를 만들어 내므로 해당 모드의 규칙만 넣는다.
@@ -169,6 +193,7 @@ export async function createPriorityOptions(
       input: {
         ...withTpoLabels(input),
         allowedEvidenceRefs: [...allowedRefs],
+        selectedVocabulary: selectedVocabulary(input),
       },
     },
     (result) => validateResult(input, allowedRefs, result),

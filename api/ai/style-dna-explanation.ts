@@ -8,6 +8,7 @@ import {
   type StyleDnaExplanationResponse,
 } from "../../src/domain/aiContracts";
 import { tpoLabel } from "../../src/data/options";
+import { GROUNDING_RULES, assertGrounded } from "../_lib/grounding";
 import { SAFE_LANGUAGE_RULES, assertSafeLanguage } from "../_lib/safe-language";
 import {
   callOpenAiStructured,
@@ -112,10 +113,12 @@ function validateResult(
     throw new Error("OpenAI가 진단 모드를 변경했습니다.");
   }
   if (validated.mode === "personal") {
-    assertSafeLanguage([
+    const personalTexts = [
       validated.personalStyleDnaSummary,
       ...validated.personalMatchingPoints.map((point: EvidenceText) => point.text),
-    ]);
+    ];
+    assertSafeLanguage(personalTexts);
+    assertGrounded(personalTexts, input.members.map((member) => member.form));
     validated.personalStyleDnaSummaryEvidenceRefs = sanitizeRefs(
       validated.personalStyleDnaSummaryEvidenceRefs,
       allowed,
@@ -132,12 +135,14 @@ function validateResult(
   const compatibility = input.groupCompatibility;
   if (!compatibility) throw new Error("그룹 조합 계산값이 없습니다.");
   const group = validated as GroupStyleDnaExplanation;
-  assertSafeLanguage([
+  const groupTexts = [
     group.groupStyleDnaSummary,
     group.groupCombination.title,
     group.groupCombination.description,
     ...group.groupMatchingPoints.map((point) => point.text),
-  ]);
+  ];
+  assertSafeLanguage(groupTexts);
+  assertGrounded(groupTexts, input.members.map((member) => member.form));
   // 요약은 스타일 신호만 근거로 쓰게 허용 목록 자체를 좁힌다.
   group.groupStyleDnaSummaryEvidenceRefs = sanitizeRefs(
     group.groupStyleDnaSummaryEvidenceRefs,
@@ -185,7 +190,7 @@ export async function createStyleDnaExplanation(
         "개인 요약은 공백 포함 15~35자다. 예: '자연스러운 일상감에 부드러운 분위기를 더한 스타일'(26자), '단정한 인상과 활용도를 함께 고려한 스타일'(22자), '편안한 착용감과 균형 잡힌 비율을 우선한 스타일'(25자).",
         "그룹 요약은 공백 포함 20~45자이며 A와 B의 스타일 신호가 각각 드러나야 한다. 예: '자연스러운 A와 부드러운 B를 함께 살린 스타일'(25자).",
         "글자 수를 세어 범위 안에 들어오는지 확인한 뒤 답한다.",
-        "selectedVocabulary는 사용자가 실제로 고른 값이다. 아이템·소재·색상·실루엣을 말할 때는 이 목록에 있는 단어의 의미 범위 안에서만 쓰고, 목록에 없는 옷·소재·색상을 선호한다고 단정하지 않는다.",
+        GROUNDING_RULES,
         "매칭 중요 포인트는 2~3개를 반환하고, 각 문장은 '~해요'체로 인플루언서가 무엇을 잘 다뤄야 하는지를 쓴다.",
         "'피하는 것이 좋습니다', '입지 마세요'처럼 특정 옷을 피하라고 권하는 표현을 쓰지 않는다.",
         "피하고 싶은 스타일이나 피하고 싶은 요소를 설명 근거로 직접 언급하지 않는다.",
