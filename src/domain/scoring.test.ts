@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { TPO_CODES, budgetApproaches, type TpoCode } from "../data/options";
+import { influencers } from "../data/influencers";
 import { personaForms } from "../data/personas";
 import { MATCH_PRIORITY_WEIGHTS } from "./matchPriority";
 import {
@@ -6,6 +8,7 @@ import {
   calculateGroupMatchScore,
   calculatePersonalBaseBreakdown,
   calculateStyleScores,
+  filterEligibleInfluencers,
   rankInfluencers,
   type InfluencerProfile,
   type StyleScores,
@@ -92,7 +95,7 @@ describe("individual and group matching rules", () => {
     const input = {
       mode: "personal" as const, priority: "fit_first" as const, styleScores: zeroScores,
       avoidedStyle: "스트릿" as const, fitConcerns: ["전체 기장·비율", "밑위·하의 길이"],
-      budgetMinCode: 2, budgetMaxCode: 2, budgetApproach: "총액 절약형", tpo: "new_semester",
+      budgetMinCode: 2, budgetMaxCode: 2, budgetApproach: "총액 절약형" as const, tpo: "new_semester" as const,
     };
     expect(calculatePersonalBaseBreakdown({ ...input, bodyType: "웨이브" }, fullFitProfile).fit).toBe(25);
     expect(calculatePersonalBaseBreakdown({ ...input, bodyType: "내추럴" }, fullFitProfile).fit).toBe(10);
@@ -140,7 +143,7 @@ describe("TPO 적합도", () => {
     fitConcerns: [], budgetCodes: [2], budgetApproach: "총액 절약형",
     tpos: ["new_semester", "daily", "travel"], coachingType: "both",
   };
-  const user = (tpo: string) => ({
+  const user = (tpo: TpoCode) => ({
     mode: "personal" as const, priority: "tpo_first" as const,
     styleScores: calculateStyleScores(personaForms.P1),
     avoidedStyle: personaForms.P1.avoidedStyle, bodyType: personaForms.P1.bodyType,
@@ -167,5 +170,34 @@ describe("TPO 적합도", () => {
     const texts = Object.values(ranked.matchedEvidence).flat().map((item) => item.text);
     expect(texts.some((text) => text.includes("예산 코드"))).toBe(false);
     expect(texts.some((text) => /\d+점/.test(text))).toBe(false);
+  });
+});
+
+describe("인플루언서 TPO 커버리지", () => {
+  // 8개 TPO 중 하나라도 담당 후보가 0명이면 그 TPO를 고른 사용자는 TPO 점수를 받을 수 없다.
+  it.each(TPO_CODES)("has at least one personal candidate for %s", (code) => {
+    const eligible = filterEligibleInfluencers("personal", influencers).filter((profile) =>
+      profile.tpos.includes(code),
+    );
+    expect(eligible.length).toBeGreaterThan(0);
+  });
+
+  it.each(TPO_CODES)("has at least one group candidate for %s", (code) => {
+    const eligible = filterEligibleInfluencers("group", influencers).filter((profile) =>
+      profile.tpos.includes(code),
+    );
+    expect(eligible.length).toBeGreaterThan(0);
+  });
+
+  it("gives every influencer exactly three strength TPOs", () => {
+    for (const profile of influencers) {
+      expect(profile.tpos).toHaveLength(3);
+    }
+  });
+
+  it("keeps influencer budget approaches inside the user-facing vocabulary", () => {
+    for (const profile of influencers) {
+      expect(budgetApproaches).toContain(profile.budgetApproach);
+    }
   });
 });

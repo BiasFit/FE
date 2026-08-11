@@ -1,5 +1,5 @@
-import type { MatchPriority } from "../app/types";
-import { budgetRangeLabel, tpoLabel } from "../data/options";
+import type { DiagnosisForm, MatchPriority } from "../app/types";
+import { budgetRangeLabel, tpoLabel, type TpoCode } from "../data/options";
 import {
   PRIORITY_CATEGORY,
   applyPriorityWeights,
@@ -129,28 +129,29 @@ export interface InfluencerProfile {
   profileCompleted: boolean;
   primaryStyle: StyleName;
   secondaryStyle: StyleName;
-  bodyType: string;
+  bodyType: DiagnosisForm["bodyType"];
   fitConcerns: string[];
   budgetCodes: number[];
-  budgetApproach: string;
-  tpos: string[];
+  // 사용자와 같은 어휘를 강제한다. 문자열로 열어 두면 값이 어긋나도 컴파일러가 잡지 못한다.
+  budgetApproach: DiagnosisForm["budgetApproach"];
+  tpos: TpoCode[];
   coachingType: CoachingSupport;
 }
 
 interface MatchMemberInput {
   styleScores: StyleScores;
   avoidedStyle: StyleName;
-  bodyType: string;
+  bodyType: DiagnosisForm["bodyType"];
   fitConcerns: string[];
   budgetMinCode: number;
   budgetMaxCode: number;
-  budgetApproach: string;
+  budgetApproach: DiagnosisForm["budgetApproach"];
 }
 
 export interface PersonalMatchInput extends MatchMemberInput {
   mode: "personal";
   priority?: MatchPriority;
-  tpo: string;
+  tpo: TpoCode;
 }
 
 function scoreStylePreference(input: Pick<MatchMemberInput, "styleScores" | "avoidedStyle">, influencer: InfluencerProfile) {
@@ -199,7 +200,7 @@ export function calculateInfluencerMatch(input: PersonalMatchInput, influencer: 
 
 export type RankMatchInput =
   | (PersonalMatchInput & { priority: MatchPriority })
-  | { mode: "group"; priority: MatchPriority; members: [MatchMemberInput, MatchMemberInput]; tpo: string };
+  | { mode: "group"; priority: MatchPriority; members: [MatchMemberInput, MatchMemberInput]; tpo: TpoCode };
 
 export interface MatchEvidence { ref: string; text: string; }
 export type MatchedEvidence = Record<MatchCategory, MatchEvidence[]>;
@@ -215,7 +216,7 @@ export function filterEligibleInfluencers(mode: MatchMode, profiles: InfluencerP
   return profiles.filter((profile) => profile.profileCompleted && (profile.coachingType === "both" || profile.coachingType === mode));
 }
 
-function memberEvidence(prefix: string, member: MatchMemberInput, tpo: string, influencer: InfluencerProfile, includeBodyType: boolean): MatchedEvidence {
+function memberEvidence(prefix: string, member: MatchMemberInput, tpo: TpoCode, influencer: InfluencerProfile, includeBodyType: boolean): MatchedEvidence {
   const styleNames = [influencer.primaryStyle, influencer.secondaryStyle].filter((style) => style !== member.avoidedStyle);
   const fitMatches = member.fitConcerns.filter((concern) => influencer.fitConcerns.includes(concern));
   const budgetMatches = influencer.budgetCodes.filter((code) => code >= member.budgetMinCode && code <= member.budgetMaxCode);
