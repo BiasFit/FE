@@ -20,7 +20,8 @@ import {
   type ApiResponse,
 } from "../_lib/http";
 
-function evidenceCatalog(input: StyleDnaExplanationRequest) {
+/** 요약문이 쓸 수 있는 스타일 신호 근거. 그룹 요약은 여기서만 고르게 해 규칙 위반 자체를 막는다. */
+function styleEvidenceRefs(input: StyleDnaExplanationRequest) {
   return input.members.flatMap((member) => {
     const prefix = member.memberId;
     return [
@@ -28,15 +29,39 @@ function evidenceCatalog(input: StyleDnaExplanationRequest) {
       `${prefix}.keywords`,
       `${prefix}.designElements`,
       `${prefix}.preferredItems`,
-      ...member.form.fitConcerns.map((_, index) => `${prefix}.fitConcerns.${index}`),
-      `${prefix}.budgetRange`,
-      `${prefix}.budgetApproach`,
-      `${prefix}.tpo`,
       ...Object.keys(member.styleScores).map(
         (style) => `${prefix}.styleScores.${style}`,
       ),
     ];
   });
+}
+
+function contextEvidenceRefs(input: StyleDnaExplanationRequest) {
+  return input.members.flatMap((member) => {
+    const prefix = member.memberId;
+    return [
+      ...member.form.fitConcerns.map((_, index) => `${prefix}.fitConcerns.${index}`),
+      `${prefix}.budgetRange`,
+      `${prefix}.budgetApproach`,
+      `${prefix}.tpo`,
+    ];
+  });
+}
+
+function evidenceCatalog(input: StyleDnaExplanationRequest) {
+  return [...styleEvidenceRefs(input), ...contextEvidenceRefs(input)];
+}
+
+/**
+ * evidenceRefs는 사용자에게 보이지 않는 내부 검증용이다.
+ * 하나 틀렸다고 문장 전체를 버리지 않고, 입력에 없는 값만 걸러낸 뒤 남은 근거로 판정한다.
+ */
+function sanitizeRefs(refs: string[], allowed: Set<string>, field: string) {
+  const kept = refs.filter((ref) => allowed.has(ref));
+  if (kept.length === 0) {
+    throw new Error(`${field}의 근거가 모두 입력에 없는 값입니다.`);
+  }
+  return kept;
 }
 
 /**
@@ -63,65 +88,67 @@ export function combinationMetricText(compatibility: {
   return `스타일 방향 유사도 ${compatibility.styleSimilarity}/70 · 예산 조율 가능성 ${compatibility.budgetCompatibility}/30.`;
 }
 
-function responseEvidence(response: StyleDnaExplanationResponse) {
-  if (response.mode === "personal") {
-    return response.personalMatchingPoints.flatMap(
-      (point: EvidenceText) => point.evidenceRefs,
-    ).concat(response.personalStyleDnaSummaryEvidenceRefs);
-  }
-  return [
-    ...response.groupStyleDnaSummaryEvidenceRefs,
-    ...response.groupCombination.evidenceRefs,
-    ...response.groupMatchingPoints.flatMap((point) => point.evidenceRefs),
-  ];
-}
-
 function validateResult(
   input: StyleDnaExplanationRequest,
-  allowedEvidenceRefs: string[],
   result: unknown,
 ): StyleDnaExplanationResponse {
-  const validated = validateStyleDnaExplanation(result);
+  const allowed = new Set(evidenceCatalog(input));
+  const summaryAllowed = new Set(styleEvidenceRefs(input));
+  const validated = validateStyleDnaExplanation(result, input.groupCompatibility);
   if (validated.mode !== input.mode) {
     throw new Error("OpenAI가 진단 모드를 변경했습니다.");
   }
-  if (!responseEvidence(validated).every((ref) => allowedEvidenceRefs.includes(ref))) {
-    throw new Error("OpenAI가 입력에 없는 근거를 사용했습니다.");
+  if (validated.mode === "personal") {
+    validated.personalStyleDnaSummaryEvidenceRefs = sanitizeRefs(
+      validated.personalStyleDnaSummaryEvidenceRefs,
+      allowed,
+      "개인 요약",
+    );
+    validated.personalMatchingPoints = validated.personalMatchingPoints.map(
+      (point: EvidenceText) => ({
+        ...point,
+        evidenceRefs: sanitizeRefs(point.evidenceRefs, allowed, "매칭 포인트"),
+      }),
+    );
+    return validated;
   }
-  if (validated.mode === "group") {
-    const compatibility = input.groupCompatibility;
-    if (!compatibility) throw new Error("그룹 조합 계산값이 없습니다.");
-    const group = validated as GroupStyleDnaExplanation;
-    if (
-      group.groupCombination.score !== compatibility.total ||
-      group.groupCombination.directionSimilarity !== compatibility.styleSimilarity ||
-      group.groupCombination.budgetCoordination !== compatibility.budgetCompatibility
-    ) {
-      throw new Error("OpenAI가 그룹 조합 계산값을 변경했습니다.");
-    }
-    const groupSummaryRefs = group.groupStyleDnaSummaryEvidenceRefs;
-    if (
-      !groupSummaryRefs.some((ref) => ref.startsWith("A.")) ||
-      !groupSummaryRefs.some((ref) => ref.startsWith("B.")) ||
-      groupSummaryRefs.some((ref) => /\.(fitConcerns|budgetRange|budgetApproach|tpo)/.test(ref))
-    ) {
-      throw new Error("그룹 Style DNA 요약은 A/B 스타일 신호만 근거로 사용해야 합니다.");
-    }
-    // 수치는 규칙 엔진 값만 쓰고, 조율 방향 설명은 AI 문장을 유지한다.
-    const guidance = group.groupCombination.description.trim();
-    if (!guidance || /\d+\s*\/\s*(70|30)|\d+\s*점/.test(guidance)) {
-      throw new Error("그룹 조합 설명은 수치 없이 조율 방향만 작성해야 합니다.");
-    }
-    group.groupCombination.description = `${combinationMetricText(compatibility)} ${guidance}`;
+  const compatibility = input.groupCompatibility;
+  if (!compatibility) throw new Error("그룹 조합 계산값이 없습니다.");
+  const group = validated as GroupStyleDnaExplanation;
+  // 요약은 스타일 신호만 근거로 쓰게 허용 목록 자체를 좁힌다.
+  group.groupStyleDnaSummaryEvidenceRefs = sanitizeRefs(
+    group.groupStyleDnaSummaryEvidenceRefs,
+    summaryAllowed,
+    "그룹 요약",
+  );
+  if (
+    !group.groupStyleDnaSummaryEvidenceRefs.some((ref) => ref.startsWith("A.")) ||
+    !group.groupStyleDnaSummaryEvidenceRefs.some((ref) => ref.startsWith("B."))
+  ) {
+    throw new Error("그룹 Style DNA 요약은 A와 B의 스타일 신호를 모두 근거로 사용해야 합니다.");
   }
-  return validated;
+  group.groupCombination.evidenceRefs = sanitizeRefs(
+    group.groupCombination.evidenceRefs,
+    allowed,
+    "그룹 조합 설명",
+  );
+  group.groupMatchingPoints = group.groupMatchingPoints.map((point) => ({
+    ...point,
+    evidenceRefs: sanitizeRefs(point.evidenceRefs, allowed, "매칭 포인트"),
+  }));
+  // 수치는 규칙 엔진 값만 쓰고, 조율 방향 설명은 AI 문장을 유지한다.
+  const guidance = group.groupCombination.description.trim();
+  if (/\d+\s*\/\s*(70|30)|\d+\s*점/.test(guidance)) {
+    throw new Error("그룹 조합 설명은 수치 없이 조율 방향만 작성해야 합니다.");
+  }
+  group.groupCombination.description = `${combinationMetricText(compatibility)} ${guidance}`;
+  return group;
 }
 
 export async function createStyleDnaExplanation(
   input: StyleDnaExplanationRequest,
   generate: StructuredOpenAiCaller = callOpenAiStructured,
 ): Promise<StyleDnaExplanationResponse> {
-  const allowedEvidenceRefs = evidenceCatalog(input);
   return generateWithRepair(
     generate,
     {
@@ -140,17 +167,20 @@ export async function createStyleDnaExplanation(
         "'피하는 것이 좋습니다', '입지 마세요'처럼 특정 옷을 피하라고 권하는 표현을 쓰지 않는다.",
         "피하고 싶은 스타일이나 피하고 싶은 요소를 설명 근거로 직접 언급하지 않는다.",
         "외모·몸매·등급·교정 표현을 사용하지 않는다.",
-        "요약문에도 실제 근거를 summaryEvidenceRefs로 반드시 반환하고, 각 문장은 제공된 allowedEvidenceRefs만 사용한다.",
+        "요약문에도 실제 근거를 summaryEvidenceRefs로 반드시 반환한다. 요약의 근거는 summaryAllowedEvidenceRefs에서만 고르고, 나머지 문장의 근거는 allowedEvidenceRefs에서만 고른다.",
+        "그룹 요약의 summaryEvidenceRefs에는 'A.'로 시작하는 값과 'B.'로 시작하는 값을 각각 최소 하나씩 넣는다.",
+        "그룹 조합 제목(groupCombination.title)은 공백 포함 8~24자다. 예: '각자의 무드를 살린 연결'(13자), '두 무드를 잇는 조합'(11자).",
         "그룹 조합 설명(description)에는 점수 수치를 쓰지 않고, 두 사람이 함께 코디할 때의 조율 방향만 1~2문장으로 쓴다. 수치 문구는 서버가 앞에 붙인다.",
         "낮은 조합도를 실패·부적합으로 표현하지 않고, 같은 스타일로 맞춰 입으라고 하지 않는다.",
       ].join(" "),
       input: {
         ...input,
-        allowedEvidenceRefs,
+        allowedEvidenceRefs: evidenceCatalog(input),
+        summaryAllowedEvidenceRefs: styleEvidenceRefs(input),
         selectedVocabulary: selectedVocabulary(input),
       },
     },
-    (result) => validateResult(input, allowedEvidenceRefs, result),
+    (result) => validateResult(input, result),
     { label: "AI2" },
   );
 }

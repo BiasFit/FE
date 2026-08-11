@@ -353,7 +353,8 @@ export function Top3Screen() {
                 <span className="reason-bars">
                   <span className="reason-bar">스타일 취향 <b>{Math.round(breakdown.style)}/{weights.style}</b><span className="mini-track"><span className="mini-fill" style={{ width: `${(breakdown.style / weights.style) * 100}%` }} /></span></span>
                   <span className="reason-bar">체형·핏 <b>{Math.round(breakdown.fit)}/{weights.fit}</b><span className="mini-track"><span className="mini-fill" style={{ width: `${(breakdown.fit / weights.fit) * 100}%` }} /></span></span>
-                  <span className="reason-bar">예산·TPO <b>{Math.round(breakdown.budget + breakdown.tpo)}/{weights.budget + weights.tpo}</b><span className="mini-track"><span className="mini-fill" style={{ width: `${((breakdown.budget + breakdown.tpo) / (weights.budget + weights.tpo)) * 100}%` }} /></span></span>
+                  <span className="reason-bar">예산 <b>{Math.round(breakdown.budget)}/{weights.budget}</b><span className="mini-track"><span className="mini-fill" style={{ width: `${(breakdown.budget / weights.budget) * 100}%` }} /></span></span>
+                  <span className="reason-bar">{state.mode === "group" ? "공통 TPO" : "TPO"} <b>{Math.round(breakdown.tpo)}/{weights.tpo}</b><span className="mini-track"><span className="mini-fill" style={{ width: `${(breakdown.tpo / weights.tpo) * 100}%` }} /></span></span>
                 </span>
                 <MatchReason explanation={reasons[influencer.id]} status={reasonStatus} />
               </span>

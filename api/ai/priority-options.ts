@@ -133,9 +133,18 @@ export async function createPriorityOptions(
         "사용자 입력의 취향·핏 고민·예산·TPO만 사용하고 새로운 사실을 추정하지 않는다.",
         "사용자가 고르지 않은 색상·소재·아이템을 문장에 넣지 않는다.",
         "각 선택지의 evidenceRefs는 allowedEvidenceRefs 배열에 있는 문자열을 한 개 이상 그대로 사용한다. 다른 경로·라벨·추론값은 금지한다.",
-        "그룹이면 A와 B 두 사람의 기준을 모두 보존한다. style_first·fit_first·budget_first의 evidenceRefs에는 'A.'로 시작하는 값과 'B.'로 시작하는 값을 함께 넣고, label에도 두 사람의 조건이 함께 드러나게 쓴다.",
-        "그룹의 tpo_first는 공통 TPO이므로 'group.tpo'를 사용한다.",
-        "그룹 응답을 반환하기 전에 네 선택지의 evidenceRefs를 모두 합쳐 'A.'로 시작하는 값과 'B.'로 시작하는 값이 각각 최소 하나씩 있는지 확인한다. 없으면 다시 채운다.",
+        // 모드별 규칙을 섞어 주면 개인 요청에도 A/B·group 경로를 만들어 내므로 해당 모드의 규칙만 넣는다.
+        ...(input.mode === "group"
+          ? [
+              "A와 B 두 사람의 기준을 모두 보존한다. style_first·fit_first·budget_first의 evidenceRefs에는 'A.'로 시작하는 값과 'B.'로 시작하는 값을 함께 넣는다.",
+              // label에 A/B를 모두 넣으라고 하면 길이 제한과 충돌해 문장이 계속 길어진다. 두 사람 반영은 evidenceRefs로만 요구한다.
+              "label에는 'A와 B 모두'처럼 두 사람을 나열하지 않는다. 두 사람에게 공통으로 해당하는 기준을 한 문장으로 짧게 쓴다.",
+              "tpo_first는 공통 TPO이므로 'group.tpo'를 사용한다.",
+              "응답을 반환하기 전에 네 선택지의 evidenceRefs를 모두 합쳐 'A.'로 시작하는 값과 'B.'로 시작하는 값이 각각 최소 하나씩 있는지 확인한다. 없으면 다시 채운다.",
+            ]
+          : [
+              "개인 요청이므로 모든 evidenceRefs는 'personal.'로 시작한다. 'A.', 'B.', 'group.'으로 시작하는 값은 사용하지 않는다.",
+            ]),
       ].join(" "),
       input: {
         ...input,
