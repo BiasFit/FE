@@ -222,7 +222,8 @@ function memberEvidence(prefix: string, member: MatchMemberInput, tpo: TpoCode, 
   const budgetMatches = influencer.budgetCodes.filter((code) => code >= member.budgetMinCode && code <= member.budgetMaxCode);
   // 근거 텍스트는 그대로 AI 설명 문장에 쓰이므로 점수·내부 코드를 넣지 않는다.
   return {
-    style: styleNames.map((style, index) => ({ ref: `${prefix}.style.${index}`, text: `${style} 선호` })),
+    // 주어가 없으면 AI가 사용자의 선호로 오해한다. 인플루언서의 대표 스타일임을 텍스트에 명시한다.
+    style: styleNames.map((style, index) => ({ ref: `${prefix}.style.${index}`, text: `스타일메이트 대표 스타일 ${style}` })),
     fit: [
       ...(includeBodyType && member.bodyType === influencer.bodyType ? [{ ref: `${prefix}.fit.bodyType`, text: `${member.bodyType} 체형 유형` }] : []),
       ...fitMatches.map((concern, index) => ({ ref: `${prefix}.fit.concern.${index}`, text: concern })),
