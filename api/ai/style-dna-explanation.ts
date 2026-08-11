@@ -7,6 +7,7 @@ import {
   type StyleDnaExplanationRequest,
   type StyleDnaExplanationResponse,
 } from "../../src/domain/aiContracts";
+import { tpoLabel } from "../../src/data/options";
 import {
   callOpenAiStructured,
   generateWithRepair,
@@ -77,8 +78,19 @@ function selectedVocabulary(input: StyleDnaExplanationRequest) {
     preferredItems: member.form.preferredItems,
     fitConcerns: member.form.fitConcerns,
     budgetApproach: member.form.budgetApproach,
-    tpo: member.form.tpo,
+    tpo: tpoLabel(member.form.tpo),
   }));
+}
+
+/** 모델에게는 TPO 내부 코드 대신 사람이 읽는 라벨을 보낸다. */
+function withTpoLabels(input: StyleDnaExplanationRequest) {
+  return {
+    ...input,
+    members: input.members.map((member) => ({
+      ...member,
+      form: { ...member.form, tpo: tpoLabel(member.form.tpo) },
+    })),
+  };
 }
 
 export function combinationMetricText(compatibility: {
@@ -174,7 +186,7 @@ export async function createStyleDnaExplanation(
         "낮은 조합도를 실패·부적합으로 표현하지 않고, 같은 스타일로 맞춰 입으라고 하지 않는다.",
       ].join(" "),
       input: {
-        ...input,
+        ...withTpoLabels(input),
         allowedEvidenceRefs: evidenceCatalog(input),
         summaryAllowedEvidenceRefs: styleEvidenceRefs(input),
         selectedVocabulary: selectedVocabulary(input),

@@ -5,6 +5,7 @@ import {
   type PriorityOptionsRequest,
   type PriorityOptionsResponse,
 } from "../../src/domain/aiContracts";
+import { tpoLabel } from "../../src/data/options";
 import {
   callOpenAiStructured,
   generateWithRepair,
@@ -21,6 +22,22 @@ import {
 const LABEL_MIN_LENGTH = 10;
 // 그룹 선택지는 A와 B의 조건을 함께 담아야 해서 개인보다 길어진다.
 const LABEL_MAX_LENGTH = 45;
+
+/** 모델에게는 TPO 내부 코드 대신 사람이 읽는 라벨을 보낸다. */
+function withTpoLabels(input: PriorityOptionsRequest) {
+  return {
+    ...input,
+    personal: { ...input.personal, tpo: tpoLabel(input.personal.tpo) },
+    group: {
+      ...input.group,
+      tpo: tpoLabel(input.group.tpo),
+      members: {
+        A: { ...input.group.members.A, tpo: tpoLabel(input.group.members.A.tpo) },
+        B: { ...input.group.members.B, tpo: tpoLabel(input.group.members.B.tpo) },
+      },
+    },
+  };
+}
 
 function allowedEvidenceRefs(input: PriorityOptionsRequest) {
   const fields = [
@@ -147,7 +164,7 @@ export async function createPriorityOptions(
             ]),
       ].join(" "),
       input: {
-        ...input,
+        ...withTpoLabels(input),
         allowedEvidenceRefs: [...allowedRefs],
       },
     },

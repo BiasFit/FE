@@ -6,6 +6,7 @@ import type {
   MemberId,
   PriorityOption,
 } from "./types";
+import type { TpoCode } from "../data/options";
 import { personaForms } from "../data/personas";
 
 export interface AppState {
@@ -18,7 +19,7 @@ export interface AppState {
   group: {
     relationship: "friend" | "family" | "other";
     relationshipOther: string;
-    tpo: string;
+    tpo: TpoCode;
     members: Record<MemberId, DiagnosisForm>;
   };
   selectedInfluencerId: string;
@@ -77,7 +78,7 @@ export function createInitialState(): AppState {
     group: {
       relationship: "friend",
       relationshipOther: "",
-      tpo: "여행·사진",
+      tpo: "travel",
       members: {
         A: copyForm(personaForms.P4),
         B: copyForm(personaForms.P5),

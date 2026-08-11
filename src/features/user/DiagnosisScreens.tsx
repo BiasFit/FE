@@ -10,7 +10,8 @@ import {
   keywords,
   preferredItems,
   styleOptions,
-  tpos,
+  TPO_OPTIONS,
+  type TpoCode,
 } from "../../data/options";
 import { ChipChoices, FlowShell, MemberSwitch } from "../../shared/FlowShell";
 import { BudgetRangeSlider } from "../../shared/BudgetRangeSlider";
@@ -128,12 +129,12 @@ export function BodyScreen() {
               onChange={(event) =>
                 dispatch({
                   type: "updateGroup",
-                  patch: { tpo: event.target.value },
+                  patch: { tpo: event.target.value as TpoCode },
                 })
               }
             >
-              {tpos.map((tpo) => (
-                <option key={tpo}>{tpo}</option>
+              {TPO_OPTIONS.map((tpo) => (
+                <option key={tpo.code} value={tpo.code}>{tpo.label}</option>
               ))}
             </select>
           </div>
@@ -453,7 +454,7 @@ export function TpoScreen() {
   const navigate = useNavigate();
   const { state, dispatch, form, update } = useCurrentDiagnosis();
   const value = state.mode === "group" ? state.group.tpo : form.tpo;
-  const setValue = (tpo: string) => {
+  const setValue = (tpo: TpoCode) => {
     if (state.mode === "group") {
       dispatch({ type: "updateGroup", patch: { tpo } });
     } else {
@@ -491,16 +492,16 @@ export function TpoScreen() {
     >
       <MemberSwitch />
       <div className="card-grid" role="radiogroup" aria-label="TPO">
-        {tpos.map((tpo) => (
+        {TPO_OPTIONS.map((tpo) => (
           <button
-            className={`option-card ${value === tpo ? "selected" : ""}`}
+            className={`option-card ${value === tpo.code ? "selected" : ""}`}
             type="button"
             role="radio"
-            aria-checked={value === tpo}
-            key={tpo}
-            onClick={() => setValue(tpo)}
+            aria-checked={value === tpo.code}
+            key={tpo.code}
+            onClick={() => setValue(tpo.code)}
           >
-            <strong>{tpo}</strong>
+            <strong>{tpo.label}</strong>
             <p>대학생활의 실제 선택 장면</p>
           </button>
         ))}

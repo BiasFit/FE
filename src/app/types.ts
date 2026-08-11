@@ -1,3 +1,4 @@
+import type { TpoCode } from "../data/options";
 import type { StyleName, StyleScores } from "../domain/scoring";
 
 export type CoachingMode = "personal" | "group";
@@ -47,7 +48,8 @@ export interface DiagnosisForm {
     | "일상 활용형"
     | "소재·품질 우선형"
     | "포인트 아이템 투자형";
-  tpo: string;
+  /** 내부 코드. 화면 표시는 tpoLabel()을 거친다. */
+  tpo: TpoCode;
 }
 
 export interface StyleDna {

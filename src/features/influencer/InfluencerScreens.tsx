@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import type { GroupOutfitDraft, OutfitFields as OutfitFieldValues, PersonalOutfitDraft } from "../../app/types";
 import type { OutfitReviewResponse } from "../../domain/aiContracts";
 import { useAppState } from "../../app/AppStateProvider";
-import { budgetRangeLabel, fitConcerns, styleOptions } from "../../data/options";
+import { budgetRangeLabel, fitConcerns, styleOptions, tpoLabel } from "../../data/options";
 import { personaForms } from "../../data/personas";
 import { isValidOutfitDraft, isValidProductUrl, toOutfitReviewRequest } from "../../domain/outfit";
 import { reviewOutfit } from "../../lib/biasfitApi";
@@ -237,21 +237,21 @@ const assignedRequests = [
   {
     id: "P1-2026-001",
     mode: "개인",
-    tpo: "개강·새학기",
+    tpo: "new_semester",
     detail: "부탁해요 카드 · 오늘 오후 10:37",
     done: false,
   },
   {
     id: "G1-2026-004",
     mode: "2인 그룹",
-    tpo: "여행·사진",
+    tpo: "travel",
     detail: "P4·P5 부탁해요 카드 · 어제 오후 8:12",
     done: false,
   },
   {
     id: "P2-2026-002",
     mode: "개인",
-    tpo: "등교·일상",
+    tpo: "daily",
     detail: "코디 카드 전달 · 7월 19일",
     done: true,
   },
@@ -298,7 +298,7 @@ export function InfluencerRequestsScreen() {
             <span>
               <span className="request-meta">
                 <span className="badge">{request.mode}</span>
-                <span className="badge blue">{request.tpo}</span>
+                <span className="badge blue">{tpoLabel(request.tpo)}</span>
               </span>
               <h3>{request.id}</h3>
               <p>{request.detail}</p>

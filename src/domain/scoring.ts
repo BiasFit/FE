@@ -1,4 +1,5 @@
 import type { MatchPriority } from "../app/types";
+import { budgetRangeLabel, tpoLabel } from "../data/options";
 import {
   PRIORITY_CATEGORY,
   applyPriorityWeights,
@@ -218,17 +219,23 @@ function memberEvidence(prefix: string, member: MatchMemberInput, tpo: string, i
   const styleNames = [influencer.primaryStyle, influencer.secondaryStyle].filter((style) => style !== member.avoidedStyle);
   const fitMatches = member.fitConcerns.filter((concern) => influencer.fitConcerns.includes(concern));
   const budgetMatches = influencer.budgetCodes.filter((code) => code >= member.budgetMinCode && code <= member.budgetMaxCode);
+  // 근거 텍스트는 그대로 AI 설명 문장에 쓰이므로 점수·내부 코드를 넣지 않는다.
   return {
-    style: styleNames.map((style, index) => ({ ref: `${prefix}.style.${index}`, text: `${style} 선호 ${member.styleScores[style]}점` })),
+    style: styleNames.map((style, index) => ({ ref: `${prefix}.style.${index}`, text: `${style} 선호` })),
     fit: [
       ...(includeBodyType && member.bodyType === influencer.bodyType ? [{ ref: `${prefix}.fit.bodyType`, text: `${member.bodyType} 체형 유형` }] : []),
       ...fitMatches.map((concern, index) => ({ ref: `${prefix}.fit.concern.${index}`, text: concern })),
     ],
     budget: [
-      ...(budgetMatches.length ? [{ ref: `${prefix}.budget.range`, text: `예산 코드 ${budgetMatches.join("~")}` }] : []),
+      ...(budgetMatches.length
+        ? [{
+            ref: `${prefix}.budget.range`,
+            text: budgetRangeLabel(Math.min(...budgetMatches), Math.max(...budgetMatches)),
+          }]
+        : []),
       ...(member.budgetApproach === influencer.budgetApproach ? [{ ref: `${prefix}.budget.approach`, text: member.budgetApproach }] : []),
     ],
-    tpo: influencer.tpos.includes(tpo) ? [{ ref: `${prefix}.tpo`, text: tpo }] : [],
+    tpo: influencer.tpos.includes(tpo) ? [{ ref: `${prefix}.tpo`, text: tpoLabel(tpo) }] : [],
   };
 }
 

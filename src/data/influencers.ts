@@ -18,7 +18,7 @@ export const influencers: StylemateView[] = [
     fitConcerns: ["밑위·하의 길이", "전체 기장·비율"],
     budgetCodes: [2, 3],
     budgetApproach: "가성비 중심",
-    tpos: ["개강·새학기", "등교·일상", "여행·사진"],
+    tpos: ["new_semester", "daily", "travel"],
     coachingType: "both",
     tagline: "로맨틱 캠퍼스",
     description:
@@ -36,7 +36,7 @@ export const influencers: StylemateView[] = [
     fitConcerns: ["밑위·하의 길이", "전체 기장·비율"],
     budgetCodes: [2, 3, 4],
     budgetApproach: "균형형",
-    tpos: ["개강·새학기", "등교·일상", "발표·면접"],
+    tpos: ["new_semester", "daily", "presentation_interview"],
     coachingType: "both",
     tagline: "깔끔한 꾸안꾸",
     description:
@@ -54,7 +54,7 @@ export const influencers: StylemateView[] = [
     fitConcerns: ["전체 기장·비율", "가슴·상체 여유"],
     budgetCodes: [2, 3],
     budgetApproach: "가성비 중심",
-    tpos: ["등교·일상", "동아리·모임", "여행·사진"],
+    tpos: ["daily", "club_activity", "travel"],
     coachingType: "both",
     tagline: "보유템 활용",
     description:
@@ -72,7 +72,7 @@ export const influencers: StylemateView[] = [
     fitConcerns: ["어깨선·소매 길이"],
     budgetCodes: [3, 4],
     budgetApproach: "투자 아이템 중심",
-    tpos: ["동아리·모임", "축제·공연"],
+    tpos: ["club_activity", "festival", "friend_meeting"],
     coachingType: "personal",
     tagline: "스트릿 레이어드",
     description: "레이어드와 포인트 아이템으로 개성 있는 균형을 만들어요.",
@@ -89,7 +89,7 @@ export const influencers: StylemateView[] = [
     fitConcerns: ["어깨선·소매 길이", "가슴·상체 여유"],
     budgetCodes: [3, 4],
     budgetApproach: "품질·소재 우선",
-    tpos: ["발표·면접", "데이트·소개팅", "여행·사진"],
+    tpos: ["presentation_interview", "date", "travel"],
     coachingType: "group",
     tagline: "단정한 시밀러룩",
     description:

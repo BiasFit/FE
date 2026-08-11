@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import type { AppState } from "../../app/appState";
 import type { DiagnosisForm, MatchPriority } from "../../app/types";
 import { useAppState } from "../../app/AppStateProvider";
-import { budgetRangeLabel } from "../../data/options";
+import { budgetRangeLabel, tpoLabel } from "../../data/options";
 import { influencers } from "../../data/influencers";
 import type {
   MatchExplanation,
@@ -194,7 +194,7 @@ export function DnaScreen() {
             <div className="criterion"><div><strong>{state.personal.bodyType}</strong><p>{state.personal.fitConcerns.join(" · ")}</p></div></div>
             <div className="criterion"><div><strong>{state.personal.preferredStyle} / {state.personal.avoidedStyle}</strong><p>선호 / 피하고 싶은 스타일</p></div></div>
             <div className="criterion"><div><strong>{budgetRangeLabel(state.personal.budgetMinCode, state.personal.budgetMaxCode)}</strong><p>{state.personal.budgetApproach}</p></div></div>
-            <div className="criterion"><div><strong>{state.personal.tpo}</strong><p>지금 필요한 TPO</p></div></div>
+            <div className="criterion"><div><strong>{tpoLabel(state.personal.tpo)}</strong><p>지금 필요한 TPO</p></div></div>
           </div>
         </>
       ) : (
@@ -319,8 +319,8 @@ export function Top3Screen() {
         <div className="detail-content">
           <p className="helper">
             {state.mode === "personal"
-              ? `${state.personal.preferredStyle} · ${state.personal.bodyType} · ${state.personal.fitConcerns.join("/")} · ${state.personal.tpo}`
-              : `P4 ${state.group.members.A.preferredStyle} + P5 ${state.group.members.B.preferredStyle} · ${state.group.tpo}`}
+              ? `${state.personal.preferredStyle} · ${state.personal.bodyType} · ${state.personal.fitConcerns.join("/")} · ${tpoLabel(state.personal.tpo)}`
+              : `P4 ${state.group.members.A.preferredStyle} + P5 ${state.group.members.B.preferredStyle} · ${tpoLabel(state.group.tpo)}`}
           </p>
         </div>
       </details>
