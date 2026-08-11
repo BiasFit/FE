@@ -9,11 +9,40 @@ export interface StructuredOpenAiRequest {
   schema: JsonSchema;
   systemPrompt: string;
   input: unknown;
+  /** 직전 응답이 거절된 이유. 재시도할 때만 채워 모델이 같은 실수를 반복하지 않게 한다. */
+  repairNote?: string;
 }
 
 export type StructuredOpenAiCaller = (
   request: StructuredOpenAiRequest,
 ) => Promise<unknown>;
+
+/**
+ * 검증에 실패하면 거절 사유를 프롬프트에 실어 다시 호출한다.
+ * 같은 프롬프트를 그대로 반복하면 모델이 같은 실수를 되풀이하기 때문이다.
+ */
+export async function generateWithRepair<T>(
+  generate: StructuredOpenAiCaller,
+  request: StructuredOpenAiRequest,
+  validate: (result: unknown) => T,
+  options: { label: string; attempts?: number },
+): Promise<T> {
+  const attempts = options.attempts ?? 3;
+  let repairNote: string | undefined;
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return validate(await generate({ ...request, repairNote }));
+    } catch (error) {
+      lastError = error;
+      repairNote = error instanceof Error ? error.message : String(error);
+      console.log(
+        `[BiasFit ${options.label}] attempt ${attempt}/${attempts} rejected: ${repairNote}`,
+      );
+    }
+  }
+  throw lastError;
+}
 
 function requiredEnvironment(name: "OPENAI_API_KEY" | "OPENAI_MODEL") {
   const value =
@@ -53,6 +82,7 @@ export const callOpenAiStructured: StructuredOpenAiCaller = async ({
   schema,
   systemPrompt,
   input,
+  repairNote,
 }) => {
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
@@ -64,7 +94,12 @@ export const callOpenAiStructured: StructuredOpenAiCaller = async ({
       model: requiredEnvironment("OPENAI_MODEL"),
       store: false,
       input: [
-        { role: "system", content: systemPrompt },
+        {
+          role: "system",
+          content: repairNote
+            ? `${systemPrompt}\n\n직전 응답은 다음 이유로 거절됐다: ${repairNote}\n지적된 부분만 고쳐 규칙을 지키는 응답을 다시 작성하라.`
+            : systemPrompt,
+        },
         { role: "user", content: JSON.stringify(input) },
       ],
       text: {

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { MatchExplanationsRequest } from "../../src/domain/aiContracts";
 import { createMatchExplanations } from "./match-explanations";
 
@@ -34,20 +34,53 @@ const request: MatchExplanationsRequest = {
   ],
 };
 
+const validExplanation = {
+  influencerId: "stylemate-01",
+  summary: "두 구성원의 핏 고민을 함께 다룰 수 있어 추천했어요.",
+  evidenceRefs: ["A.fit.concern.0", "B.fit.concern.0"],
+};
+
 describe("createMatchExplanations", () => {
   it("accepts explanations grounded in the fixed candidate evidence", async () => {
     const result = await createMatchExplanations(request, async () => ({
-      explanations: [
-        {
-          influencerId: "stylemate-01",
-          strongestCategory: "fit",
-          summary: "두 구성원의 핏 고민을 함께 다룰 수 있어 추천했어요.",
-          evidenceRefs: ["A.fit.concern.0", "B.fit.concern.0"],
-        },
-      ],
+      explanations: [validExplanation],
     }));
 
     expect(result.explanations[0].influencerId).toBe("stylemate-01");
+  });
+
+  it("fills the strongest category from the rule engine, not the model", async () => {
+    const result = await createMatchExplanations(request, async () => ({
+      // 모델이 계산값과 다른 항목을 보내도 규칙 엔진 값으로 덮어쓴다.
+      explanations: [{ ...validExplanation, strongestCategory: "style" }],
+    }));
+
+    expect(result.explanations[0].strongestCategory).toBe("fit");
+  });
+
+  it("breaks a tie with the fixed style > fit > budget > tpo order", async () => {
+    const tied: MatchExplanationsRequest = {
+      ...request,
+      rankedInfluencers: [
+        {
+          ...request.rankedInfluencers[0],
+          breakdown: {
+            style: 28,
+            fit: 28,
+            budget: 14,
+            tpo: 20,
+            rawTotal: 90,
+            matchScore: 91,
+          },
+        },
+      ],
+    };
+
+    const result = await createMatchExplanations(tied, async () => ({
+      explanations: [validExplanation],
+    }));
+
+    expect(result.explanations[0].strongestCategory).toBe("style");
   });
 
   it("rejects a candidate or evidence invented by OpenAI", async () => {
@@ -56,7 +89,6 @@ describe("createMatchExplanations", () => {
         explanations: [
           {
             influencerId: "not-in-top-three",
-            strongestCategory: "fit",
             summary: "근거 없는 추천",
             evidenceRefs: ["invented.evidence"],
           },
@@ -65,18 +97,27 @@ describe("createMatchExplanations", () => {
     ).rejects.toThrow("fixed TOP 3");
   });
 
-  it("rejects an explanation that changes the calculated strongest category", async () => {
+  it("rejects evidence outside the calculated match result", async () => {
     await expect(
       createMatchExplanations(request, async () => ({
-        explanations: [
-          {
-            influencerId: "stylemate-01",
-            strongestCategory: "style",
-            summary: "계산 결과와 다른 항목을 가장 강한 이유로 설명해요.",
-            evidenceRefs: ["A.style.0", "B.style.0"],
-          },
-        ],
+        explanations: [{ ...validExplanation, evidenceRefs: ["A.budget.range"] }],
       })),
-    ).rejects.toThrow("strongest match category");
+    ).rejects.toThrow("evidence outside the calculated match result");
+  });
+
+  it("retries with the rejection reason and accepts a repaired response", async () => {
+    const generate = vi
+      .fn()
+      .mockResolvedValueOnce({
+        explanations: [{ ...validExplanation, evidenceRefs: ["A.fit.concern.0"] }],
+      })
+      .mockResolvedValueOnce({ explanations: [validExplanation] });
+
+    const result = await createMatchExplanations(request, generate);
+
+    expect(result.explanations[0].summary).toBe(validExplanation.summary);
+    expect(generate).toHaveBeenCalledTimes(2);
+    expect(generate.mock.calls[0][0].repairNote).toBeUndefined();
+    expect(generate.mock.calls[1][0].repairNote).toContain("A and B");
   });
 });

@@ -20,10 +20,10 @@ describe("createPriorityOptions", () => {
     const result = await createPriorityOptions(request, async () => ({
       question: "이번 스타일링에서 가장 중요하게 생각하는 기준을 골라주세요.",
       options: [
-        { code: "style_first", label: "스타일", evidenceRefs: ["preferredStyle"] },
-        { code: "fit_first", label: "핏", evidenceRefs: ["fitConcerns"] },
-        { code: "budget_first", label: "예산", evidenceRefs: ["budgetRange"] },
-        { code: "tpo_first", label: "TPO", evidenceRefs: ["tpo"] },
+        { code: "style_first", label: "좋아하는 분위기를 가장 먼저 지키고 싶어요", evidenceRefs: ["preferredStyle"] },
+        { code: "fit_first", label: "편안한 착용감과 기장 균형이 중요해요", evidenceRefs: ["fitConcerns"] },
+        { code: "budget_first", label: "정한 예산 안에서 활용도가 높으면 좋겠어요", evidenceRefs: ["budgetRange"] },
+        { code: "tpo_first", label: "개강 행사에 어울리는 인상이 중요해요", evidenceRefs: ["tpo"] },
       ],
     }));
 
@@ -53,11 +53,24 @@ describe("createPriorityOptions", () => {
     await expect(createPriorityOptions(groupRequest, async () => ({
       question: "이번 스타일링에서 가장 중요하게 생각하는 기준을 골라주세요.",
       options: [
-        { code: "style_first", label: "스타일", evidenceRefs: ["A.invented"] },
-        { code: "fit_first", label: "핏", evidenceRefs: ["A.fitConcerns"] },
-        { code: "budget_first", label: "예산", evidenceRefs: ["A.budgetRange"] },
-        { code: "tpo_first", label: "TPO", evidenceRefs: ["group.tpo"] },
+        { code: "style_first", label: "두 사람의 선호 무드를 지키고 싶어요", evidenceRefs: ["A.invented"] },
+        { code: "fit_first", label: "각자의 핏 고민을 우선하고 싶어요.", evidenceRefs: ["A.fitConcerns"] },
+        { code: "budget_first", label: "두 사람의 예산을 먼저 맞추고 싶어요.", evidenceRefs: ["A.budgetRange"] },
+        { code: "tpo_first", label: "여행 상황에 가장 어울리게 입고 싶어요.", evidenceRefs: ["group.tpo"] },
       ],
     }))).rejects.toThrow("unsupported priority evidence");
+  });
+
+  it("rejects labels that only name the category instead of the user's own words", async () => {
+    const request: PriorityOptionsRequest = { ...groupRequest, mode: "personal" };
+    await expect(createPriorityOptions(request, async () => ({
+      question: "이번 스타일링에서 가장 중요하게 생각하는 기준을 골라주세요.",
+      options: [
+        { code: "style_first", label: "스타일", evidenceRefs: ["preferredStyle"] },
+        { code: "fit_first", label: "핏", evidenceRefs: ["fitConcerns"] },
+        { code: "budget_first", label: "예산", evidenceRefs: ["budgetRange"] },
+        { code: "tpo_first", label: "TPO", evidenceRefs: ["tpo"] },
+      ],
+    }))).rejects.toThrow("한 문장이어야 합니다");
   });
 });

@@ -276,6 +276,23 @@ export function validateStyleDnaExplanation(
   throw new Error("Style DNA response mode is invalid");
 }
 
+const MATCH_CATEGORY_ORDER: MatchExplanation["strongestCategory"][] = [
+  "style",
+  "fit",
+  "budget",
+  "tpo",
+];
+
+/**
+ * 후보의 최고 적합 항목을 규칙 엔진 점수만으로 결정한다.
+ * 동점이면 스타일 > 핏 > 예산 > TPO 순서로 고정한다.
+ */
+export function strongestMatchCategory(breakdown: MatchBreakdown) {
+  return MATCH_CATEGORY_ORDER.reduce((strongest, category) =>
+    breakdown[category] > breakdown[strongest] ? category : strongest,
+  );
+}
+
 export function validateMatchExplanations(
   value: unknown,
   request: MatchExplanationsRequest,
@@ -302,14 +319,13 @@ export function validateMatchExplanations(
     ranks.add(candidate.rank);
   }
   const seen = new Set<string>();
+  const explanations: MatchExplanation[] = [];
   for (const explanation of value.explanations) {
     if (
       !isRecord(explanation) ||
       typeof explanation.influencerId !== "string" ||
-      !["style", "fit", "budget", "tpo"].includes(
-        explanation.strongestCategory as string,
-      ) ||
       typeof explanation.summary !== "string" ||
+      !explanation.summary.trim() ||
       !isStringArray(explanation.evidenceRefs) ||
       explanation.evidenceRefs.length === 0
     ) {
@@ -327,15 +343,6 @@ export function validateMatchExplanations(
     if (!explanation.evidenceRefs.every((ref) => allowedRefs.has(ref))) {
       throw new Error("AI used evidence outside the calculated match result");
     }
-    const strongestScore = Math.max(
-      candidate.breakdown.style,
-      candidate.breakdown.fit,
-      candidate.breakdown.budget,
-      candidate.breakdown.tpo,
-    );
-    if (candidate.breakdown[explanation.strongestCategory as keyof MatchBreakdown] !== strongestScore) {
-      throw new Error("AI changed the strongest match category");
-    }
     if (request.mode === "group") {
       const hasA = explanation.evidenceRefs.some((ref) => ref.startsWith("A."));
       const hasB = explanation.evidenceRefs.some((ref) => ref.startsWith("B."));
@@ -344,8 +351,15 @@ export function validateMatchExplanations(
       }
     }
     seen.add(explanation.influencerId);
+    // 최고 적합 항목은 규칙 엔진 계산값만 사용하고, AI 응답의 값은 신뢰하지 않는다.
+    explanations.push({
+      influencerId: explanation.influencerId,
+      strongestCategory: strongestMatchCategory(candidate.breakdown),
+      summary: explanation.summary,
+      evidenceRefs: explanation.evidenceRefs,
+    });
   }
-  return value as unknown as MatchExplanationsResponse;
+  return { explanations };
 }
 
 export const priorityOptionsSchema = {
@@ -362,7 +376,11 @@ export const priorityOptionsSchema = {
         additionalProperties: false,
         properties: {
           code: { type: "string", enum: MATCH_PRIORITIES },
-          label: { type: "string" },
+          label: {
+            type: "string",
+            description:
+              "사용자가 1인칭으로 말하듯 쓴 한 문장. 항목 이름만 적지 말고 이번 입력값을 반영한다. 예: '좋아하는 빈티지한 분위기를 가장 먼저 지키고 싶어요'",
+          },
           evidenceRefs: { type: "array", items: { type: "string" }, minItems: 1 },
         },
         required: ["code", "label", "evidenceRefs"],
@@ -453,19 +471,10 @@ export const matchExplanationsSchema = {
         additionalProperties: false,
         properties: {
           influencerId: { type: "string" },
-          strongestCategory: {
-            type: "string",
-            enum: ["style", "fit", "budget", "tpo"],
-          },
           summary: { type: "string" },
           evidenceRefs: { type: "array", items: { type: "string" }, minItems: 1 },
         },
-        required: [
-          "influencerId",
-          "strongestCategory",
-          "summary",
-          "evidenceRefs",
-        ],
+        required: ["influencerId", "summary", "evidenceRefs"],
       },
     },
   },

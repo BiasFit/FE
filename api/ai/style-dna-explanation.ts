@@ -9,6 +9,7 @@ import {
 } from "../../src/domain/aiContracts";
 import {
   callOpenAiStructured,
+  generateWithRepair,
   type StructuredOpenAiCaller,
 } from "../_lib/openai";
 import {
@@ -38,6 +39,23 @@ function evidenceCatalog(input: StyleDnaExplanationRequest) {
   });
 }
 
+/**
+ * 사용자가 실제로 고른 단어만 모은다.
+ * 모델이 고르지도 않은 아이템·소재·색상을 선호한다고 단정하는 것을 막기 위한 허용 어휘다.
+ */
+function selectedVocabulary(input: StyleDnaExplanationRequest) {
+  return input.members.map((member) => ({
+    memberId: member.memberId,
+    preferredStyle: member.form.preferredStyle,
+    keywords: member.form.keywords,
+    designElements: member.form.designElements,
+    preferredItems: member.form.preferredItems,
+    fitConcerns: member.form.fitConcerns,
+    budgetApproach: member.form.budgetApproach,
+    tpo: member.form.tpo,
+  }));
+}
+
 export function combinationMetricText(compatibility: {
   styleSimilarity: number;
   budgetCompatibility: number;
@@ -58,28 +76,11 @@ function responseEvidence(response: StyleDnaExplanationResponse) {
   ];
 }
 
-export async function createStyleDnaExplanation(
+function validateResult(
   input: StyleDnaExplanationRequest,
-  generate: StructuredOpenAiCaller = callOpenAiStructured,
-): Promise<StyleDnaExplanationResponse> {
-  const allowedEvidenceRefs = evidenceCatalog(input);
-  const result = await generate({
-    schemaName: `biasfit_${input.mode}_style_dna`,
-    schema:
-      input.mode === "personal" ? personalStyleDnaSchema : groupStyleDnaSchema,
-    systemPrompt: [
-      "BiasFit Style DNA 계산 결과를 사용자가 이해하기 쉬운 한국어로 설명한다.",
-      "점수, 예산, 우선순위와 그룹 조합 수치를 절대 변경하지 않는다.",
-      "개인 요약은 15~35자, 그룹 요약은 20~45자이며 마침표 없이 '스타일'로 끝낸다.",
-      "매칭 중요 포인트는 2~3개를 반환한다.",
-      "피하고 싶은 스타일을 설명 근거로 직접 언급하지 않는다.",
-      "외모·몸매·등급·교정 표현을 사용하지 않는다.",
-      "요약문에도 실제 근거를 summaryEvidenceRefs로 반드시 반환하고, 각 문장은 제공된 allowedEvidenceRefs만 사용한다.",
-      "그룹 조합 설명(description)에는 점수 수치를 쓰지 않고, 두 사람이 함께 코디할 때의 조율 방향만 1~2문장으로 쓴다. 수치 문구는 서버가 앞에 붙인다.",
-      "낮은 조합도를 실패·부적합으로 표현하지 않고, 같은 스타일로 맞춰 입으라고 하지 않는다.",
-    ].join(" "),
-    input: { ...input, allowedEvidenceRefs },
-  });
+  allowedEvidenceRefs: string[],
+  result: unknown,
+): StyleDnaExplanationResponse {
   const validated = validateStyleDnaExplanation(result);
   if (validated.mode !== input.mode) {
     throw new Error("OpenAI가 진단 모드를 변경했습니다.");
@@ -116,18 +117,52 @@ export async function createStyleDnaExplanation(
   return validated;
 }
 
+export async function createStyleDnaExplanation(
+  input: StyleDnaExplanationRequest,
+  generate: StructuredOpenAiCaller = callOpenAiStructured,
+): Promise<StyleDnaExplanationResponse> {
+  const allowedEvidenceRefs = evidenceCatalog(input);
+  return generateWithRepair(
+    generate,
+    {
+      schemaName: `biasfit_${input.mode}_style_dna`,
+      schema:
+        input.mode === "personal" ? personalStyleDnaSchema : groupStyleDnaSchema,
+      systemPrompt: [
+        "BiasFit Style DNA 계산 결과를 사용자가 이해하기 쉬운 한국어로 설명한다.",
+        "점수, 예산, 우선순위와 그룹 조합 수치를 절대 변경하지 않는다.",
+        "요약은 마침표 없이 '스타일'로 끝내는 명사형 한 문장으로 쓴다.",
+        "개인 요약은 공백 포함 15~35자다. 예: '자연스러운 일상감에 부드러운 분위기를 더한 스타일'(26자), '단정한 인상과 활용도를 함께 고려한 스타일'(22자), '편안한 착용감과 균형 잡힌 비율을 우선한 스타일'(25자).",
+        "그룹 요약은 공백 포함 20~45자이며 A와 B의 스타일 신호가 각각 드러나야 한다. 예: '자연스러운 A와 부드러운 B를 함께 살린 스타일'(25자).",
+        "글자 수를 세어 범위 안에 들어오는지 확인한 뒤 답한다.",
+        "selectedVocabulary는 사용자가 실제로 고른 값이다. 아이템·소재·색상·실루엣을 말할 때는 이 목록에 있는 단어의 의미 범위 안에서만 쓰고, 목록에 없는 옷·소재·색상을 선호한다고 단정하지 않는다.",
+        "매칭 중요 포인트는 2~3개를 반환하고, 각 문장은 '~해요'체로 인플루언서가 무엇을 잘 다뤄야 하는지를 쓴다.",
+        "'피하는 것이 좋습니다', '입지 마세요'처럼 특정 옷을 피하라고 권하는 표현을 쓰지 않는다.",
+        "피하고 싶은 스타일이나 피하고 싶은 요소를 설명 근거로 직접 언급하지 않는다.",
+        "외모·몸매·등급·교정 표현을 사용하지 않는다.",
+        "요약문에도 실제 근거를 summaryEvidenceRefs로 반드시 반환하고, 각 문장은 제공된 allowedEvidenceRefs만 사용한다.",
+        "그룹 조합 설명(description)에는 점수 수치를 쓰지 않고, 두 사람이 함께 코디할 때의 조율 방향만 1~2문장으로 쓴다. 수치 문구는 서버가 앞에 붙인다.",
+        "낮은 조합도를 실패·부적합으로 표현하지 않고, 같은 스타일로 맞춰 입으라고 하지 않는다.",
+      ].join(" "),
+      input: {
+        ...input,
+        allowedEvidenceRefs,
+        selectedVocabulary: selectedVocabulary(input),
+      },
+    },
+    (result) => validateResult(input, allowedEvidenceRefs, result),
+    { label: "AI2" },
+  );
+}
+
 export default async function handler(request: ApiRequest, response: ApiResponse) {
   if (!requirePost(request, response)) return;
   try {
-    const input = readJsonBody(request) as StyleDnaExplanationRequest;
-    let result: StyleDnaExplanationResponse;
-    try {
-      result = await createStyleDnaExplanation(input);
-    } catch (firstError) {
-      console.log("[BiasFit AI2] retrying Style DNA explanation", firstError);
-      result = await createStyleDnaExplanation(input);
-    }
-    response.status(200).json(result);
+    response.status(200).json(
+      await createStyleDnaExplanation(
+        readJsonBody(request) as StyleDnaExplanationRequest,
+      ),
+    );
   } catch (error) {
     console.error("[BiasFit AI2] style-dna-explanation failed", error);
     sendApiError(response, error);
