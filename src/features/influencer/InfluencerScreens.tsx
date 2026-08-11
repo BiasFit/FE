@@ -259,7 +259,16 @@ const assignedRequests = [
 
 export function InfluencerRequestsScreen() {
   const navigate = useNavigate();
-  const { dispatch } = useAppState();
+  const { state, dispatch } = useAppState();
+  const activeRequests = state.activeRequestId
+    ? [{
+        id: state.activeRequestId,
+        mode: state.mode === "group" ? "2인 그룹" : "개인",
+        tpo: state.mode === "group" ? state.group.tpo : state.personal.tpo,
+        detail: "방금 전 생성된 부탁해요 카드",
+        done: false,
+      }]
+    : [];
   return (
     <FlowShell
       flow="influencer"
@@ -275,7 +284,7 @@ export function InfluencerRequestsScreen() {
       }
     >
       <div className="influencer-list">
-        {assignedRequests.map((request) => (
+        {activeRequests.map((request) => (
           <button
             className="request-row"
             type="button"
@@ -311,7 +320,7 @@ function isGroupDraft(draft: OutfitDraft): draft is GroupOutfitDraft {
 export function InfluencerDetailScreen() {
   const navigate = useNavigate();
   const { state } = useAppState();
-  const group = state.activeRequestId.startsWith("G");
+  const group = state.mode === "group";
   const initial = useMemo(() => {
     const saved = loadDraft("stylemate-01", state.activeRequestId);
     if (saved && isGroupDraft(saved) === group) return saved;

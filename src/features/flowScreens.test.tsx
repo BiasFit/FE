@@ -89,6 +89,16 @@ beforeEach(() => {
 });
 
 describe("user feature screens", () => {
+  it("does not calculate results or call APIs without a selected priority", async () => {
+    window.location.hash = "#/user/top3";
+    render(<App />);
+
+    expect(
+      await screen.findByText("선택값 없이 추천 순위나 점수를 계산하지 않습니다."),
+    ).toBeInTheDocument();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it("renders the body and fit input with the P1 defaults", async () => {
     window.location.hash = "#/user/body";
     render(<App />);
@@ -102,18 +112,37 @@ describe("user feature screens", () => {
   });
 
   it("renders a calculated Style DNA instead of fixed display-only data", async () => {
-    window.location.hash = "#/user/dna";
+    window.location.hash = "#/user/tpo";
     render(<App />);
+
+    fireEvent.click(
+      await screen.findByRole("radio", {
+        name: "좋아하는 분위기를 먼저 지키고 싶어요",
+      }),
+    );
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Style DNA 결과 보기/ }),
+    );
 
     expect(
       await screen.findByText("부드러운 일상감과 비율을 함께 고려한 스타일"),
     ).toBeInTheDocument();
-    expect(screen.getByText("75", { selector: ".score-value" })).toBeVisible();
+    expect(screen.getByText("67", { selector: ".score-value" })).toBeVisible();
   });
 
   it("renders three ranked stylemates with matching reasons", async () => {
-    window.location.hash = "#/user/top3";
+    window.location.hash = "#/user/tpo";
     render(<App />);
+
+    fireEvent.click(
+      await screen.findByRole("radio", {
+        name: "좋아하는 분위기를 먼저 지키고 싶어요",
+      }),
+    );
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Style DNA 결과 보기/ }),
+    );
+    fireEvent.click(await screen.findByRole("button", { name: /TOP 3/ }));
 
     expect(
       await screen.findByRole("heading", {
@@ -160,7 +189,10 @@ describe("user feature screens", () => {
     const request = await screen.findByRole("textbox", {
       name: /부탁해요 카드/,
     });
-    expect((request as HTMLTextAreaElement).value).toContain("개강 첫 주");
+    // 부탁해요 카드는 예시 문구 없이 비어 있고, 사용자가 직접 작성한다.
+    expect((request as HTMLTextAreaElement).value).toBe("");
+    fireEvent.change(request, { target: { value: "개강 첫 주에 입을 옷이 필요해요." } });
+    expect((request as HTMLTextAreaElement).value).toBe("개강 첫 주에 입을 옷이 필요해요.");
     unmount();
 
     window.location.hash = "#/user/outfit";
@@ -179,7 +211,8 @@ describe("influencer feature screens", () => {
     expect(
       await screen.findByRole("heading", { name: "내 배정 요청" }),
     ).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /요청/ })).toHaveLength(3);
+    // 사용자가 부탁해요 카드를 보내기 전에는 배정된 요청이 없다.
+    expect(screen.queryAllByRole("button", { name: /요청/ })).toHaveLength(0);
   });
 
   it("shows Style DNA, request context and outfit fields on one page", async () => {

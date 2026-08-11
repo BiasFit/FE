@@ -25,6 +25,7 @@ export function StyleDnaExplanation({
       })
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
+        console.log("[BiasFit AI2] Style DNA 설명 호출 실패", error);
         setStatus("error");
       });
     return () => controller.abort();

@@ -9,7 +9,7 @@ const request: MatchExplanationsRequest = {
     {
       influencerId: "stylemate-01",
       rank: 1,
-      matchScore: 88,
+      matchScore: 91,
       breakdown: {
         style: 20,
         fit: 28,
@@ -63,5 +63,20 @@ describe("createMatchExplanations", () => {
         ],
       })),
     ).rejects.toThrow("fixed TOP 3");
+  });
+
+  it("rejects an explanation that changes the calculated strongest category", async () => {
+    await expect(
+      createMatchExplanations(request, async () => ({
+        explanations: [
+          {
+            influencerId: "stylemate-01",
+            strongestCategory: "style",
+            summary: "계산 결과와 다른 항목을 가장 강한 이유로 설명해요.",
+            evidenceRefs: ["A.style.0", "B.style.0"],
+          },
+        ],
+      })),
+    ).rejects.toThrow("strongest match category");
   });
 });

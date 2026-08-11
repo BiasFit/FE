@@ -58,7 +58,8 @@ function personalInput(
 }
 
 function rankInput(state: AppState): RankMatchInput {
-  const priority = state.matchPriority ?? "style_first";
+  const priority = state.matchPriority;
+  if (!priority) throw new Error("매칭 우선순위 선택이 필요합니다.");
   if (state.mode === "personal") return personalInput(state.personal, priority);
   const members = (["A", "B"] as const).map((member) => {
     const { mode: _mode, priority: _priority, tpo: _tpo, ...input } =
@@ -77,7 +78,8 @@ function styleDnaRequest(
   state: AppState,
   compatibility: ReturnType<typeof calculateGroupCompatibility>,
 ): StyleDnaExplanationRequest {
-  const priority = state.matchPriority ?? "style_first";
+  const priority = state.matchPriority;
+  if (!priority) throw new Error("매칭 우선순위 선택이 필요합니다.");
   if (state.mode === "personal") {
     return {
       mode: "personal",
@@ -147,6 +149,17 @@ function ScoreBoard({ scores }: { scores: StyleScores }) {
 export function DnaScreen() {
   const navigate = useNavigate();
   const { state } = useAppState();
+  if (!state.matchPriority) {
+    return (
+      <FlowShell
+        step={3}
+        eyebrow="MATCH PRIORITY REQUIRED"
+        title={<>매칭 우선순위를<br />먼저 선택해 주세요</>}
+        description="Style DNA와 TOP 3는 사용자가 선택한 우선순위로만 계산합니다."
+        actions={<button className="btn-primary" type="button" onClick={() => navigate("/user/tpo")}>우선순위 선택으로 돌아가기</button>}
+      ><div /></FlowShell>
+    );
+  }
   const personalScores = scoresFor(state.personal);
   const groupA = scoresFor(state.group.members.A);
   const groupB = scoresFor(state.group.members.B);
@@ -221,7 +234,10 @@ function explanationRequest(
 export function Top3Screen() {
   const navigate = useNavigate();
   const { state, dispatch } = useAppState();
-  const input = useMemo(() => rankInput(state), [state]);
+  const input = useMemo(
+    () => (state.matchPriority ? rankInput(state) : null),
+    [state],
+  );
   const inputKey = JSON.stringify(input);
   const [ranked, setRanked] = useState<RankedInfluencer[]>([]);
   const [rankStatus, setRankStatus] = useState<"loading" | "success" | "error">("loading");
@@ -229,10 +245,11 @@ export function Top3Screen() {
   const [reasons, setReasons] = useState<Record<string, MatchExplanation>>({});
   const [reasonStatus, setReasonStatus] = useState<"loading" | "success" | "error">("loading");
   const [reasonRetry, setReasonRetry] = useState(0);
-  const priority = input.priority;
-  const weights = MATCH_PRIORITY_WEIGHTS[state.mode][priority];
+  const priority = input?.priority;
+  const weights = priority ? MATCH_PRIORITY_WEIGHTS[state.mode][priority] : null;
 
   useEffect(() => {
+    if (!input) return;
     const controller = new AbortController();
     setRankStatus("loading");
     setRanked([]);
@@ -250,11 +267,11 @@ export function Top3Screen() {
 
   const rankedKey = JSON.stringify(ranked);
   useEffect(() => {
-    if (ranked.length === 0) return;
+    if (!input || ranked.length === 0) return;
     const controller = new AbortController();
     setReasonStatus("loading");
     void getMatchExplanations(
-      explanationRequest(state.mode, priority, ranked),
+      explanationRequest(state.mode, input.priority, ranked),
       controller.signal,
     )
       .then(({ explanations }) => {
@@ -265,10 +282,23 @@ export function Top3Screen() {
       })
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
+        console.log("[BiasFit AI4] 추천 근거 호출 실패", error);
         setReasonStatus("error");
       });
     return () => controller.abort();
   }, [rankedKey, reasonRetry]);
+
+  if (!input || !priority || !weights) {
+    return (
+      <FlowShell
+        step={4}
+        eyebrow="MATCH PRIORITY REQUIRED"
+        title={<>매칭 우선순위를<br />먼저 선택해 주세요.</>}
+        description="선택값 없이 추천 순위나 점수를 계산하지 않습니다."
+        actions={<button className="btn-primary" type="button" onClick={() => navigate("/user/tpo")}>우선순위 선택으로 돌아가기</button>}
+      ><div /></FlowShell>
+    );
+  }
 
   return (
     <FlowShell
@@ -280,7 +310,7 @@ export function Top3Screen() {
       actions={
         <>
           <button className="btn-secondary" type="button" onClick={() => navigate("/user/body")}>조건 수정</button>
-          <button className="btn-primary" type="button" disabled={ranked.length === 0} onClick={() => navigate("/user/match")}>이 스타일메이트에게 요청하기 <span aria-hidden="true">→</span></button>
+          <button className="btn-primary" type="button" disabled={ranked.length === 0 || !state.selectedInfluencerId} onClick={() => navigate("/user/match")}>이 스타일메이트에게 요청하기 <span aria-hidden="true">→</span></button>
         </>
       }
     >

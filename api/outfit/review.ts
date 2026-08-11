@@ -36,7 +36,8 @@ export async function reviewOutfitCard(
   ]);
   const reviewStatus = linkChecks.some((link) => link.status === "failed")
     ? "blocked"
-    : languageReview.issues.length > 0
+    : languageReview.issues.length > 0 ||
+        linkChecks.some((link) => link.status === "needs_revision")
       ? "needs_revision"
       : linkChecks.some((link) => link.status === "operations_review")
         ? "operations_review"
