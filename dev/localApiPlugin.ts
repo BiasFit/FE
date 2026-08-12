@@ -5,6 +5,7 @@ declare const process: { env: Record<string, string | undefined> };
 interface LocalIncomingMessage {
   method?: string;
   url?: string;
+  headers?: Record<string, string | string[] | undefined>;
   setEncoding(encoding: string): void;
   on(event: "data", listener: (chunk: string) => void): this;
   on(event: "end", listener: () => void): this;
@@ -20,6 +21,12 @@ interface LocalServerResponse {
 interface LocalApiRequest {
   method?: string;
   body?: unknown;
+  /**
+   * Vercel Functions는 헤더를 그대로 넘겨준다. 로컬에서도 같아야
+   * `Authorization: Bearer …`가 핸들러에 도달한다.
+   * 이걸 빠뜨리면 로컬에서만 인증이 전부 401이 난다.
+   */
+  headers?: Record<string, string | string[] | undefined>;
 }
 
 interface LocalApiResponse {
@@ -37,6 +44,8 @@ export type LocalApiRoutes = Record<string, LocalApiHandler>;
 type NextFunction = (error?: unknown) => void;
 
 const biasFitApiModules = {
+  "/api/accounts/me": "/api/accounts/me.ts",
+  "/api/accounts/upsert": "/api/accounts/upsert.ts",
   "/api/ai/match-explanations": "/api/ai/match-explanations.ts",
   "/api/ai/priority-options": "/api/ai/priority-options.ts",
   "/api/ai/style-dna-explanation": "/api/ai/style-dna-explanation.ts",
@@ -90,6 +99,7 @@ export function createLocalApiMiddleware(routes: LocalApiRoutes) {
       await handler(
         {
           method: request.method,
+          headers: request.headers ?? {},
           body: await readRequestBody(request),
         },
         createApiResponse(response),

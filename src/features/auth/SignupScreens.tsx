@@ -7,6 +7,7 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 import type { AccountRole, SignupForm } from "../../app/types";
+import { useAuth } from "../../app/AuthProvider";
 
 type RequiredField =
   | "loginId"
@@ -154,8 +155,11 @@ export function SignupRoleScreen() {
 
 function SignupFormScreen({ role }: { role: AccountRole }) {
   const navigate = useNavigate();
+  const { signUp } = useAuth();
   const [form, setForm] = useState<SignupForm>(emptyForm);
   const [errors, setErrors] = useState<SignupErrors>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const loginIdRef = useRef<HTMLInputElement>(null);
   const displayNameRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
@@ -223,7 +227,19 @@ function SignupFormScreen({ role }: { role: AccountRole }) {
       return;
     }
 
-    navigate(isInfluencer ? "/influencer/profile" : "/user/coaching");
+    setSubmitting(true);
+    setSubmitError("");
+    void signUp({
+      role,
+      loginId: form.loginId,
+      displayName: form.displayName,
+      password: form.password,
+    })
+      .then(() => navigate(isInfluencer ? "/influencer/profile" : "/user/coaching"))
+      .catch((error: unknown) => {
+        setSubmitError(error instanceof Error ? error.message : "가입하지 못했어요.");
+        setSubmitting(false);
+      });
   };
 
   return (
@@ -382,8 +398,13 @@ function SignupFormScreen({ role }: { role: AccountRole }) {
                 </label>
               </div>
 
-              <button className="btn-primary" type="submit">
-                {submitLabel}
+              {submitError ? (
+                <p className="error-copy" style={{ display: "block" }} aria-live="polite">
+                  {submitError}
+                </p>
+              ) : null}
+              <button className="btn-primary" type="submit" disabled={submitting}>
+                {submitting ? "가입하는 중…" : submitLabel}
               </button>
               <button
                 className="btn-ghost signup-login-link"

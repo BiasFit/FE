@@ -1,6 +1,8 @@
 export interface ApiRequest {
   method?: string;
   body?: unknown;
+  /** `Authorization: Bearer …`를 읽으려면 필요하다. 로컬 플러그인도 같은 모양으로 넘긴다. */
+  headers?: Record<string, string | string[] | undefined>;
 }
 
 export interface ApiResponse {

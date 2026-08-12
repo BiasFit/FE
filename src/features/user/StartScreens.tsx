@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppState } from "../../app/AppStateProvider";
+import { useAuth } from "../../app/AuthProvider";
 
 export function HomeScreen() {
   const navigate = useNavigate();
@@ -49,11 +50,26 @@ export function HomeScreen() {
 
 export function UserLoginScreen() {
   const navigate = useNavigate();
+  const { signIn } = useAuth();
   const [loggingIn, setLoggingIn] = useState(false);
+  const [loginId, setLoginId] = useState("p1");
+  const [password, setPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
+
   const login = () => {
     setLoggingIn(true);
-    window.setTimeout(() => navigate("/user/coaching"), 650);
+    setLoginError("");
+    void signIn({ loginId, password })
+      .then((account) => {
+        // 인플루언서 계정으로 사용자 흐름에 들어오는 것을 여기서도 막는다.
+        navigate(account.role === "influencer" ? "/influencer/requests" : "/user/coaching");
+      })
+      .catch((error: unknown) => {
+        setLoginError(error instanceof Error ? error.message : "로그인하지 못했어요.");
+        setLoggingIn(false);
+      });
   };
+
   return (
     <section className="screen is-active">
       <div className="service-layout">
@@ -79,11 +95,13 @@ export function UserLoginScreen() {
           <div className="work-body">
             <div className="login-card">
               <label className="field">
-                <span className="field-label">테스트 이메일</span>
+                <span className="field-label">테스트 아이디</span>
                 <input
                   className="text-input"
-                  type="email"
-                  defaultValue="p1@biasfit.test"
+                  type="text"
+                  autoComplete="username"
+                  value={loginId}
+                  onChange={(event) => setLoginId(event.target.value)}
                 />
               </label>
               <label className="field">
@@ -91,16 +109,23 @@ export function UserLoginScreen() {
                 <input
                   className="text-input"
                   type="password"
-                  defaultValue="biasfit01"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
                 />
               </label>
               <p className="helper">
                 실제 이메일이나 비밀번호는 입력하지 마세요.
               </p>
+              {loginError ? (
+                <p className="error-copy" style={{ display: "block" }} aria-live="polite">
+                  {loginError}
+                </p>
+              ) : null}
               <button
                 className="btn-primary"
                 type="button"
-                disabled={loggingIn}
+                disabled={loggingIn || !loginId.trim() || !password}
                 onClick={login}
               >
                 {loggingIn ? "로그인하는 중이에요." : "로그인"}
@@ -110,7 +135,20 @@ export function UserLoginScreen() {
                 className="btn-secondary"
                 type="button"
                 disabled={loggingIn}
-                onClick={login}
+                onClick={() => {
+                  // 인증 설정 전에는 네트워크 없이 통과하고, 설정 뒤에는 실제 p1 계정으로 로그인한다.
+                  setLoginId("p1");
+                  setLoggingIn(true);
+                  setLoginError("");
+                  void signIn({ loginId: "p1", password: password || "biasfit01" })
+                    .then(() => navigate("/user/coaching"))
+                    .catch((error: unknown) => {
+                      setLoginError(
+                        error instanceof Error ? error.message : "로그인하지 못했어요.",
+                      );
+                      setLoggingIn(false);
+                    });
+                }}
               >
                 P1 더미 계정으로 시작하기
               </button>

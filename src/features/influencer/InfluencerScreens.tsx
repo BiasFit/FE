@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import type { GroupOutfitDraft, OutfitFields as OutfitFieldValues, PersonalOutfitDraft } from "../../app/types";
 import type { OutfitReviewResponse } from "../../domain/aiContracts";
 import { useAppState } from "../../app/AppStateProvider";
+import { useAuth } from "../../app/AuthProvider";
 import {
   TPO_CODES,
   budgetApproaches,
@@ -47,6 +48,27 @@ const groupDefault: GroupOutfitDraft = {
 
 export function InfluencerLoginScreen() {
   const navigate = useNavigate();
+  const { signIn } = useAuth();
+  const [loginId, setLoginId] = useState("stylemate01");
+  const [password, setPassword] = useState("");
+  const [loggingIn, setLoggingIn] = useState(false);
+  const [loginError, setLoginError] = useState("");
+
+  const login = () => {
+    setLoggingIn(true);
+    setLoginError("");
+    void signIn({ loginId, password })
+      .then((account) => {
+        // 사용자 계정으로 인플루언서 워크스페이스에 들어오는 것을 막는다
+        // (INFLUENCER_SCREEN_SPEC.md 3.1 역할 판별 규칙).
+        navigate(account.role === "influencer" ? "/influencer/requests" : "/user/coaching");
+      })
+      .catch((error: unknown) => {
+        setLoginError(error instanceof Error ? error.message : "로그인하지 못했어요.");
+        setLoggingIn(false);
+      });
+  };
+
   return (
     <FlowShell
       flow="influencer"
@@ -63,19 +85,37 @@ export function InfluencerLoginScreen() {
     >
       <div className="login-card">
         <label className="field">
-          <span className="field-label">테스트 이메일</span>
-          <input className="text-input" type="email" defaultValue="stylemate01@biasfit.test" />
+          <span className="field-label">테스트 아이디</span>
+          <input
+            className="text-input"
+            type="text"
+            autoComplete="username"
+            value={loginId}
+            onChange={(event) => setLoginId(event.target.value)}
+          />
         </label>
         <label className="field">
           <span className="field-label">테스트 코드</span>
-          <input className="text-input" type="password" defaultValue="mate01" />
+          <input
+            className="text-input"
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+          />
         </label>
-        <button className="btn-primary" type="button" onClick={() => navigate("/influencer/requests")}>
-          로그인
-        </button>
-        <div className="divider">첫 로그인 테스트</div>
-        <button className="btn-secondary" type="button" onClick={() => navigate("/influencer/profile")}>
-          프로필 미완료 계정으로 시작
+        {loginError ? (
+          <p className="error-copy" style={{ display: "block" }} aria-live="polite">
+            {loginError}
+          </p>
+        ) : null}
+        <button
+          className="btn-primary"
+          type="button"
+          disabled={loggingIn || !loginId.trim() || !password}
+          onClick={login}
+        >
+          {loggingIn ? "로그인하는 중이에요." : "로그인"}
         </button>
         <button
           className="btn-ghost signup-login-link"
