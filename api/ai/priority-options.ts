@@ -5,6 +5,9 @@ import {
   type PriorityOptionsRequest,
   type PriorityOptionsResponse,
 } from "../../src/domain/aiContracts";
+import { tpoLabel } from "../../src/data/options";
+import { GROUNDING_RULES, assertGrounded } from "../_lib/grounding";
+import { SAFE_LANGUAGE_RULES, assertSafeLanguage } from "../_lib/safe-language";
 import {
   callOpenAiStructured,
   generateWithRepair,
@@ -21,6 +24,42 @@ import {
 const LABEL_MIN_LENGTH = 10;
 // 그룹 선택지는 A와 B의 조건을 함께 담아야 해서 개인보다 길어진다.
 const LABEL_MAX_LENGTH = 45;
+
+/** 이번 요청에서 근거로 삼을 수 있는 입력 폼. */
+function requestForms(input: PriorityOptionsRequest) {
+  return input.mode === "personal"
+    ? [input.personal]
+    : [input.group.members.A, input.group.members.B];
+}
+
+/** 사용자가 실제로 고른 값만 모아 모델에 내려 준다. */
+function selectedVocabulary(input: PriorityOptionsRequest) {
+  return requestForms(input).map((form) => ({
+    preferredStyle: form.preferredStyle,
+    keywords: form.keywords,
+    designElements: form.designElements,
+    preferredItems: form.preferredItems,
+    fitConcerns: form.fitConcerns,
+    budgetApproach: form.budgetApproach,
+    tpo: tpoLabel(form.tpo),
+  }));
+}
+
+/** 모델에게는 TPO 내부 코드 대신 사람이 읽는 라벨을 보낸다. */
+function withTpoLabels(input: PriorityOptionsRequest) {
+  return {
+    ...input,
+    personal: { ...input.personal, tpo: tpoLabel(input.personal.tpo) },
+    group: {
+      ...input.group,
+      tpo: tpoLabel(input.group.tpo),
+      members: {
+        A: { ...input.group.members.A, tpo: tpoLabel(input.group.members.A.tpo) },
+        B: { ...input.group.members.B, tpo: tpoLabel(input.group.members.B.tpo) },
+      },
+    },
+  };
+}
 
 function allowedEvidenceRefs(input: PriorityOptionsRequest) {
   const fields = [
@@ -95,6 +134,9 @@ function validateResult(
       `선택지 문구는 ${LABEL_MIN_LENGTH}~${LABEL_MAX_LENGTH}자의 한 문장이어야 합니다: ${shortLabels.join(", ")}`,
     );
   }
+  const labels = normalizedResult.options.map((option) => option.label);
+  assertSafeLanguage(labels);
+  assertGrounded(labels, requestForms(input));
   const refs = normalizedResult.options.flatMap((option) => option.evidenceRefs);
   const invalidRefs = refs.filter((ref) => !allowedRefs.has(ref));
   if (invalidRefs.length > 0) {
@@ -132,14 +174,26 @@ export async function createPriorityOptions(
         "예시 - style_first: '좋아하는 빈티지한 분위기를 가장 먼저 지키고 싶어요' / fit_first: '이동할 때 편안한 착용감과 전체 기장 균형이 중요해요' / budget_first: '정한 예산 안에서 활용도 높은 구성이 중요해요' / tpo_first: '발표·면접에 어울리는 단정하고 신뢰감 있는 인상이 중요해요'",
         "사용자 입력의 취향·핏 고민·예산·TPO만 사용하고 새로운 사실을 추정하지 않는다.",
         "사용자가 고르지 않은 색상·소재·아이템을 문장에 넣지 않는다.",
+        GROUNDING_RULES,
+        SAFE_LANGUAGE_RULES,
         "각 선택지의 evidenceRefs는 allowedEvidenceRefs 배열에 있는 문자열을 한 개 이상 그대로 사용한다. 다른 경로·라벨·추론값은 금지한다.",
-        "그룹이면 A와 B 두 사람의 기준을 모두 보존한다. style_first·fit_first·budget_first의 evidenceRefs에는 'A.'로 시작하는 값과 'B.'로 시작하는 값을 함께 넣고, label에도 두 사람의 조건이 함께 드러나게 쓴다.",
-        "그룹의 tpo_first는 공통 TPO이므로 'group.tpo'를 사용한다.",
-        "그룹 응답을 반환하기 전에 네 선택지의 evidenceRefs를 모두 합쳐 'A.'로 시작하는 값과 'B.'로 시작하는 값이 각각 최소 하나씩 있는지 확인한다. 없으면 다시 채운다.",
+        // 모드별 규칙을 섞어 주면 개인 요청에도 A/B·group 경로를 만들어 내므로 해당 모드의 규칙만 넣는다.
+        ...(input.mode === "group"
+          ? [
+              "A와 B 두 사람의 기준을 모두 보존한다. style_first·fit_first·budget_first의 evidenceRefs에는 'A.'로 시작하는 값과 'B.'로 시작하는 값을 함께 넣는다.",
+              // label에 A/B를 모두 넣으라고 하면 길이 제한과 충돌해 문장이 계속 길어진다. 두 사람 반영은 evidenceRefs로만 요구한다.
+              "label에는 'A와 B 모두'처럼 두 사람을 나열하지 않는다. 두 사람에게 공통으로 해당하는 기준을 한 문장으로 짧게 쓴다.",
+              "tpo_first는 공통 TPO이므로 'group.tpo'를 사용한다.",
+              "응답을 반환하기 전에 네 선택지의 evidenceRefs를 모두 합쳐 'A.'로 시작하는 값과 'B.'로 시작하는 값이 각각 최소 하나씩 있는지 확인한다. 없으면 다시 채운다.",
+            ]
+          : [
+              "개인 요청이므로 모든 evidenceRefs는 'personal.'로 시작한다. 'A.', 'B.', 'group.'으로 시작하는 값은 사용하지 않는다.",
+            ]),
       ].join(" "),
       input: {
-        ...input,
+        ...withTpoLabels(input),
         allowedEvidenceRefs: [...allowedRefs],
+        selectedVocabulary: selectedVocabulary(input),
       },
     },
     (result) => validateResult(input, allowedRefs, result),

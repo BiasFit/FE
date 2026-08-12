@@ -7,7 +7,7 @@ export const personaForms: Record<DiagnosisForm["personaId"], DiagnosisForm> = {
     preferredStyle: "로맨틱", avoidedStyle: "스트릿",
     keywords: ["부드러운", "심플한", "자연스러운"], designElements: ["리본", "레이스", "데님 소재감"],
     preferredItems: ["새틴 미디 스커트", "쉬폰 블라우스", "데님 팬츠"], avoidedElements: ["정장처럼 딱딱한 룩"],
-    budgetCode: 2, budgetMinCode: 2, budgetMaxCode: 2, budgetApproach: "총액 절약형", tpo: "개강 행사",
+    budgetCode: 2, budgetMinCode: 2, budgetMaxCode: 2, budgetApproach: "총액 절약형", tpo: "new_semester",
   },
   P2: {
     personaId: "P2", height: 163, topSize: "M", bottomSize: "M", bodyType: "내추럴",
@@ -15,7 +15,7 @@ export const personaForms: Record<DiagnosisForm["personaId"], DiagnosisForm> = {
     preferredStyle: "오피스 & 비즈니스캐주얼", avoidedStyle: "로맨틱",
     keywords: ["단정한", "깔끔한", "세련된"], designElements: ["테일러드 구조", "단색 디자인", "핀턱 디자인"],
     preferredItems: ["단색 셔츠", "슬랙스", "플리츠 니트"], avoidedElements: ["무난하고 평범한 데일리 룩"],
-    budgetCode: 3, budgetMinCode: 3, budgetMaxCode: 3, budgetApproach: "일상 활용형", tpo: "평소 일상 (등교)",
+    budgetCode: 3, budgetMinCode: 3, budgetMaxCode: 3, budgetApproach: "일상 활용형", tpo: "daily",
   },
   P3: {
     personaId: "P3", height: 166, topSize: "S~M", bottomSize: "M", bodyType: "스트레이트",
@@ -23,7 +23,7 @@ export const personaForms: Record<DiagnosisForm["personaId"], DiagnosisForm> = {
     preferredStyle: "오피스 & 비즈니스캐주얼", avoidedStyle: "스트릿",
     keywords: ["단정한", "고급스러운", "부드러운"], designElements: ["테일러드 구조", "단색 디자인", "쉬폰"],
     preferredItems: ["단색 셔츠", "재킷", "쉬폰 블라우스"], avoidedElements: ["프릴·레이스·리본 등 페미닌한 장식이 들어간 룩"],
-    budgetCode: 4, budgetMinCode: 4, budgetMaxCode: 4, budgetApproach: "소재·품질 우선형", tpo: "발표·취업 면접",
+    budgetCode: 4, budgetMinCode: 4, budgetMaxCode: 4, budgetApproach: "소재·품질 우선형", tpo: "presentation_interview",
   },
   P4: {
     personaId: "P4", height: 157, topSize: "S", bottomSize: "S", bodyType: "웨이브",
@@ -31,7 +31,7 @@ export const personaForms: Record<DiagnosisForm["personaId"], DiagnosisForm> = {
     preferredStyle: "캐주얼", avoidedStyle: "오피스 & 비즈니스캐주얼",
     keywords: ["편안한", "자연스러운", "부드러운"], designElements: ["무지", "데님 소재감", "리본"],
     preferredItems: ["깔끔한 반팔티셔츠", "에코백", "새틴 미디 스커트"], avoidedElements: ["힙한 분위기가 돋보이는 룩"],
-    budgetCode: 2, budgetMinCode: 2, budgetMaxCode: 2, budgetApproach: "총액 절약형", tpo: "여행",
+    budgetCode: 2, budgetMinCode: 2, budgetMaxCode: 2, budgetApproach: "총액 절약형", tpo: "travel",
   },
   P5: {
     personaId: "P5", height: 165, topSize: "M", bottomSize: "M", bodyType: "내추럴",
@@ -39,7 +39,7 @@ export const personaForms: Record<DiagnosisForm["personaId"], DiagnosisForm> = {
     preferredStyle: "오피스 & 비즈니스캐주얼", avoidedStyle: "로맨틱",
     keywords: ["단정한", "깔끔한", "세련된"], designElements: ["테일러드 구조", "단색 디자인", "핀턱 디자인"],
     preferredItems: ["단색 셔츠", "슬랙스", "플리츠 니트"], avoidedElements: ["무난하고 평범한 데일리 룩"],
-    budgetCode: 3, budgetMinCode: 3, budgetMaxCode: 3, budgetApproach: "일상 활용형", tpo: "여행",
+    budgetCode: 3, budgetMinCode: 3, budgetMaxCode: 3, budgetApproach: "일상 활용형", tpo: "travel",
   },
 };
 

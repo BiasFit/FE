@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAppState } from "../../app/AppStateProvider";
 import type { ProductItem } from "../../app/types";
 import { influencers } from "../../data/influencers";
-import { budgetRangeLabel } from "../../data/options";
+import { budgetRangeLabel, tpoLabel } from "../../data/options";
 import { FlowShell } from "../../shared/FlowShell";
 
 function useSelectedMate() {
@@ -19,7 +19,7 @@ export function MatchScreen() {
   const mate = useSelectedMate();
   const { state } = useAppState();
   const form = state.mode === "personal" ? state.personal : state.group.members.A;
-  const tpo = state.mode === "personal" ? state.personal.tpo : state.group.tpo;
+  const tpo = tpoLabel(state.mode === "personal" ? state.personal.tpo : state.group.tpo);
   return (
     <FlowShell
       step={5}
@@ -79,7 +79,7 @@ export function RequestScreen() {
   const value = state.requestText[state.mode];
   const [error, setError] = useState(false);
   const [sending, setSending] = useState(false);
-  const tpo = state.mode === "personal" ? state.personal.tpo : state.group.tpo;
+  const tpo = tpoLabel(state.mode === "personal" ? state.personal.tpo : state.group.tpo);
   const send = () => {
     if (!value.trim()) {
       setError(true);

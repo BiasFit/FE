@@ -1,4 +1,5 @@
-import type { MatchPriority } from "../app/types";
+import type { DiagnosisForm, MatchPriority } from "../app/types";
+import { budgetRangeLabel, tpoLabel, type TpoCode } from "../data/options";
 import {
   PRIORITY_CATEGORY,
   applyPriorityWeights,
@@ -128,28 +129,29 @@ export interface InfluencerProfile {
   profileCompleted: boolean;
   primaryStyle: StyleName;
   secondaryStyle: StyleName;
-  bodyType: string;
+  bodyType: DiagnosisForm["bodyType"];
   fitConcerns: string[];
   budgetCodes: number[];
-  budgetApproach: string;
-  tpos: string[];
+  // 사용자와 같은 어휘를 강제한다. 문자열로 열어 두면 값이 어긋나도 컴파일러가 잡지 못한다.
+  budgetApproach: DiagnosisForm["budgetApproach"];
+  tpos: TpoCode[];
   coachingType: CoachingSupport;
 }
 
 interface MatchMemberInput {
   styleScores: StyleScores;
   avoidedStyle: StyleName;
-  bodyType: string;
+  bodyType: DiagnosisForm["bodyType"];
   fitConcerns: string[];
   budgetMinCode: number;
   budgetMaxCode: number;
-  budgetApproach: string;
+  budgetApproach: DiagnosisForm["budgetApproach"];
 }
 
 export interface PersonalMatchInput extends MatchMemberInput {
   mode: "personal";
   priority?: MatchPriority;
-  tpo: string;
+  tpo: TpoCode;
 }
 
 function scoreStylePreference(input: Pick<MatchMemberInput, "styleScores" | "avoidedStyle">, influencer: InfluencerProfile) {
@@ -198,7 +200,7 @@ export function calculateInfluencerMatch(input: PersonalMatchInput, influencer: 
 
 export type RankMatchInput =
   | (PersonalMatchInput & { priority: MatchPriority })
-  | { mode: "group"; priority: MatchPriority; members: [MatchMemberInput, MatchMemberInput]; tpo: string };
+  | { mode: "group"; priority: MatchPriority; members: [MatchMemberInput, MatchMemberInput]; tpo: TpoCode };
 
 export interface MatchEvidence { ref: string; text: string; }
 export type MatchedEvidence = Record<MatchCategory, MatchEvidence[]>;
@@ -214,21 +216,28 @@ export function filterEligibleInfluencers(mode: MatchMode, profiles: InfluencerP
   return profiles.filter((profile) => profile.profileCompleted && (profile.coachingType === "both" || profile.coachingType === mode));
 }
 
-function memberEvidence(prefix: string, member: MatchMemberInput, tpo: string, influencer: InfluencerProfile, includeBodyType: boolean): MatchedEvidence {
+function memberEvidence(prefix: string, member: MatchMemberInput, tpo: TpoCode, influencer: InfluencerProfile, includeBodyType: boolean): MatchedEvidence {
   const styleNames = [influencer.primaryStyle, influencer.secondaryStyle].filter((style) => style !== member.avoidedStyle);
   const fitMatches = member.fitConcerns.filter((concern) => influencer.fitConcerns.includes(concern));
   const budgetMatches = influencer.budgetCodes.filter((code) => code >= member.budgetMinCode && code <= member.budgetMaxCode);
+  // 근거 텍스트는 그대로 AI 설명 문장에 쓰이므로 점수·내부 코드를 넣지 않는다.
   return {
-    style: styleNames.map((style, index) => ({ ref: `${prefix}.style.${index}`, text: `${style} 선호 ${member.styleScores[style]}점` })),
+    // 주어가 없으면 AI가 사용자의 선호로 오해한다. 인플루언서의 대표 스타일임을 텍스트에 명시한다.
+    style: styleNames.map((style, index) => ({ ref: `${prefix}.style.${index}`, text: `스타일메이트 대표 스타일 ${style}` })),
     fit: [
       ...(includeBodyType && member.bodyType === influencer.bodyType ? [{ ref: `${prefix}.fit.bodyType`, text: `${member.bodyType} 체형 유형` }] : []),
       ...fitMatches.map((concern, index) => ({ ref: `${prefix}.fit.concern.${index}`, text: concern })),
     ],
     budget: [
-      ...(budgetMatches.length ? [{ ref: `${prefix}.budget.range`, text: `예산 코드 ${budgetMatches.join("~")}` }] : []),
+      ...(budgetMatches.length
+        ? [{
+            ref: `${prefix}.budget.range`,
+            text: budgetRangeLabel(Math.min(...budgetMatches), Math.max(...budgetMatches)),
+          }]
+        : []),
       ...(member.budgetApproach === influencer.budgetApproach ? [{ ref: `${prefix}.budget.approach`, text: member.budgetApproach }] : []),
     ],
-    tpo: influencer.tpos.includes(tpo) ? [{ ref: `${prefix}.tpo`, text: tpo }] : [],
+    tpo: influencer.tpos.includes(tpo) ? [{ ref: `${prefix}.tpo`, text: tpoLabel(tpo) }] : [],
   };
 }
 

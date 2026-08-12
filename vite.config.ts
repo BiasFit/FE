@@ -12,6 +12,8 @@ export default defineConfig(({ mode }) => {
         environment: {
           OPENAI_API_KEY: environment.OPENAI_API_KEY,
           OPENAI_MODEL: environment.OPENAI_MODEL,
+          SUPABASE_URL: environment.SUPABASE_URL,
+          SUPABASE_SERVICE_ROLE_KEY: environment.SUPABASE_SERVICE_ROLE_KEY,
         },
       }),
     ],

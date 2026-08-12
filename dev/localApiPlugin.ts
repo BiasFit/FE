@@ -42,6 +42,7 @@ const biasFitApiModules = {
   "/api/ai/style-dna-explanation": "/api/ai/style-dna-explanation.ts",
   "/api/matches/top-three": "/api/matches/top-three.ts",
   "/api/outfit/review": "/api/outfit/review.ts",
+  "/api/results/save": "/api/results/save.ts",
 };
 
 function readRequestBody(request: LocalIncomingMessage) {
@@ -103,6 +104,8 @@ interface LocalApiPluginOptions {
   environment: {
     OPENAI_API_KEY?: string;
     OPENAI_MODEL?: string;
+    SUPABASE_URL?: string;
+    SUPABASE_SERVICE_ROLE_KEY?: string;
   };
 }
 
@@ -111,11 +114,9 @@ export function localApiPlugin({ environment }: LocalApiPluginOptions): Plugin {
     name: "biasfit-local-api",
     apply: "serve",
     configureServer(server) {
-      if (environment.OPENAI_API_KEY) {
-        process.env.OPENAI_API_KEY = environment.OPENAI_API_KEY;
-      }
-      if (environment.OPENAI_MODEL) {
-        process.env.OPENAI_MODEL = environment.OPENAI_MODEL;
+      // 키는 서버 프로세스에만 넣는다. VITE_ 접두사를 쓰면 브라우저 번들에 박힌다.
+      for (const [name, value] of Object.entries(environment)) {
+        if (value) process.env[name] = value;
       }
 
       const routes = Object.fromEntries(

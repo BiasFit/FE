@@ -3,7 +3,15 @@ import { useNavigate } from "react-router-dom";
 import type { GroupOutfitDraft, OutfitFields as OutfitFieldValues, PersonalOutfitDraft } from "../../app/types";
 import type { OutfitReviewResponse } from "../../domain/aiContracts";
 import { useAppState } from "../../app/AppStateProvider";
-import { budgetRangeLabel, fitConcerns, styleOptions } from "../../data/options";
+import {
+  TPO_CODES,
+  budgetApproaches,
+  budgetRangeLabel,
+  fitConcerns,
+  styleOptions,
+  tpoLabel,
+} from "../../data/options";
+import type { CoachingSupport } from "../../domain/scoring";
 import { personaForms } from "../../data/personas";
 import { isValidOutfitDraft, isValidProductUrl, toOutfitReviewRequest } from "../../domain/outfit";
 import { reviewOutfit } from "../../lib/biasfitApi";
@@ -81,6 +89,15 @@ export function InfluencerLoginScreen() {
   );
 }
 
+/** 인플루언서 강점 TPO는 정확히 3개다 (STYLE_SCORING_DRAFT.md 2.4, README 제품 규칙). */
+const REQUIRED_PROFILE_TPO_COUNT = 3;
+
+const COACHING_TYPE_LABEL: Record<CoachingSupport, string> = {
+  personal: "개인 코칭만",
+  group: "2인 그룹 코칭만",
+  both: "개인·2인 그룹 모두",
+};
+
 export function InfluencerProfileScreen() {
   const navigate = useNavigate();
   const [primaryStyle, setPrimaryStyle] = useState("로맨틱");
@@ -92,25 +109,21 @@ export function InfluencerProfileScreen() {
   ]);
   const [budgetMinCode, setBudgetMinCode] = useState(2);
   const [budgetMaxCode, setBudgetMaxCode] = useState(3);
-  const [budgetApproach, setBudgetApproach] = useState("가성비 중심");
-  const [occasions, setOccasions] = useState([
-    "개강·새학기",
-    "등교·일상",
-    "여행·사진",
+  // 어휘는 반드시 사용자 쪽과 같은 목록에서 가져온다. 직접 문자열을 쓰면 매칭이 조용히 0점이 된다.
+  const [budgetApproach, setBudgetApproach] = useState<string>(budgetApproaches[0]);
+  // TPO는 내부 코드로 들고 화면에만 tpoLabel()로 바꿔 보여준다.
+  const [occasions, setOccasions] = useState<string[]>([
+    "new_semester",
+    "daily",
+    "travel",
   ]);
-  const [coachingType, setCoachingType] = useState("개인·2인 그룹 모두");
+  const [coachingType, setCoachingType] = useState<CoachingSupport>("both");
   const [showError, setShowError] = useState(false);
-  const profileTpos = [
-    "개강·새학기",
-    "등교·일상",
-    "여행·사진",
-    "데이트·소개팅",
-    "발표·면접",
-  ];
+  // 강점 TPO는 사용자 TPO 후보와 같은 8개에서 고른다 (STYLE_SCORING_DRAFT.md 2.4).
   const valid =
     primaryStyle !== secondaryStyle &&
     concerns.length > 0 &&
-    occasions.length > 0;
+    occasions.length === REQUIRED_PROFILE_TPO_COUNT;
   return (
     <FlowShell
       flow="influencer"
@@ -188,15 +201,26 @@ export function InfluencerProfileScreen() {
       </div>
       <div className="field">
         <div className="field-label">예산 접근 방식 <span className="required">1개</span></div>
-        <SingleChoice values={["가성비 중심", "균형형", "품질·소재 우선", "투자 아이템 중심"]} selected={budgetApproach} onChange={setBudgetApproach} />
+        <SingleChoice values={budgetApproaches} selected={budgetApproach} onChange={setBudgetApproach} />
       </div>
       <div className="field">
-        <div className="field-label">코칭 강점 TPO <span className="required">최대 5개</span></div>
-        <ChipChoices values={profileTpos} selected={occasions} max={5} onChange={setOccasions} />
+        <div className="field-label">코칭 강점 TPO <span className="required">정확히 {REQUIRED_PROFILE_TPO_COUNT}개</span></div>
+        <ChipChoices
+          values={TPO_CODES}
+          selected={occasions}
+          max={REQUIRED_PROFILE_TPO_COUNT}
+          onChange={setOccasions}
+          labelFor={tpoLabel}
+        />
       </div>
       <div className="field">
         <div className="field-label">지원 코칭 유형 <span className="required">1개</span></div>
-        <SingleChoice values={["개인 코칭만", "2인 그룹 코칭만", "개인·2인 그룹 모두"]} selected={coachingType} onChange={setCoachingType} />
+        <SingleChoice
+          values={Object.keys(COACHING_TYPE_LABEL)}
+          selected={coachingType}
+          onChange={(value) => setCoachingType(value as CoachingSupport)}
+          labelFor={(value) => COACHING_TYPE_LABEL[value as CoachingSupport]}
+        />
       </div>
       {showError && !valid ? <p className="error-copy" style={{ display: "block" }}>필수 항목을 모두 선택해 주세요.</p> : null}
     </FlowShell>
@@ -208,11 +232,14 @@ function SingleChoice({
   selected,
   onChange,
   disabled,
+  labelFor,
 }: {
   values: readonly string[];
   selected: string;
   onChange: (value: string) => void;
   disabled?: string;
+  /** 내부 코드를 값으로 쓰면서 화면에는 한글 라벨을 보여줄 때 넘긴다. */
+  labelFor?: (value: string) => string;
 }) {
   return (
     <div className="chip-wrap" role="radiogroup">
@@ -226,7 +253,7 @@ function SingleChoice({
           key={value}
           onClick={() => onChange(value)}
         >
-          {value}
+          {labelFor ? labelFor(value) : value}
         </button>
       ))}
     </div>
@@ -237,21 +264,21 @@ const assignedRequests = [
   {
     id: "P1-2026-001",
     mode: "개인",
-    tpo: "개강·새학기",
+    tpo: "new_semester",
     detail: "부탁해요 카드 · 오늘 오후 10:37",
     done: false,
   },
   {
     id: "G1-2026-004",
     mode: "2인 그룹",
-    tpo: "여행·사진",
+    tpo: "travel",
     detail: "P4·P5 부탁해요 카드 · 어제 오후 8:12",
     done: false,
   },
   {
     id: "P2-2026-002",
     mode: "개인",
-    tpo: "등교·일상",
+    tpo: "daily",
     detail: "코디 카드 전달 · 7월 19일",
     done: true,
   },
@@ -298,7 +325,7 @@ export function InfluencerRequestsScreen() {
             <span>
               <span className="request-meta">
                 <span className="badge">{request.mode}</span>
-                <span className="badge blue">{request.tpo}</span>
+                <span className="badge blue">{tpoLabel(request.tpo)}</span>
               </span>
               <h3>{request.id}</h3>
               <p>{request.detail}</p>

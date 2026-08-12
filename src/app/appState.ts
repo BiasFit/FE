@@ -6,6 +6,12 @@ import type {
   MemberId,
   PriorityOption,
 } from "./types";
+import type { TpoCode } from "../data/options";
+import type {
+  MatchExplanation,
+  StyleDnaExplanationResponse,
+} from "../domain/aiContracts";
+import type { RankedInfluencer } from "../domain/scoring";
 import { personaForms } from "../data/personas";
 
 export interface AppState {
@@ -14,11 +20,22 @@ export interface AppState {
   matchPriority: MatchPriority | null;
   priorityOptions: PriorityOption[];
   priorityStatus: AiRequestStatus;
+  /** AI2 결과. 화면에 쓴 객체를 그대로 저장에 재사용한다. */
+  styleDna: StyleDnaExplanationResponse | null;
+  styleDnaStatus: AiRequestStatus;
+  /** 규칙 엔진이 계산한 TOP 3. 저장 시점에 다시 계산하지 않는다. */
+  rankedInfluencers: RankedInfluencer[];
+  rankStatus: AiRequestStatus;
+  /** AI4 추천 근거. */
+  matchExplanations: MatchExplanation[];
+  matchExplanationStatus: AiRequestStatus;
+  /** 저장된 test_results 행의 id. 인플루언서 화면이 이 결과를 조회할 때 쓴다. */
+  savedResultId: string;
   personal: DiagnosisForm;
   group: {
     relationship: "friend" | "family" | "other";
     relationshipOther: string;
-    tpo: string;
+    tpo: TpoCode;
     members: Record<MemberId, DiagnosisForm>;
   };
   selectedInfluencerId: string;
@@ -37,6 +54,16 @@ export type AppAction =
   | { type: "setPriorityLoading" }
   | { type: "setPriorityOptions"; options: PriorityOption[] }
   | { type: "setPriorityError" }
+  | { type: "setStyleDnaLoading" }
+  | { type: "setStyleDna"; result: StyleDnaExplanationResponse }
+  | { type: "setStyleDnaError" }
+  | { type: "setRankingLoading" }
+  | { type: "setRankedInfluencers"; ranked: RankedInfluencer[] }
+  | { type: "setRankingError" }
+  | { type: "setMatchExplanationsLoading" }
+  | { type: "setMatchExplanations"; explanations: MatchExplanation[] }
+  | { type: "setMatchExplanationsError" }
+  | { type: "setSavedResultId"; id: string }
   | { type: "selectMatchPriority"; priority: MatchPriority }
   | { type: "updatePersonal"; patch: Partial<DiagnosisForm> }
   | {
@@ -73,11 +100,18 @@ export function createInitialState(): AppState {
     matchPriority: null,
     priorityOptions: [],
     priorityStatus: "idle",
+    styleDna: null,
+    styleDnaStatus: "idle",
+    rankedInfluencers: [],
+    rankStatus: "idle",
+    matchExplanations: [],
+    matchExplanationStatus: "idle",
+    savedResultId: "",
     personal: copyForm(personaForms.P1),
     group: {
       relationship: "friend",
       relationshipOther: "",
-      tpo: "여행·사진",
+      tpo: "travel",
       members: {
         A: copyForm(personaForms.P4),
         B: copyForm(personaForms.P5),
@@ -112,13 +146,33 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     priorityOptions: [],
     priorityStatus: "idle" as const,
   };
+  // 입력이 바뀌면 옛 AI 결과가 남아 잘못 저장되지 않게 함께 비운다.
+  const invalidateStyleDna = {
+    styleDna: null,
+    styleDnaStatus: "idle" as const,
+  };
+  const invalidateRanking = {
+    rankedInfluencers: [],
+    rankStatus: "idle" as const,
+    matchExplanations: [],
+    matchExplanationStatus: "idle" as const,
+    // 저장된 id는 옛 스냅샷을 가리킨다. 입력이 바뀌면 함께 버린다.
+    savedResultId: "",
+  };
   const invalidateSelectedInfluencer = {
     selectedInfluencerId: "",
     selectedInfluencerScore: 0,
   };
   switch (action.type) {
     case "setMode":
-      return { ...state, mode: action.mode, ...invalidatePriority, ...invalidateSelectedInfluencer };
+      return {
+        ...state,
+        mode: action.mode,
+        ...invalidatePriority,
+        ...invalidateStyleDna,
+        ...invalidateRanking,
+        ...invalidateSelectedInfluencer,
+      };
     case "setActiveMember":
       return { ...state, activeMember: action.member };
     case "setPriorityLoading":
@@ -131,13 +185,55 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       };
     case "setPriorityError":
       return { ...state, priorityStatus: "error", priorityOptions: [] };
+    case "setStyleDnaLoading":
+      return { ...state, styleDnaStatus: "loading", styleDna: null };
+    case "setStyleDna":
+      return { ...state, styleDnaStatus: "success", styleDna: action.result };
+    case "setStyleDnaError":
+      return { ...state, styleDnaStatus: "error", styleDna: null };
+    case "setRankingLoading":
+      // 순위가 바뀌면 그 순위에 붙은 추천 근거도 무효다.
+      return { ...state, ...invalidateRanking, rankStatus: "loading" };
+    case "setRankedInfluencers":
+      return { ...state, rankStatus: "success", rankedInfluencers: action.ranked };
+    case "setRankingError":
+      return { ...state, rankStatus: "error", rankedInfluencers: [] };
+    case "setMatchExplanationsLoading":
+      return {
+        ...state,
+        matchExplanationStatus: "loading",
+        matchExplanations: [],
+      };
+    case "setMatchExplanations":
+      return {
+        ...state,
+        matchExplanationStatus: "success",
+        matchExplanations: action.explanations,
+      };
+    case "setMatchExplanationsError":
+      return {
+        ...state,
+        matchExplanationStatus: "error",
+        matchExplanations: [],
+      };
+    case "setSavedResultId":
+      return { ...state, savedResultId: action.id };
     case "selectMatchPriority":
-      return { ...state, matchPriority: action.priority, ...invalidateSelectedInfluencer };
+      // 우선순위는 Style DNA와 TOP 3 계산에 모두 들어간다. 바뀌면 둘 다 다시 받아야 한다.
+      return {
+        ...state,
+        matchPriority: action.priority,
+        ...invalidateStyleDna,
+        ...invalidateRanking,
+        ...invalidateSelectedInfluencer,
+      };
     case "updatePersonal":
       return {
         ...state,
         personal: { ...state.personal, ...action.patch },
         ...invalidatePriority,
+        ...invalidateStyleDna,
+        ...invalidateRanking,
         ...invalidateSelectedInfluencer,
       };
     case "updateGroupMember":
@@ -154,6 +250,8 @@ export function appReducer(state: AppState, action: AppAction): AppState {
           },
         },
         ...invalidatePriority,
+        ...invalidateStyleDna,
+        ...invalidateRanking,
         ...invalidateSelectedInfluencer,
       };
     case "updateGroup":
@@ -161,6 +259,8 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         ...state,
         group: { ...state.group, ...action.patch },
         ...invalidatePriority,
+        ...invalidateStyleDna,
+        ...invalidateRanking,
         ...invalidateSelectedInfluencer,
       };
     case "selectInfluencer":

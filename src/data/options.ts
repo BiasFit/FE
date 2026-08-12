@@ -67,4 +67,29 @@ export function budgetRangeLabel(minCode: number, maxCode: number) {
 
 export const budgetApproaches = ["총액 절약형", "일상 활용형", "소재·품질 우선형", "포인트 아이템 투자형"] as const;
 
-export const tpos = ["평소 일상 (등교)", "개강 행사", "발표·취업 면접", "데이트·소개팅", "축제·공연 관람", "여행", "친구 모임", "동아리 활동"];
+/**
+ * TPO는 사용자와 인플루언서가 같은 내부 코드로 비교한다.
+ * 화면과 AI 프롬프트에는 label을 쓰고, 점수 계산에는 code만 쓴다.
+ */
+export const TPO_OPTIONS = [
+  { code: "daily", label: "평소 일상 (등교)" },
+  { code: "new_semester", label: "개강 행사" },
+  { code: "presentation_interview", label: "발표·취업 면접" },
+  { code: "date", label: "데이트·소개팅" },
+  { code: "festival", label: "축제·공연 관람" },
+  { code: "travel", label: "여행" },
+  { code: "friend_meeting", label: "친구 모임" },
+  { code: "club_activity", label: "동아리 활동" },
+] as const;
+
+export type TpoCode = (typeof TPO_OPTIONS)[number]["code"];
+
+export const TPO_CODES = TPO_OPTIONS.map((tpo) => tpo.code);
+
+export function tpoLabel(code: string) {
+  return TPO_OPTIONS.find((tpo) => tpo.code === code)?.label ?? code;
+}
+
+export function isTpoCode(value: unknown): value is TpoCode {
+  return TPO_CODES.includes(value as TpoCode);
+}

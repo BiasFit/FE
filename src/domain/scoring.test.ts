@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { TPO_CODES, budgetApproaches, type TpoCode } from "../data/options";
+import { influencers } from "../data/influencers";
 import { personaForms } from "../data/personas";
 import { MATCH_PRIORITY_WEIGHTS } from "./matchPriority";
 import {
@@ -6,6 +8,7 @@ import {
   calculateGroupMatchScore,
   calculatePersonalBaseBreakdown,
   calculateStyleScores,
+  filterEligibleInfluencers,
   rankInfluencers,
   type InfluencerProfile,
   type StyleScores,
@@ -74,14 +77,14 @@ describe("individual and group matching rules", () => {
     id: "fit-profile", name: "FIT PROFILE", profileCompleted: true,
     primaryStyle: "캐주얼", secondaryStyle: "로맨틱", bodyType: "웨이브",
     fitConcerns: ["전체 기장·비율", "밑위·하의 길이"], budgetCodes: [2],
-    budgetApproach: "총액 절약형", tpos: ["개강 행사"], coachingType: "both",
+    budgetApproach: "총액 절약형", tpos: ["new_semester"], coachingType: "both",
   };
 
   it("uses 15 body points and proportional fit-concern points for an individual", () => {
     const base = calculatePersonalBaseBreakdown({
       mode: "personal", priority: "fit_first", styleScores: zeroScores, avoidedStyle: "스트릿",
       bodyType: "웨이브", fitConcerns: ["전체 기장·비율", "가슴·상체 여유"],
-      budgetMinCode: 2, budgetMaxCode: 3, budgetApproach: "총액 절약형", tpo: "개강 행사",
+      budgetMinCode: 2, budgetMaxCode: 3, budgetApproach: "총액 절약형", tpo: "new_semester",
     }, fullFitProfile);
 
     expect(base.fit).toBe(20);
@@ -92,7 +95,7 @@ describe("individual and group matching rules", () => {
     const input = {
       mode: "personal" as const, priority: "fit_first" as const, styleScores: zeroScores,
       avoidedStyle: "스트릿" as const, fitConcerns: ["전체 기장·비율", "밑위·하의 길이"],
-      budgetMinCode: 2, budgetMaxCode: 2, budgetApproach: "총액 절약형", tpo: "개강 행사",
+      budgetMinCode: 2, budgetMaxCode: 2, budgetApproach: "총액 절약형" as const, tpo: "new_semester" as const,
     };
     expect(calculatePersonalBaseBreakdown({ ...input, bodyType: "웨이브" }, fullFitProfile).fit).toBe(25);
     expect(calculatePersonalBaseBreakdown({ ...input, bodyType: "내추럴" }, fullFitProfile).fit).toBe(10);
@@ -100,14 +103,14 @@ describe("individual and group matching rules", () => {
 
   it("excludes body type and aggregates group range and approach budgets separately", () => {
     const results = rankInfluencers({
-      mode: "group", priority: "tpo_first", tpo: "여행",
+      mode: "group", priority: "tpo_first", tpo: "travel",
       members: [
         { styleScores: zeroScores, avoidedStyle: "스트릿", bodyType: "웨이브", fitConcerns: ["전체 기장·비율"], budgetMinCode: 2, budgetMaxCode: 2, budgetApproach: "총액 절약형" },
         { styleScores: zeroScores, avoidedStyle: "스트릿", bodyType: "내추럴", fitConcerns: ["가슴·상체 여유"], budgetMinCode: 3, budgetMaxCode: 3, budgetApproach: "일상 활용형" },
       ],
     }, [{
       ...fullFitProfile, id: "group-profile", bodyType: "스트레이트",
-      fitConcerns: ["전체 기장·비율", "가슴·상체 여유"], budgetCodes: [2], tpos: ["여행"],
+      fitConcerns: ["전체 기장·비율", "가슴·상체 여유"], budgetCodes: [2], tpos: ["travel"],
     }]);
 
     expect(results[0].baseBreakdown.fit).toBe(25);
@@ -129,6 +132,72 @@ describe("priority weights", () => {
       for (const weights of Object.values(MATCH_PRIORITY_WEIGHTS[mode])) {
         expect(weights.style + weights.fit + weights.budget + weights.tpo).toBe(90);
       }
+    }
+  });
+});
+
+describe("TPO 적합도", () => {
+  const influencer: InfluencerProfile = {
+    id: "tpo-test", name: "TPO", profileCompleted: true,
+    primaryStyle: "캐주얼", secondaryStyle: "로맨틱", bodyType: "웨이브",
+    fitConcerns: [], budgetCodes: [2], budgetApproach: "총액 절약형",
+    tpos: ["new_semester", "daily", "travel"], coachingType: "both",
+  };
+  const user = (tpo: TpoCode) => ({
+    mode: "personal" as const, priority: "tpo_first" as const,
+    styleScores: calculateStyleScores(personaForms.P1),
+    avoidedStyle: personaForms.P1.avoidedStyle, bodyType: personaForms.P1.bodyType,
+    fitConcerns: personaForms.P1.fitConcerns,
+    budgetMinCode: 2, budgetMaxCode: 2, budgetApproach: personaForms.P1.budgetApproach,
+    tpo,
+  });
+
+  it("gives full TPO points when the user code is one of the influencer strengths", () => {
+    expect(calculatePersonalBaseBreakdown(user("new_semester"), influencer).tpo).toBe(15);
+  });
+
+  it("gives zero when the codes differ", () => {
+    expect(calculatePersonalBaseBreakdown(user("festival"), influencer).tpo).toBe(0);
+  });
+
+  it("shows the TPO label, not the internal code, in the matched evidence", () => {
+    const [ranked] = rankInfluencers(user("new_semester"), [influencer]);
+    expect(ranked.matchedEvidence.tpo[0].text).toBe("개강 행사");
+  });
+
+  it("keeps internal budget codes and style scores out of the evidence text", () => {
+    const [ranked] = rankInfluencers(user("new_semester"), [influencer]);
+    const texts = Object.values(ranked.matchedEvidence).flat().map((item) => item.text);
+    expect(texts.some((text) => text.includes("예산 코드"))).toBe(false);
+    expect(texts.some((text) => /\d+점/.test(text))).toBe(false);
+  });
+});
+
+describe("인플루언서 TPO 커버리지", () => {
+  // 8개 TPO 중 하나라도 담당 후보가 0명이면 그 TPO를 고른 사용자는 TPO 점수를 받을 수 없다.
+  it.each(TPO_CODES)("has at least one personal candidate for %s", (code) => {
+    const eligible = filterEligibleInfluencers("personal", influencers).filter((profile) =>
+      profile.tpos.includes(code),
+    );
+    expect(eligible.length).toBeGreaterThan(0);
+  });
+
+  it.each(TPO_CODES)("has at least one group candidate for %s", (code) => {
+    const eligible = filterEligibleInfluencers("group", influencers).filter((profile) =>
+      profile.tpos.includes(code),
+    );
+    expect(eligible.length).toBeGreaterThan(0);
+  });
+
+  it("gives every influencer exactly three strength TPOs", () => {
+    for (const profile of influencers) {
+      expect(profile.tpos).toHaveLength(3);
+    }
+  });
+
+  it("keeps influencer budget approaches inside the user-facing vocabulary", () => {
+    for (const profile of influencers) {
+      expect(budgetApproaches).toContain(profile.budgetApproach);
     }
   });
 });

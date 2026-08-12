@@ -132,11 +132,14 @@ export function ChipChoices({
   selected,
   onChange,
   max,
+  labelFor,
 }: {
   values: readonly string[];
   selected: string[];
   onChange: (next: string[]) => void;
   max: number;
+  /** 내부 코드를 값으로 쓰면서 화면에는 한글 라벨을 보여줄 때 넘긴다. */
+  labelFor?: (value: string) => string;
 }) {
   const toggle = (value: string) => {
     if (selected.includes(value)) {
@@ -156,7 +159,7 @@ export function ChipChoices({
           key={value}
           onClick={() => toggle(value)}
         >
-          {value}
+          {labelFor ? labelFor(value) : value}
         </button>
       ))}
     </div>

@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
-import type {
-  StyleDnaExplanationRequest,
-  StyleDnaExplanationResponse,
-} from "../../domain/aiContracts";
+import { useAppState } from "../../app/AppStateProvider";
+import type { StyleDnaExplanationRequest } from "../../domain/aiContracts";
 import { getStyleDnaExplanation } from "../../lib/biasfitApi";
 
 export function StyleDnaExplanation({
@@ -10,28 +8,27 @@ export function StyleDnaExplanation({
 }: {
   request: StyleDnaExplanationRequest;
 }) {
-  const [result, setResult] = useState<StyleDnaExplanationResponse | null>(null);
-  const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
+  // 결과는 전역 state에 둔다. 저장 시점에 이 값이 필요하고, 그때 AI를 다시 부르지 않는다.
+  const { state, dispatch } = useAppState();
+  const result = state.styleDna;
+  const status = state.styleDnaStatus;
   const [retry, setRetry] = useState(0);
   const requestKey = JSON.stringify(request);
 
   useEffect(() => {
     const controller = new AbortController();
-    setStatus("loading");
+    dispatch({ type: "setStyleDnaLoading" });
     void getStyleDnaExplanation(request, controller.signal)
-      .then((response) => {
-        setResult(response);
-        setStatus("success");
-      })
+      .then((response) => dispatch({ type: "setStyleDna", result: response }))
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
         console.log("[BiasFit AI2] Style DNA 설명 호출 실패", error);
-        setStatus("error");
+        dispatch({ type: "setStyleDnaError" });
       });
     return () => controller.abort();
   }, [requestKey, retry]);
 
-  if (status === "loading") {
+  if (status === "idle" || status === "loading") {
     return <div className="soft-card" aria-live="polite">Style DNA 설명을 만들고 있어요.</div>;
   }
   if (status === "error" || !result) {

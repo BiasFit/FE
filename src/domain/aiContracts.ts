@@ -224,8 +224,12 @@ function validatePoints(value: unknown, field: string) {
   }
 }
 
+export const GROUP_COMBINATION_TITLE_MIN = 8;
+export const GROUP_COMBINATION_TITLE_MAX = 24;
+
 export function validateStyleDnaExplanation(
   value: unknown,
+  groupCompatibility?: StyleDnaExplanationRequest["groupCompatibility"],
 ): StyleDnaExplanationResponse {
   if (!isRecord(value)) throw new Error("Style DNA response must be an object");
   if (value.mode === "personal") {
@@ -249,18 +253,27 @@ export function validateStyleDnaExplanation(
     }
     const combination = value.groupCombination;
     if (
-      typeof combination.score !== "number" ||
-      typeof combination.directionSimilarity !== "number" ||
-      typeof combination.budgetCoordination !== "number" ||
       typeof combination.title !== "string" ||
-      combination.title.length < 8 ||
-      combination.title.length > 24 ||
+      combination.title.length < GROUP_COMBINATION_TITLE_MIN ||
+      combination.title.length > GROUP_COMBINATION_TITLE_MAX
+    ) {
+      throw new Error(
+        `groupCombination.title must be ${GROUP_COMBINATION_TITLE_MIN}-${GROUP_COMBINATION_TITLE_MAX} characters`,
+      );
+    }
+    if (
       typeof combination.description !== "string" ||
+      !combination.description.trim() ||
       !isStringArray(combination.evidenceRefs) ||
       combination.evidenceRefs.length === 0
     ) {
       throw new Error("groupCombination is invalid");
     }
+    // 조합도 수치는 모델 응답이 아니라 규칙 엔진 계산값으로만 채운다.
+    if (!groupCompatibility) throw new Error("그룹 조합 계산값이 없습니다.");
+    combination.score = groupCompatibility.total;
+    combination.directionSimilarity = groupCompatibility.styleSimilarity;
+    combination.budgetCoordination = groupCompatibility.budgetCompatibility;
     const refs = [
       ...(value.groupStyleDnaSummaryEvidenceRefs as string[]),
       ...combination.evidenceRefs,
@@ -424,25 +437,23 @@ export const groupStyleDnaSchema = {
     mode: { type: "string", const: "group" },
     groupStyleDnaSummary: { type: "string" },
     groupStyleDnaSummaryEvidenceRefs: { type: "array", items: { type: "string" }, minItems: 1 },
+    // score·directionSimilarity·budgetCoordination은 규칙 엔진 계산값이므로 모델에게 받지 않고 서버가 채운다.
     groupCombination: {
       type: "object",
       additionalProperties: false,
       properties: {
-        score: { type: "number" },
-        directionSimilarity: { type: "number" },
-        budgetCoordination: { type: "number" },
-        title: { type: "string" },
-        description: { type: "string" },
+        title: {
+          type: "string",
+          description:
+            "그룹 스타일 조합도 제목. 공백 포함 8~24자. 예: '각자의 무드를 살린 연결'(13자)",
+        },
+        description: {
+          type: "string",
+          description: "점수 수치 없이 조율 방향만 담은 1~2문장",
+        },
         evidenceRefs: { type: "array", items: { type: "string" }, minItems: 1 },
       },
-      required: [
-        "score",
-        "directionSimilarity",
-        "budgetCoordination",
-        "title",
-        "description",
-        "evidenceRefs",
-      ],
+      required: ["title", "description", "evidenceRefs"],
     },
     groupMatchingPoints: {
       type: "array",
