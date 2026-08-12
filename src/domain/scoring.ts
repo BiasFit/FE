@@ -238,8 +238,38 @@ function matchingConcernScore(input: Pick<MatchMemberInput, "fitConcerns">, infl
   return Math.round((matches / input.fitConcerns.length) * maximum);
 }
 
+/**
+ * 개인 체형·핏 25점의 내역. 체형 유형 15점 + 핏 고민 최대 10점이다
+ * (STYLE_SCORING_DRAFT.md 4.2, DB_SCHEMA.md 5.21).
+ *
+ * `match_score_breakdowns`가 `body_fit_response`와 `fit_concern_fit`을 따로 요구해서 노출한다.
+ * 계산을 옮겼을 뿐 합계는 그대로다.
+ */
+export interface PersonalFitDetail {
+  bodyFitResponse: number;
+  fitConcernFit: number;
+  bodyTypeMatched: boolean;
+  matchedConcerns: string[];
+}
+
+export function personalFitDetail(
+  input: Pick<MatchMemberInput, "bodyType" | "fitConcerns">,
+  influencer: InfluencerProfile,
+): PersonalFitDetail {
+  const bodyTypeMatched = input.bodyType === influencer.bodyType;
+  return {
+    bodyFitResponse: bodyTypeMatched ? 15 : 0,
+    fitConcernFit: matchingConcernScore(input, influencer, 10),
+    bodyTypeMatched,
+    matchedConcerns: input.fitConcerns.filter((concern) =>
+      influencer.fitConcerns.includes(concern),
+    ),
+  };
+}
+
 function scorePersonalFit(input: Pick<MatchMemberInput, "bodyType" | "fitConcerns">, influencer: InfluencerProfile) {
-  return (input.bodyType === influencer.bodyType ? 15 : 0) + matchingConcernScore(input, influencer, 10);
+  const detail = personalFitDetail(input, influencer);
+  return detail.bodyFitResponse + detail.fitConcernFit;
 }
 
 function scoreGroupFit(input: Pick<MatchMemberInput, "fitConcerns">, influencer: InfluencerProfile) {

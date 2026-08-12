@@ -5,7 +5,12 @@ import type {
   StyleDnaExplanationResponse,
 } from "./aiContracts";
 import type { CategoryScores } from "./matchPriority";
-import type { MatchBreakdown, StyleScoreBreakdown, StyleScores } from "./scoring";
+import type {
+  MatchBreakdown,
+  PersonalFitDetail,
+  StyleScoreBreakdown,
+  StyleScores,
+} from "./scoring";
 
 /**
  * 한 번의 진단 흐름을 그대로 남기는 스냅샷.
@@ -58,10 +63,23 @@ export interface TestResultPayload {
       influencerName: string;
       baseBreakdown: CategoryScores;
       breakdown: MatchBreakdown;
+      /**
+       * 개인 체형·핏 25점의 내역 (체형 15 + 핏 고민 10).
+       * `match_score_breakdowns`가 body_fit_response와 fit_concern_fit을 따로 요구한다.
+       * 그룹은 체형을 점수에 쓰지 않으므로 없다 (STYLE_SCORING_DRAFT.md 4.2).
+       */
+      fitDetail?: PersonalFitDetail;
     }>;
   };
 }
 
+/**
+ * 저장 결과. `id`는 `match_results.id`다.
+ * 부탁해요 카드와 코디 카드가 이 id로 매칭 1건에 붙는다 (DB_SCHEMA.md 5.22, 5.23).
+ */
 export interface SavedTestResult {
   id: string;
+  diagnosisSessionId: string;
+  styleDnaResultId: string;
+  matchResultId: string;
 }

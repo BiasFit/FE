@@ -14,6 +14,7 @@ import {
   STYLE_NAMES,
   calculateGroupCompatibility,
   calculateStyleScores,
+  personalFitDetail,
   styleScoreDetail,
   type PersonalMatchInput,
   type RankMatchInput,
@@ -142,6 +143,7 @@ function resultSnapshot(
     matchExplanations: state.matchExplanations,
   };
   // 인플루언서 프로필 전체가 아니라 식별자와 점수만 남긴다.
+  // 개인은 체형·핏 25점의 내역을 함께 담는다. 그룹은 체형을 점수에 쓰지 않아 없다.
   const rankedInfluencers = ranked.map(
     ({ rank, influencer, baseBreakdown, breakdown }) => ({
       rank,
@@ -149,6 +151,16 @@ function resultSnapshot(
       influencerName: influencer.name,
       baseBreakdown,
       breakdown,
+      fitDetail:
+        state.mode === "personal"
+          ? personalFitDetail(
+              {
+                bodyType: state.personal.bodyType,
+                fitConcerns: state.personal.fitConcerns,
+              },
+              influencer,
+            )
+          : undefined,
     }),
   );
 
