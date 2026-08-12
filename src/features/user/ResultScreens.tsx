@@ -89,7 +89,7 @@ function styleDnaRequest(
       priority,
       members: [
         {
-          memberId: "personal",
+          memberId: "self",
           form: state.personal,
           styleScores: scoresFor(state.personal),
         },
@@ -142,11 +142,11 @@ function resultSnapshot(
       priority,
       tpo: state.personal.tpo,
       anonUserKey: anonUserKey(),
-      input: { members: [{ memberId: "personal", form: state.personal }] },
+      input: { members: [{ memberId: "self", form: state.personal }] },
       ai,
       score: {
         styleScores: [
-          { memberId: "personal", scores: scoresFor(state.personal) },
+          { memberId: "self", scores: scoresFor(state.personal) },
         ],
         rankedInfluencers,
       },

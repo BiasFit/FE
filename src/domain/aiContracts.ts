@@ -41,7 +41,7 @@ export interface PriorityOptionsResponse {
 }
 
 export interface StyleDnaMemberInput {
-  memberId: "personal" | "A" | "B";
+  memberId: "self" | "A" | "B";
   form: DiagnosisForm;
   styleScores: StyleScores;
 }
@@ -123,7 +123,7 @@ export interface SafeLanguageIssue {
 
 export interface LinkCheck {
   itemType: "top" | "bottom";
-  memberId: "personal" | "A" | "B";
+  memberId: "self" | "A" | "B";
   inputUrl: string;
   finalUrl: string | null;
   status: "pass" | "needs_revision" | "operations_review" | "failed";
@@ -135,7 +135,7 @@ export interface OutfitReviewRequest {
   mode: "personal" | "group";
   coachingMessage: string;
   cards: Array<{
-    memberId: "personal" | "A" | "B";
+    memberId: "self" | "A" | "B";
     top: { name: string; url: string };
     bottom: { name: string; url: string };
   }>;

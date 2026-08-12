@@ -4,12 +4,17 @@ import { influencers } from "../data/influencers";
 import { personaForms } from "../data/personas";
 import { MATCH_PRIORITY_WEIGHTS } from "./matchPriority";
 import {
+  STYLE_CRITERIA,
+  STYLE_NAMES,
   calculateGroupCompatibility,
   calculateGroupMatchScore,
   calculatePersonalBaseBreakdown,
   calculateStyleScores,
+  coachingSupportFor,
   filterEligibleInfluencers,
   rankInfluencers,
+  styleScoreDetail,
+  styleScoreLevel,
   type InfluencerProfile,
   type StyleScores,
 } from "./scoring";
@@ -198,6 +203,102 @@ describe("인플루언서 TPO 커버리지", () => {
   it("keeps influencer budget approaches inside the user-facing vocabulary", () => {
     for (const profile of influencers) {
       expect(budgetApproaches).toContain(profile.budgetApproach);
+    }
+  });
+});
+
+describe("styleScoreDetail", () => {
+  it("항목별 점수의 합이 기존 스타일 점수와 같다", () => {
+    // 내역을 노출하려고 계산을 옮겼을 뿐 합계는 바뀌지 않아야 한다.
+    for (const personaId of ["P1", "P2", "P3", "P4", "P5"] as const) {
+      const form = personaForms[personaId];
+      const input = {
+        preferredStyle: form.preferredStyle,
+        avoidedStyle: form.avoidedStyle,
+        keywords: form.keywords,
+        designElements: form.designElements,
+        preferredItems: form.preferredItems,
+        avoidedElements: form.avoidedElements,
+      };
+      const totals = calculateStyleScores(input);
+
+      for (const style of STYLE_NAMES) {
+        expect(styleScoreDetail(input, style).score).toBe(totals[style]);
+      }
+    }
+  });
+
+  it("style_score_breakdowns의 5개 기준을 정해진 순서로 낸다", () => {
+    const form = personaForms.P1;
+    const detail = styleScoreDetail(
+      {
+        preferredStyle: form.preferredStyle,
+        avoidedStyle: form.avoidedStyle,
+        keywords: form.keywords,
+        designElements: form.designElements,
+        preferredItems: form.preferredItems,
+        avoidedElements: form.avoidedElements,
+      },
+      "로맨틱",
+    );
+
+    expect(detail.breakdowns.map((item) => item.criterionCode)).toEqual([
+      "preferred_keyword",
+      "design_element",
+      "preferred_item",
+      "avoid_adjustment",
+      "preferred_style_bonus",
+    ]);
+    // STYLE_SCORING_DRAFT.md 72~101행의 배점
+    expect(detail.breakdowns.map((item) => item.maxScore)).toEqual([25, 25, 25, 15, 10]);
+    for (const item of detail.breakdowns) {
+      expect(item.score).toBeGreaterThanOrEqual(0);
+      expect(item.score).toBeLessThanOrEqual(item.maxScore);
+    }
+  });
+
+  it("항목 최대점의 합은 100이다", () => {
+    expect(STYLE_CRITERIA.reduce((sum, item) => sum + item.maxScore, 0)).toBe(100);
+  });
+});
+
+describe("styleScoreLevel", () => {
+  it("점수를 내부 분류로 나눈다", () => {
+    expect(styleScoreLevel(100)).toBe("strong");
+    expect(styleScoreLevel(70)).toBe("strong");
+    expect(styleScoreLevel(69)).toBe("medium");
+    expect(styleScoreLevel(40)).toBe("medium");
+    expect(styleScoreLevel(39)).toBe("weak");
+    expect(styleScoreLevel(20)).toBe("weak");
+    expect(styleScoreLevel(19)).toBe("low");
+    expect(styleScoreLevel(0)).toBe("low");
+  });
+});
+
+describe("coachingSupportFor", () => {
+  it("코칭 모드를 DB의 지원 유형 값으로 바꾼다", () => {
+    // DB_SCHEMA.md 5.15는 personal_only/group_only/both를 쓴다.
+    expect(coachingSupportFor("personal")).toBe("personal_only");
+    expect(coachingSupportFor("group")).toBe("group_only");
+  });
+
+  it("개인 전용 인플루언서는 그룹 후보에서 빠진다", () => {
+    const personalOnly = influencers.filter((profile) => profile.coachingType === "personal_only");
+    const groupCandidates = filterEligibleInfluencers("group", influencers);
+
+    expect(personalOnly.length).toBeGreaterThan(0);
+    for (const profile of personalOnly) {
+      expect(groupCandidates).not.toContain(profile);
+    }
+  });
+
+  it("그룹 전용 인플루언서는 개인 후보에서 빠진다", () => {
+    const groupOnly = influencers.filter((profile) => profile.coachingType === "group_only");
+    const personalCandidates = filterEligibleInfluencers("personal", influencers);
+
+    expect(groupOnly.length).toBeGreaterThan(0);
+    for (const profile of groupOnly) {
+      expect(personalCandidates).not.toContain(profile);
     }
   });
 });

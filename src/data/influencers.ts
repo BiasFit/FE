@@ -73,7 +73,7 @@ export const influencers: StylemateView[] = [
     budgetCodes: [3, 4],
     budgetApproach: "포인트 아이템 투자형",
     tpos: ["club_activity", "festival", "friend_meeting"],
-    coachingType: "personal",
+    coachingType: "personal_only",
     tagline: "스트릿 레이어드",
     description: "레이어드와 포인트 아이템으로 개성 있는 균형을 만들어요.",
     price: "10만 원 이하",
@@ -90,7 +90,7 @@ export const influencers: StylemateView[] = [
     budgetCodes: [3, 4],
     budgetApproach: "소재·품질 우선형",
     tpos: ["presentation_interview", "date", "travel"],
-    coachingType: "group",
+    coachingType: "group_only",
     tagline: "단정한 시밀러룩",
     description:
       "서로 다른 취향을 색감과 소재로 연결하는 그룹 제안에 강해요.",

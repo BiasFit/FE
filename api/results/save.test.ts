@@ -28,7 +28,7 @@ const payload: TestResultPayload = {
   priority: "fit_first",
   tpo: "new_semester",
   anonUserKey: "5f9d2b10-0000-4000-8000-000000000001",
-  input: { members: [{ memberId: "personal", form: personalForm }] },
+  input: { members: [{ memberId: "self", form: personalForm }] },
   ai: {
     priorityOptions: [
       { code: "fit_first", label: "편안한 핏을 먼저 맞추고 싶어요", evidenceRefs: ["fitConcerns"] },
@@ -53,7 +53,7 @@ const payload: TestResultPayload = {
   score: {
     styleScores: [
       {
-        memberId: "personal",
+        memberId: "self",
         scores: { 캐주얼: 40, 로맨틱: 75, 스트릿: 0, 빈티지: 20, "오피스 & 비즈니스캐주얼": 30 },
       },
     ],

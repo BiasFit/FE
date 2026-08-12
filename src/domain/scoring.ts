@@ -73,15 +73,77 @@ function countSignals(selections: string[], mapping: Record<string, StyleName[]>
 }
 
 export function calculateStyleScores(input: StyleSignalInput): StyleScores {
-  return Object.fromEntries(STYLE_NAMES.map((style) => {
-    const keywordScore = 25 * (countSignals(input.keywords, keywordStyles, style) / 3);
-    const designScore = 25 * (countSignals(input.designElements, designStyles, style) / 3);
-    const itemScore = 25 * (countSignals(input.preferredItems, itemStyles, style) / 3);
-    const conflictCount = countSignals(input.avoidedElements, avoidedStyles, style);
-    const conflictScore = input.avoidedStyle === style ? 0 : Math.max(0, 15 - conflictCount * 5);
-    const preferredScore = input.preferredStyle === style ? 10 : 0;
-    return [style, Math.round(keywordScore + designScore + itemScore + conflictScore + preferredScore)];
-  })) as StyleScores;
+  return Object.fromEntries(
+    STYLE_NAMES.map((style) => [style, styleScoreDetail(input, style).score]),
+  ) as StyleScores;
+}
+
+/**
+ * `style_score_breakdowns.criterion_code` (DB_SCHEMA.md 5.14)와 1:1로 대응한다.
+ * 배점은 STYLE_SCORING_DRAFT.md 72~101행을 따른다.
+ */
+export const STYLE_CRITERIA = [
+  { code: "preferred_keyword", label: "선호 키워드 일치", maxScore: 25 },
+  { code: "design_element", label: "디자인 요소 일치", maxScore: 25 },
+  { code: "preferred_item", label: "선호 아이템 일치", maxScore: 25 },
+  { code: "avoid_adjustment", label: "비선호·충돌 요소 보정", maxScore: 15 },
+  { code: "preferred_style_bonus", label: "선호 스타일 보너스", maxScore: 10 },
+] as const;
+
+export type StyleCriterionCode = (typeof STYLE_CRITERIA)[number]["code"];
+
+export interface StyleScoreBreakdown {
+  criterionCode: StyleCriterionCode;
+  criterionLabel: string;
+  score: number;
+  maxScore: number;
+}
+
+export interface StyleScoreDetail {
+  score: number;
+  breakdowns: StyleScoreBreakdown[];
+}
+
+/**
+ * 한 스타일의 점수와 항목별 내역을 함께 낸다.
+ * `calculateStyleScores`가 쓰던 계산을 그대로 옮겼을 뿐 합계는 달라지지 않는다.
+ * 내역이 필요한 이유는 저장(`style_score_breakdowns`)과 마이페이지의 "그때 근거" 표시다.
+ */
+export function styleScoreDetail(input: StyleSignalInput, style: StyleName): StyleScoreDetail {
+  const keywordScore = 25 * (countSignals(input.keywords, keywordStyles, style) / 3);
+  const designScore = 25 * (countSignals(input.designElements, designStyles, style) / 3);
+  const itemScore = 25 * (countSignals(input.preferredItems, itemStyles, style) / 3);
+  const conflictCount = countSignals(input.avoidedElements, avoidedStyles, style);
+  const conflictScore = input.avoidedStyle === style ? 0 : Math.max(0, 15 - conflictCount * 5);
+  const preferredScore = input.preferredStyle === style ? 10 : 0;
+  const parts = [keywordScore, designScore, itemScore, conflictScore, preferredScore];
+
+  return {
+    score: Math.round(parts.reduce((sum, part) => sum + part, 0)),
+    breakdowns: STYLE_CRITERIA.map((criterion, index) => ({
+      criterionCode: criterion.code,
+      criterionLabel: criterion.label,
+      score: Math.round(parts[index]),
+      maxScore: criterion.maxScore,
+    })),
+  };
+}
+
+/**
+ * `style_scores.level` (DB_SCHEMA.md 5.13). **내부 분류다.**
+ *
+ * ⚠️ 이 값을 화면이나 AI 프롬프트에 절대 넘기지 마라.
+ * 여러 문서가 사용자에게 `등급`을 보여주는 것을 금지한다 —
+ * `Design_system.md`의 Avoid 목록, `Style-DNA-Criteria.md`의 주의할 표현,
+ * `PRD.md`, `AGENTS.md`, `STYLE_DNA_AI_FUNCTIONS.md`.
+ *
+ * 임계값은 어느 문서에도 정의돼 있지 않아 여기서 정했다. 바꾸려면 이 함수만 고치면 된다.
+ */
+export function styleScoreLevel(score: number) {
+  if (score >= 70) return "strong" as const;
+  if (score >= 40) return "medium" as const;
+  if (score >= 20) return "weak" as const;
+  return "low" as const;
 }
 
 interface GroupMemberCompatibilityInput {
@@ -122,7 +184,17 @@ export function calculateGroupMatchScore(input: GroupScoreInput): MatchBreakdown
   return { ...scores, rawTotal, matchScore: normalizeMatchScore(rawTotal) };
 }
 
-export type CoachingSupport = "personal" | "group" | "both";
+/**
+ * DB_SCHEMA.md 5.15 `influencer_profiles.coaching_support_type`과 같은 값을 쓴다.
+ * 코드 쪽에서 `personal`/`group`으로 줄여 쓰면 DB와 어긋나고,
+ * 그 틈에서 조용히 0점이 되는 사고가 이 프로젝트에서 두 번 났다.
+ */
+export type CoachingSupport = "personal_only" | "group_only" | "both";
+
+/** `personal` 코칭 모드 → `personal_only` 지원 유형. 비교 전에 반드시 이걸 거친다. */
+export function coachingSupportFor(mode: MatchMode): CoachingSupport {
+  return mode === "group" ? "group_only" : "personal_only";
+}
 export interface InfluencerProfile {
   id: string;
   name: string;
@@ -213,7 +285,8 @@ export interface RankedInfluencer {
 }
 
 export function filterEligibleInfluencers(mode: MatchMode, profiles: InfluencerProfile[]) {
-  return profiles.filter((profile) => profile.profileCompleted && (profile.coachingType === "both" || profile.coachingType === mode));
+  const required = coachingSupportFor(mode);
+  return profiles.filter((profile) => profile.profileCompleted && (profile.coachingType === "both" || profile.coachingType === required));
 }
 
 function memberEvidence(prefix: string, member: MatchMemberInput, tpo: TpoCode, influencer: InfluencerProfile, includeBodyType: boolean): MatchedEvidence {

@@ -22,7 +22,7 @@ export interface TestResultPayload {
 
   input: {
     /** 개인은 길이 1, 그룹은 2. 화면에서 쓴 값 그대로. */
-    members: Array<{ memberId: "personal" | "A" | "B"; form: DiagnosisForm }>;
+    members: Array<{ memberId: "self" | "A" | "B"; form: DiagnosisForm }>;
     group?: { relationship: string; relationshipOther: string };
   };
 

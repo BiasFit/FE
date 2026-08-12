@@ -15,7 +15,7 @@ const request: OutfitReviewRequest = {
   coachingMessage: "편안한 실루엣을 선택할 수 있어요.",
   cards: [
     {
-      memberId: "personal",
+      memberId: "self",
       top: { name: "가디건", url: "https://shop.test/top" },
       bottom: { name: "스커트", url: "https://shop.test/bottom" },
     },
@@ -24,7 +24,7 @@ const request: OutfitReviewRequest = {
 
 const passingLinks: LinkCheck[] = [
   {
-    memberId: "personal",
+    memberId: "self",
     itemType: "top",
     inputUrl: "https://shop.test/top",
     finalUrl: "https://shop.test/top",
@@ -33,7 +33,7 @@ const passingLinks: LinkCheck[] = [
     action: "조치 없음",
   },
   {
-    memberId: "personal",
+    memberId: "self",
     itemType: "bottom",
     inputUrl: "https://shop.test/bottom",
     finalUrl: "https://shop.test/bottom",

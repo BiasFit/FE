@@ -39,6 +39,6 @@ export function toOutfitReviewRequest(
   return {
     mode: "personal",
     coachingMessage: draft.message,
-    cards: [{ memberId: "personal", top: draft.top, bottom: draft.bottom }],
+    cards: [{ memberId: "self", top: draft.top, bottom: draft.bottom }],
   };
 }

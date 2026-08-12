@@ -93,8 +93,8 @@ export function InfluencerLoginScreen() {
 const REQUIRED_PROFILE_TPO_COUNT = 3;
 
 const COACHING_TYPE_LABEL: Record<CoachingSupport, string> = {
-  personal: "개인 코칭만",
-  group: "2인 그룹 코칭만",
+  personal_only: "개인 코칭만",
+  group_only: "2인 그룹 코칭만",
   both: "개인·2인 그룹 모두",
 };
 

@@ -1,7 +1,7 @@
 /**
  * `diagnosis_options` 시드 SQL을 stdout으로 뱉는다.
  *
- *   cd FE && npx vite-node scripts/generateOptionsSeed.ts > ../MEMO/schema/03_options_seed.sql
+ *   cd FE && npx vite-node scripts/generateOptionsSeed.ts > schema/03_options_seed.sql
  *
  * 실제 내용은 `src/data/optionsSeed.ts`에 있다. 여기는 출력만 맡는다.
  * `dev/localApiPlugin.ts`와 마찬가지로 tsconfig 범위 밖이라 브라우저 번들에 들어가지 않는다.

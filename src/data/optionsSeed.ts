@@ -20,7 +20,7 @@ import {
  *
  * 그래서 시드를 손으로 쓰지 않고 `options.ts`에서 만든다.
  * SQL 파일 재생성:
- *   cd FE && npx vite-node scripts/generateOptionsSeed.ts > ../MEMO/schema/03_options_seed.sql
+ *   cd FE && npx vite-node scripts/generateOptionsSeed.ts > schema/03_options_seed.sql
  */
 export interface OptionSeedRow {
   optionGroup: string;
@@ -96,7 +96,7 @@ export function optionSeedSql(rows = optionSeedRows()) {
 --
 -- 생성물이다. 이 파일을 직접 고치지 마라.
 -- 출처: FE/src/data/optionsSeed.ts (그 안의 값은 FE/src/data/options.ts에서 온다)
--- 재생성: cd FE && npx vite-node scripts/generateOptionsSeed.ts > ../MEMO/schema/03_options_seed.sql
+-- 재생성: cd FE && npx vite-node scripts/generateOptionsSeed.ts > schema/03_options_seed.sql
 --
 -- 이 시드와 options.ts가 어긋나면 오류 없이 매칭 점수만 0점이 된다.
 -- 총 ${rows.length}행
