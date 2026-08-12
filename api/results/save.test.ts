@@ -55,6 +55,15 @@ const payload: TestResultPayload = {
       {
         memberId: "self",
         scores: { 캐주얼: 40, 로맨틱: 75, 스트릿: 0, 빈티지: 20, "오피스 & 비즈니스캐주얼": 30 },
+        breakdowns: {
+          로맨틱: [
+            { criterionCode: "preferred_keyword", criterionLabel: "선호 키워드 일치", score: 25, maxScore: 25 },
+            { criterionCode: "design_element", criterionLabel: "디자인 요소 일치", score: 25, maxScore: 25 },
+            { criterionCode: "preferred_item", criterionLabel: "선호 아이템 일치", score: 0, maxScore: 25 },
+            { criterionCode: "avoid_adjustment", criterionLabel: "비선호·충돌 요소 보정", score: 15, maxScore: 15 },
+            { criterionCode: "preferred_style_bonus", criterionLabel: "선호 스타일 보너스", score: 10, maxScore: 10 },
+          ],
+        },
       },
     ],
     rankedInfluencers: [

@@ -14,6 +14,7 @@ import {
   STYLE_NAMES,
   calculateGroupCompatibility,
   calculateStyleScores,
+  styleScoreDetail,
   type PersonalMatchInput,
   type RankMatchInput,
   type RankedInfluencer,
@@ -31,15 +32,30 @@ import { anonUserKey } from "../../storage/anonUser";
 import { MatchReason } from "./MatchReason";
 import { StyleDnaExplanation } from "./StyleDnaExplanation";
 
-function scoresFor(form: DiagnosisForm) {
-  return calculateStyleScores({
+function styleSignalOf(form: DiagnosisForm) {
+  return {
     preferredStyle: form.preferredStyle,
     avoidedStyle: form.avoidedStyle,
     keywords: form.keywords,
     designElements: form.designElements,
     preferredItems: form.preferredItems,
     avoidedElements: form.avoidedElements,
-  });
+  };
+}
+
+function scoresFor(form: DiagnosisForm) {
+  return calculateStyleScores(styleSignalOf(form));
+}
+
+/**
+ * 스타일별 항목 내역. `style_score_breakdowns`에 그대로 들어간다.
+ * 총점은 `scoresFor`와 같은 계산에서 나오므로 둘이 어긋날 수 없다.
+ */
+function breakdownsFor(form: DiagnosisForm) {
+  const signal = styleSignalOf(form);
+  return Object.fromEntries(
+    STYLE_NAMES.map((style) => [style, styleScoreDetail(signal, style).breakdowns]),
+  );
 }
 
 function personalInput(
@@ -146,7 +162,11 @@ function resultSnapshot(
       ai,
       score: {
         styleScores: [
-          { memberId: "self", scores: scoresFor(state.personal) },
+          {
+            memberId: "self",
+            scores: scoresFor(state.personal),
+            breakdowns: breakdownsFor(state.personal),
+          },
         ],
         rankedInfluencers,
       },
@@ -173,8 +193,8 @@ function resultSnapshot(
     ai,
     score: {
       styleScores: [
-        { memberId: "A", scores: groupA },
-        { memberId: "B", scores: groupB },
+        { memberId: "A", scores: groupA, breakdowns: breakdownsFor(state.group.members.A) },
+        { memberId: "B", scores: groupB, breakdowns: breakdownsFor(state.group.members.B) },
       ],
       groupCompatibility: calculateGroupCompatibility(
         {

@@ -5,7 +5,7 @@ import type {
   StyleDnaExplanationResponse,
 } from "./aiContracts";
 import type { CategoryScores } from "./matchPriority";
-import type { MatchBreakdown, StyleScores } from "./scoring";
+import type { MatchBreakdown, StyleScoreBreakdown, StyleScores } from "./scoring";
 
 /**
  * 한 번의 진단 흐름을 그대로 남기는 스냅샷.
@@ -33,7 +33,16 @@ export interface TestResultPayload {
   };
 
   score: {
-    styleScores: Array<{ memberId: string; scores: StyleScores }>;
+    /**
+     * 스타일별 총점과 항목별 내역.
+     * 내역은 `style_score_breakdowns`에 그대로 들어간다 (DB_SCHEMA.md 5.14).
+     * 저장 시점에 다시 계산하지 않으려고 화면에서 만든 값을 함께 싣는다.
+     */
+    styleScores: Array<{
+      memberId: string;
+      scores: StyleScores;
+      breakdowns: Record<string, StyleScoreBreakdown[]>;
+    }>;
     groupCompatibility?: {
       styleSimilarity: number;
       budgetCompatibility: number;
