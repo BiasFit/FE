@@ -118,13 +118,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!isAuthConfigured) {
       return localAccount(input.role, input.loginId.trim(), input.displayName.trim());
     }
-    const { error } = await supabase.auth.signUp({
-      email: loginIdToEmail(input.loginId),
-      password: input.password,
-    });
-    if (error) throw new Error(toUserMessage(error, "가입하지 못했어요."));
+    const email = loginIdToEmail(input.loginId);
+    const { error } = await supabase.auth.signUp({ email, password: input.password });
 
-    // 가입 직후 accounts 행을 만든다. authUserId는 서버가 토큰에서 꺼낸다.
+    // Auth 사용자만 만들어지고 accounts 행 생성이 실패하면 반쪽 상태가 남는다.
+    // 그 상태에서 다시 가입하면 "이미 가입됨"이 나므로, 로그인으로 이어받아 마저 만든다.
+    const alreadyRegistered =
+      error && /already registered|already been registered|User already/i.test(error.message ?? "");
+    if (error && !alreadyRegistered) {
+      throw new Error(toUserMessage(error, "가입하지 못했어요."));
+    }
+
+    const signedIn = await supabase.auth.signInWithPassword({ email, password: input.password });
+    if (signedIn.error) {
+      throw new Error(
+        alreadyRegistered
+          ? "이미 가입된 아이디예요. 비밀번호가 맞는지 확인해 주세요."
+          : toUserMessage(signedIn.error, "가입하지 못했어요."),
+      );
+    }
+
+    // accounts 행을 만든다. 이미 있으면 그대로 돌려받는다.
+    // authUserId는 프런트가 보내지 않는다. 서버가 토큰에서 꺼낸다.
     const created = await createAccount({
       role: input.role,
       loginId: input.loginId.trim(),
