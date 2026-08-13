@@ -19,6 +19,7 @@ import {
   getAssignedRequests,
   getDiagnosisResult,
   reviewOutfit,
+  saveInfluencerProfile,
   type AssignedRequestView,
   type DiagnosisResultView,
 } from "../../lib/biasfitApi";
@@ -165,6 +166,8 @@ export function InfluencerProfileScreen() {
   ]);
   const [coachingType, setCoachingType] = useState<CoachingSupport>("both");
   const [showError, setShowError] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   // 강점 TPO는 사용자 TPO 후보와 같은 8개에서 고른다 (STYLE_SCORING_DRAFT.md 2.4).
   const valid =
     primaryStyle !== secondaryStyle &&
@@ -191,26 +194,33 @@ export function InfluencerProfileScreen() {
           <button
             className="btn-primary"
             type="button"
+            disabled={saving}
             onClick={() => {
               if (!valid) {
                 setShowError(true);
                 return;
               }
-              localStorage.setItem(
-                "biasfit:influencer-profile:v1:stylemate-01",
-                JSON.stringify({
-                  primaryStyle,
-                  secondaryStyle,
-                  bodyType,
-                  concerns,
-                  budgetMinCode,
-                  budgetMaxCode,
-                  budgetApproach,
-                  occasions,
-                  coachingType,
-                }),
-              );
-              navigate("/influencer/requests");
+              setSaving(true);
+              setSaveError("");
+              // 서버에 저장해야 매칭 후보가 된다. localStorage에만 두면 아무도 찾지 못한다.
+              void saveInfluencerProfile({
+                primaryStyle,
+                secondaryStyle,
+                bodyType,
+                fitConcerns: concerns,
+                budgetMinCode,
+                budgetMaxCode,
+                budgetApproach,
+                tpos: occasions,
+                coachingType,
+              })
+                .then(() => navigate("/influencer/requests"))
+                .catch((error: unknown) => {
+                  setSaveError(
+                    error instanceof Error ? error.message : "프로필을 저장하지 못했어요.",
+                  );
+                  setSaving(false);
+                });
             }}
           >
             프로필 완성하기 <span aria-hidden="true">✓</span>
@@ -269,6 +279,7 @@ export function InfluencerProfileScreen() {
         />
       </div>
       {showError && !valid ? <p className="error-copy" style={{ display: "block" }}>필수 항목을 모두 선택해 주세요.</p> : null}
+      {saveError ? <p className="error-copy" style={{ display: "block" }} aria-live="polite">{saveError}</p> : null}
     </FlowShell>
   );
 }

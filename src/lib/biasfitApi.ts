@@ -126,6 +126,25 @@ export function getInfluencers(signal?: AbortSignal) {
   return postJson<{ influencers: StylemateView[] }>("/api/influencers/list", {}, signal);
 }
 
+/** 인플루언서 첫 프로필 저장. 서버에 있어야 매칭 후보가 된다. */
+export function saveInfluencerProfile(
+  input: {
+    primaryStyle: string;
+    secondaryStyle: string;
+    bodyType: string;
+    fitConcerns: string[];
+    budgetMinCode: number;
+    budgetMaxCode: number;
+    budgetApproach: string;
+    tpos: string[];
+    coachingType: "personal_only" | "group_only" | "both";
+    representativeMood?: string;
+  },
+  signal?: AbortSignal,
+) {
+  return postJson<{ id: string }>("/api/influencers/upsert", input, signal);
+}
+
 /** 부탁해요 카드 전송. 수신 한도에 걸리면 409와 함께 안내 문구가 온다. */
 export function sendRequestCard(
   input: {

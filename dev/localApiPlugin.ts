@@ -50,6 +50,7 @@ const biasFitApiModules = {
   "/api/ai/priority-options": "/api/ai/priority-options.ts",
   "/api/ai/style-dna-explanation": "/api/ai/style-dna-explanation.ts",
   "/api/influencers/list": "/api/influencers/list.ts",
+  "/api/influencers/upsert": "/api/influencers/upsert.ts",
   "/api/matches/top-three": "/api/matches/top-three.ts",
   "/api/outfit/review": "/api/outfit/review.ts",
   "/api/requests/list": "/api/requests/list.ts",
