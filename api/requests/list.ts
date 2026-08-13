@@ -71,7 +71,15 @@ export async function loadAssignedRequests(
   for (const row of rows) {
     const match = one<Record<string, any>>(row.match_results);
     const session = one<{ coaching_type: "personal" | "group" }>(match?.diagnosis_sessions);
-    const outfits = (match?.outfit_cards ?? []) as Array<{ status: string }>;
+    // outfit_cards.match_result_id에 unique가 걸려 있어 PostgREST가 배열이 아니라
+    // 객체 하나로 돌려준다. 배열로 단정하면 카드가 생기는 순간 목록 전체가 깨진다.
+    const outfits = (
+      Array.isArray(match?.outfit_cards)
+        ? match?.outfit_cards
+        : match?.outfit_cards
+          ? [match.outfit_cards]
+          : []
+    ) as Array<{ status: string }>;
 
     // TPO는 세션 단위로 한 건 저장돼 있다.
     const tpo = await client

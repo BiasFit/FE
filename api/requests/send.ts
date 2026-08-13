@@ -107,10 +107,15 @@ export async function sendRequestCard(
 
   if (typeof data !== "string") throw new Error("부탁해요 카드를 보내지 못했어요.");
 
-  // 선택한 스타일메이트를 매칭에 기록한다.
+  // 선택한 스타일메이트와 진행 상태를 매칭에 기록한다.
+  // `request_sent`는 마이페이지의 "코디 카드 준비 중" 조회 조건이다 (DB_SCHEMA.md 2.1).
   const update = await client
     .from("match_results")
-    .update({ selected_influencer_profile_id: receiverId, updated_at: new Date().toISOString() })
+    .update({
+      selected_influencer_profile_id: receiverId,
+      status: "request_sent",
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", input.matchResultId);
   if (update.error) {
     console.error("[BiasFit 요청] 선택 스타일메이트 기록 실패", update.error);

@@ -7,21 +7,21 @@ import { useAuth } from "../../app/AuthProvider";
 import {
   TPO_CODES,
   budgetApproaches,
-  budgetRangeLabel,
   fitConcerns,
   styleOptions,
   tpoLabel,
 } from "../../data/options";
 import type { CoachingSupport } from "../../domain/scoring";
-import { personaForms } from "../../data/personas";
 import { isValidOutfitDraft, isValidProductUrl, toOutfitReviewRequest } from "../../domain/outfit";
 import {
+  deliverOutfitCard,
   getAssignedRequests,
   getDiagnosisResult,
-  reviewOutfit,
+  getOutfitCard,
   saveInfluencerProfile,
   type AssignedRequestView,
   type DiagnosisResultView,
+  type OutfitCardView,
 } from "../../lib/biasfitApi";
 import {
   clearDraft,
@@ -33,24 +33,26 @@ import { ChipChoices, FlowShell } from "../../shared/FlowShell";
 import { BudgetRangeSlider } from "../../shared/BudgetRangeSlider";
 import { OutfitReviewPanel } from "./OutfitReviewPanel";
 
+/**
+ * 빈 초안으로 시작한다.
+ *
+ * 예시 제품명과 example.com 링크를 미리 채워 두면 인플루언서가 그대로 전달했을 때
+ * 사용자에게 존재하지 않는 상품이 간다. 작성은 반드시 빈 칸에서 시작해야 한다.
+ */
+const emptyProduct = { name: "", url: "" };
+
 const personalDefault: PersonalOutfitDraft = {
-  top: { name: "아이보리 셔링 블라우스", url: "https://example.com/products/ivory-blouse" },
-  bottom: { name: "세미 A라인 데님 스커트", url: "https://example.com/products/denim-skirt" },
-  message:
-    "상의 디테일은 부드럽게 살리고, 하의는 허리선이 잘 보이는 길이로 골라 전체 비율이 답답하지 않도록 했어요.",
+  title: "",
+  top: { ...emptyProduct },
+  bottom: { ...emptyProduct },
+  message: "",
 };
 
 const groupDefault: GroupOutfitDraft = {
-  memberA: {
-    top: { name: "오프화이트 반팔 티셔츠", url: "https://example.com/products/off-white-tshirt" },
-    bottom: { name: "연청 A라인 스커트", url: "https://example.com/products/light-denim-skirt" },
-  },
-  memberB: {
-    top: { name: "오프화이트 린넨 셔츠", url: "https://example.com/products/linen-shirt" },
-    bottom: { name: "네이비 와이드 슬랙스", url: "https://example.com/products/navy-slacks" },
-  },
-  message:
-    "각자의 취향은 유지하고 오프화이트 상의와 소프트 블루 포인트로 연결감을 만들었어요.",
+  memberA: { top: { ...emptyProduct }, bottom: { ...emptyProduct } },
+  memberB: { top: { ...emptyProduct }, bottom: { ...emptyProduct } },
+  title: "",
+  message: "",
 };
 
 export function InfluencerLoginScreen() {
@@ -317,30 +319,6 @@ function SingleChoice({
   );
 }
 
-const assignedRequests = [
-  {
-    id: "P1-2026-001",
-    mode: "개인",
-    tpo: "new_semester",
-    detail: "부탁해요 카드 · 오늘 오후 10:37",
-    done: false,
-  },
-  {
-    id: "G1-2026-004",
-    mode: "2인 그룹",
-    tpo: "travel",
-    detail: "P4·P5 부탁해요 카드 · 어제 오후 8:12",
-    done: false,
-  },
-  {
-    id: "P2-2026-002",
-    mode: "개인",
-    tpo: "daily",
-    detail: "코디 카드 전달 · 7월 19일",
-    done: true,
-  },
-];
-
 function sentAtLabel(sentAt: string | null) {
   if (!sentAt) return "전송 시각 없음";
   const date = new Date(sentAt);
@@ -377,7 +355,7 @@ export function InfluencerRequestsScreen() {
       step={2}
       eyebrow="MY REQUESTS"
       title="내 배정 요청"
-      description="STYLEMATE 01 계정에 배정된 요청만 표시합니다."
+      description={`${account?.displayName ?? "내"} 계정에 배정된 요청만 표시합니다.`}
       actions={
         <>
           <span className="draft-state">◇ 다른 스타일메이트의 요청은 표시하지 않아요.</span>
@@ -437,6 +415,9 @@ function isGroupDraft(draft: OutfitDraft): draft is GroupOutfitDraft {
 export function InfluencerDetailScreen() {
   const navigate = useNavigate();
   const { state } = useAppState();
+  const { account } = useAuth();
+  // 임시저장은 로그인한 계정 것만 열린다. 고정 id를 쓰면 다른 사람의 초안이 열린다.
+  const draftOwner = account?.loginId ?? "unknown";
 
   // 사용자가 실제로 입력한 값을 읽는다. 고정 문구를 쓰면 누가 무엇을 입력했든 같은 화면이 된다.
   const [diagnosis, setDiagnosis] = useState<DiagnosisResultView | null>(null);
@@ -462,37 +443,61 @@ export function InfluencerDetailScreen() {
 
   const group = diagnosis ? diagnosis.coachingType === "group" : state.mode === "group";
   const initial = useMemo(() => {
-    const saved = loadDraft("stylemate-01", state.activeRequestId);
+    const saved = loadDraft(draftOwner, state.activeRequestId);
     if (saved && isGroupDraft(saved) === group) return saved;
     return group ? groupDefault : personalDefault;
-  }, [group, state.activeRequestId]);
+  }, [draftOwner, group, state.activeRequestId]);
   const [draft, setDraft] = useState<OutfitDraft>(initial);
   const [draftState, setDraftState] = useState("모든 변경사항 저장됨");
   const [modal, setModal] = useState(false);
   const [reviewStatus, setReviewStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [reviewResult, setReviewResult] = useState<OutfitReviewResponse | null>(null);
+  const [deliverError, setDeliverError] = useState("");
   const draftValid = isValidOutfitDraft(draft);
 
   useEffect(() => {
     setReviewStatus("idle");
     setReviewResult(null);
+    setDeliverError("");
     setDraftState("저장 중…");
     const timer = window.setTimeout(() => {
-      saveDraft("stylemate-01", state.activeRequestId, draft);
+      saveDraft(draftOwner, state.activeRequestId, draft);
       setDraftState("자동 저장됨");
     }, 1000);
     return () => window.clearTimeout(timer);
-  }, [draft, state.activeRequestId]);
+  }, [draft, draftOwner, state.activeRequestId]);
 
-  const startReview = async () => {
+  /**
+   * 전달은 서버 한 곳에서만 일어난다.
+   *
+   * 검수(링크·안전 표현)와 저장이 같은 요청 안에서 순서대로 돌기 때문에,
+   * "검수는 통과했는데 저장이 안 된" 상태나 그 반대가 생기지 않는다.
+   * 통과하지 못하면 서버는 아무것도 저장하지 않고 검수 내역만 돌려준다.
+   */
+  const deliver = async () => {
     setReviewStatus("loading");
     setReviewResult(null);
+    setDeliverError("");
     try {
-      const result = await reviewOutfit(toOutfitReviewRequest(draft));
-      setReviewResult(result);
+      const request = toOutfitReviewRequest(draft);
+      const result = await deliverOutfitCard({
+        matchResultId: state.activeRequestId,
+        title: draft.title,
+        message: draft.message,
+        cards: request.cards,
+      });
+      setReviewResult(result.review);
       setReviewStatus("success");
-    } catch {
+      if (result.delivered) {
+        // 전달됐으니 이 요청의 임시저장은 지운다 (INFLUENCER_SCREEN_SPEC.md 3.4).
+        clearDraft(draftOwner, state.activeRequestId);
+        navigate("/influencer/delivered");
+      }
+    } catch (error) {
       setReviewStatus("error");
+      setDeliverError(
+        error instanceof Error ? error.message : "코디 카드를 전달하지 못했어요.",
+      );
     }
   };
 
@@ -541,7 +546,7 @@ export function InfluencerDetailScreen() {
               className="btn-secondary"
               type="button"
               onClick={() => {
-                saveDraft("stylemate-01", state.activeRequestId, draft);
+                saveDraft(draftOwner, state.activeRequestId, draft);
                 setDraftState("임시저장 완료");
               }}
             >
@@ -638,19 +643,40 @@ export function InfluencerDetailScreen() {
         <section className="compose-section">
           <h2 className="section-title">부탁해요 카드</h2>
           <div className="request-letter">
-            <p>{state.requestText[group ? "group" : "personal"]}</p>
+            {/* 사용자가 보낸 원문이다. 브라우저 로컬 값을 읽으면 다른 기기에서 빈 화면이 된다. */}
+            <p>
+              {diagnosis?.requestCard?.messageText ||
+                (diagnosisStatus === "loading"
+                  ? "요청 내용을 불러오는 중이에요."
+                  : "전달된 요청 내용이 없어요.")}
+            </p>
             <div className="request-budget-line">
               <strong>요청 예산</strong>
+              {/* 예산은 요청 정보라서 인플루언서가 수정하지 않는다 (INFLUENCER_SCREEN_SPEC.md 3.4). */}
               <span>
-                {group
-                  ? `P4 ${budgetRangeLabel(state.requestBudget.group.A.minCode, state.requestBudget.group.A.maxCode)} · P5 ${budgetRangeLabel(state.requestBudget.group.B.minCode, state.requestBudget.group.B.maxCode)}`
-                  : budgetRangeLabel(state.requestBudget.personal.minCode, state.requestBudget.personal.maxCode)}
+                {diagnosis?.members
+                  .map((member) =>
+                    member.memberLabel === "self"
+                      ? member.budgetLabel
+                      : `${member.memberLabel} ${member.budgetLabel}`,
+                  )
+                  .join(" · ") || "—"}
               </span>
             </div>
           </div>
         </section>
         <section className="compose-section">
           <h2 className="section-title">코디 카드 내용</h2>
+          <label className="field">
+            <span className="field-label">코디 카드 제목 <span className="required">필수</span></span>
+            <input
+              className="text-input"
+              aria-label="코디 카드 제목"
+              placeholder="예: 부드러운 캠퍼스 레이어드"
+              value={draft.title}
+              onChange={(event) => setDraft({ ...draft, title: event.target.value })}
+            />
+          </label>
           {!isGroupDraft(draft) ? (
             <OutfitFields
               values={draft}
@@ -678,7 +704,7 @@ export function InfluencerDetailScreen() {
           </label>
           {!draftValid ? (
             <p className="error-copy outfit-error" style={{ display: "block" }}>
-              상의와 하의의 제품명, http:// 또는 https://로 시작하는 상품 링크를 모두 입력해 주세요.
+              코디 카드 제목, 전하는 말, 상의·하의의 제품명과 http:// 또는 https://로 시작하는 상품 링크를 모두 입력해 주세요.
             </p>
           ) : null}
         </section>
@@ -687,31 +713,41 @@ export function InfluencerDetailScreen() {
         <div className="modal-backdrop open" role="presentation">
           <div className="modal" role="dialog" aria-modal="true" aria-labelledby="deliver-title">
             <h2 id="deliver-title">코디 카드를 전달할까요?</h2>
-            <p>안전 표현과 상의·하의 상품 링크 검수를 통과한 뒤에만 전달할 수 있어요.</p>
-            {reviewStatus === "loading" ? <p aria-live="polite">코디 카드를 검수하고 있어요.</p> : null}
-            {reviewStatus === "error" ? <p className="error-copy" style={{ display: "block" }}>검수를 완료하지 못했어요. 다시 시도해 주세요.</p> : null}
-            {reviewResult ? <OutfitReviewPanel result={reviewResult} /> : null}
+            <p>안전 표현과 상의·하의 상품 링크 검수를 통과한 뒤에만 전달돼요. 전달 후에는 수정하거나 다시 보낼 수 없어요.</p>
+            <div className="soft-card">
+              <strong>{draft.title}</strong>
+              <p className="helper">{draft.message}</p>
+            </div>
+            {reviewStatus === "loading" ? <p aria-live="polite">코디 카드를 확인하고 있어요.</p> : null}
+            {reviewStatus === "error" ? (
+              <p className="error-copy" style={{ display: "block" }} aria-live="polite">
+                {deliverError || "코디 카드를 전달하지 못했어요. 다시 시도해 주세요."}
+              </p>
+            ) : null}
+            {reviewResult && reviewResult.reviewStatus !== "pass" ? (
+              <>
+                <OutfitReviewPanel result={reviewResult} />
+                <p className="helper">
+                  {/* operations_review는 인플루언서 잘못이 아니다 (INFLUENCER_SCREEN_SPEC.md 3.4). */}
+                  {reviewResult.reviewStatus === "operations_review"
+                    ? "자동 접속 확인이 막혀 운영진이 확인하고 있어요. 작성한 내용은 그대로 유지했어요."
+                    : "수정한 뒤 다시 전달해 주세요. 작성한 내용은 그대로 유지했어요."}
+                </p>
+              </>
+            ) : null}
             <div className="modal-actions">
               <button className="btn-secondary" type="button" onClick={() => setModal(false)}>계속 작성</button>
               <button
-                className="btn-secondary"
-                type="button"
-                disabled={reviewStatus === "loading"}
-                onClick={() => void startReview()}
-              >
-                {reviewStatus === "idle" ? "검수 시작" : "검수 다시 시도"}
-              </button>
-              <button
                 className="btn-primary"
                 type="button"
-                disabled={reviewResult?.reviewStatus !== "pass"}
-                onClick={() => {
-                  if (reviewResult?.reviewStatus !== "pass") return;
-                  clearDraft("stylemate-01", state.activeRequestId);
-                  navigate("/influencer/delivered");
-                }}
+                disabled={reviewStatus === "loading" || !draftValid}
+                onClick={() => void deliver()}
               >
-                전달 확정
+                {reviewStatus === "loading"
+                  ? "전달하는 중이에요."
+                  : reviewResult || deliverError
+                    ? "수정 후 다시 전달"
+                    : "전달 확정"}
               </button>
             </div>
           </div>
@@ -771,13 +807,38 @@ function OutfitFields({
 export function DeliveredScreen() {
   const navigate = useNavigate();
   const { state } = useAppState();
+  const [card, setCard] = useState<OutfitCardView | null>(null);
+  const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
+
+  // 전달한 카드를 서버에서 다시 읽는다. 화면에 남은 초안을 보여주면
+  // 실제로 전달된 내용과 달라질 수 있다.
+  useEffect(() => {
+    if (!state.activeRequestId) {
+      setStatus("success");
+      return;
+    }
+    const controller = new AbortController();
+    setStatus("loading");
+    void getOutfitCard(state.activeRequestId, controller.signal)
+      .then((result) => {
+        setCard(result.card);
+        setStatus("success");
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        console.log("[BiasFit 인플루언서] 코디 카드 조회 실패", error);
+        setStatus("error");
+      });
+    return () => controller.abort();
+  }, [state.activeRequestId]);
+
   return (
     <FlowShell
       flow="influencer"
       step={4}
       eyebrow="DELIVERED · READ ONLY"
       title="전달 완료 코디 카드"
-      description={`${state.activeRequestId} · 전달된 내용은 수정·삭제·재전송할 수 없습니다.`}
+      description="전달된 내용은 수정·삭제·재전송할 수 없습니다."
       actions={
         <button className="btn-primary" type="button" onClick={() => navigate("/influencer/requests")}>
           내 배정 요청으로 돌아가기
@@ -786,21 +847,75 @@ export function DeliveredScreen() {
     >
       <button className="btn-ghost compose-back" type="button" onClick={() => navigate("/influencer/requests")}>← 배정 요청 목록</button>
       <div className="readonly-banner">◇ 읽기 전용으로 열람 중</div>
-      <article className="outfit-card readonly-outfit-card">
-        <div className="outfit-cover" role="img" aria-label="전달 완료된 등교 코디 이미지" />
-        <div className="outfit-content">
-          <div className="outfit-head">
-            <div><span className="badge">등교·일상</span><h2>가볍고 단정한 데일리 레이어드</h2><p className="helper">STYLEMATE 01 · 3만~6만 원</p></div>
-            <span className="badge dark">전달 완료</span>
-          </div>
-          <div className="item-list">
-            <div className="item"><small>상의</small><strong>소프트 블루 가디건 + 화이트 티</strong><a href="https://example.com/products/blue-cardigan" target="_blank" rel="noreferrer">상품 링크 보기</a></div>
-            <div className="item"><small>하의</small><strong>라이트 그레이 A라인 스커트</strong><a href="https://example.com/products/gray-skirt" target="_blank" rel="noreferrer">상품 링크 보기</a></div>
-          </div>
-          <div className="soft-card"><strong>보유 아이템 대체 팁</strong><p className="helper" style={{ marginTop: 7 }}>블루 가디건 대신 비슷한 채도의 셔츠를 열어 입어도 전체 인상이 유지돼요.</p></div>
-          <div className="coach-message" style={{ marginTop: 14 }}><h3>P2님께 전한 말</h3><p>수업과 약속 사이에 오래 입어도 편하도록 가벼운 레이어드와 익숙한 스니커즈를 중심으로 구성했어요. 상의 색감만 맞추면 가지고 있는 아이템으로도 충분히 재현할 수 있어요.</p></div>
+      {status === "loading" ? (
+        <div className="soft-card" aria-live="polite">전달한 코디 카드를 불러오는 중이에요.</div>
+      ) : null}
+      {status === "error" ? (
+        <div className="soft-card" aria-live="polite">
+          <p className="error-copy" style={{ display: "block" }}>전달된 코디 카드 정보를 불러오지 못했어요.</p>
         </div>
-      </article>
+      ) : null}
+      {status === "success" && !card ? (
+        <div className="soft-card" aria-live="polite">
+          <p>아직 전달된 코디 카드가 없어요.</p>
+        </div>
+      ) : null}
+      {card ? <DeliveredOutfitCard card={card} /> : null}
+      <p className="helper" style={{ marginTop: 12 }}>
+        코디 카드는 전달 후 수정할 수 없어요. 이 요청의 임시저장은 삭제됐어요.
+      </p>
     </FlowShell>
+  );
+}
+
+/** 전달된 카드를 읽기 전용으로 그린다. 인플루언서와 사용자가 같은 내용을 본다. */
+export function DeliveredOutfitCard({ card }: { card: OutfitCardView }) {
+  const members: Array<"self" | "A" | "B"> =
+    card.coachingType === "group" ? ["A", "B"] : ["self"];
+
+  return (
+    <>
+      <div className={card.coachingType === "group" ? "group-result-grid" : ""}>
+        {members.map((memberLabel) => {
+          const items = card.items.filter((item) => item.memberLabel === memberLabel);
+          const top = items.find((item) => item.itemType === "top");
+          const bottom = items.find((item) => item.itemType === "bottom");
+          return (
+            <article className="outfit-card readonly-outfit-card" key={memberLabel}>
+              <div className="outfit-cover" role="img" aria-label={`${card.title} 코디 이미지`} />
+              <div className="outfit-content">
+                <div className="outfit-head">
+                  <div>
+                    <span className="badge">{card.tpoLabel}</span>
+                    <h2>{card.title}</h2>
+                    <p className="helper">
+                      {card.influencerName} · {card.budgetLabel} · {card.budgetApproach}
+                    </p>
+                  </div>
+                  <span className="badge dark">
+                    {memberLabel === "self" ? "개인 코칭" : `구성원 ${memberLabel}`}
+                  </span>
+                </div>
+                <div className="item-list">
+                  {([["상의", top], ["하의", bottom]] as const).map(([label, item]) => (
+                    <div className="item" key={label}>
+                      <small>{label}</small>
+                      <strong>{item?.name ?? "—"}</strong>
+                      {item ? (
+                        <a href={item.url} target="_blank" rel="noreferrer">상품 링크 보기</a>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+      <div className="coach-message" style={{ marginTop: 14 }}>
+        <h3>전한 말</h3>
+        <p>{card.message}</p>
+      </div>
+    </>
   );
 }

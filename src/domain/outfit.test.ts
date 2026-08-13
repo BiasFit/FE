@@ -14,6 +14,7 @@ describe("outfit product validation", () => {
 
     expect(
       isValidOutfitDraft({
+        title: "부드러운 캠퍼스 레이어드",
         top: { name: "가디건", url: "https://shop.test/top/1" },
         bottom: { name: "스커트", url: "https://shop.test/bottom/2" },
         message: "코디 설명",
@@ -21,11 +22,24 @@ describe("outfit product validation", () => {
     ).toBe(true);
     expect(
       isValidOutfitDraft({
+        title: "부드러운 캠퍼스 레이어드",
         top: { name: "가디건", url: "잘못된 링크" },
         bottom: { name: "스커트", url: "https://shop.test/bottom/2" },
         message: "코디 설명",
       }),
     ).toBe(false);
+  });
+
+  it("제목이나 전하는 말이 비면 전달할 수 없다", () => {
+    const complete = {
+      title: "부드러운 캠퍼스 레이어드",
+      top: { name: "가디건", url: "https://shop.test/top/1" },
+      bottom: { name: "스커트", url: "https://shop.test/bottom/2" },
+      message: "코디 설명",
+    };
+
+    expect(isValidOutfitDraft({ ...complete, title: "  " })).toBe(false);
+    expect(isValidOutfitDraft({ ...complete, message: "" })).toBe(false);
   });
 });
 
@@ -40,6 +54,7 @@ describe("outfit review request", () => {
         top: { name: "B 상의", url: "https://shop.test/b-top" },
         bottom: { name: "B 하의", url: "https://shop.test/b-bottom" },
       },
+      title: "함께 어울리는 여행룩",
       message: "각자의 취향을 유지한 코디예요.",
     });
 

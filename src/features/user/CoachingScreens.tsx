@@ -1,10 +1,14 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppState } from "../../app/AppStateProvider";
-import type { ProductItem } from "../../app/types";
 import type { StylemateView } from "../../data/influencers";
 import { budgetRangeLabel, tpoLabel } from "../../data/options";
-import { sendRequestCard } from "../../lib/biasfitApi";
+import {
+  getOutfitCard,
+  sendRequestCard,
+  type OutfitCardView,
+} from "../../lib/biasfitApi";
+import { DeliveredOutfitCard } from "../influencer/InfluencerScreens";
 import { FlowShell } from "../../shared/FlowShell";
 
 /** 목록을 아직 못 받았을 때 화면이 깨지지 않게 쓰는 빈 값. */
@@ -242,9 +246,30 @@ export function WaitScreen() {
 export function OutfitScreen() {
   const cardRef = useRef<HTMLDivElement>(null);
   const [saving, setSaving] = useState(false);
-  const navigate = useNavigate();
   const { state } = useAppState();
-  const mate = useSelectedMate();
+  const [card, setCard] = useState<OutfitCardView | null>(null);
+  const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
+
+  // 인플루언서가 실제로 쓴 카드만 보여준다. 전달 전에는 카드가 없는 게 정상이고,
+  // 그때는 준비 중 안내를 본다 (INFLUENCER_SCREEN_SPEC.md 3.4).
+  //
+  // 진행 중인 매칭 id는 화면 메모리에만 있다. 다시 접속했으면 비어 있으므로,
+  // 그때는 서버가 이 계정의 가장 최근 카드를 찾아 준다.
+  useEffect(() => {
+    const controller = new AbortController();
+    setStatus("loading");
+    void getOutfitCard(state.savedResultId || undefined, controller.signal)
+      .then((result) => {
+        setCard(result.card);
+        setStatus("success");
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        console.log("[BiasFit 코디] 코디 카드 조회 실패", error);
+        setStatus("error");
+      });
+    return () => controller.abort();
+  }, [state.savedResultId]);
 
   const download = async () => {
     if (!cardRef.current) return;
@@ -269,53 +294,46 @@ export function OutfitScreen() {
       step={5}
       wide
       eyebrow="OUTFIT CARD"
-      title={<>나를 위한 코디 카드가<br />도착했어요.</>}
-      description="저장해 두고 옷을 고를 때 나만의 기준으로 활용해 보세요."
+      title={
+        card ? (
+          <>나를 위한 코디 카드가<br />도착했어요.</>
+        ) : (
+          <>코디 카드를<br />준비하고 있어요.</>
+        )
+      }
+      description={
+        card
+          ? "저장해 두고 옷을 고를 때 나만의 기준으로 활용해 보세요."
+          : "스타일메이트가 코디 카드를 다 만들면 여기에서 볼 수 있어요."
+      }
       actions={
-        <>
+        card ? (
           <button className="btn-primary" type="button" disabled={saving} onClick={download}>
             {saving ? "이미지 만드는 중…" : "이미지로 저장하기"}
           </button>
-        </>
+        ) : null
       }
     >
-      <div ref={cardRef}>
-        {state.mode === "personal" ? (
-          <article className="outfit-card">
-            <div className="outfit-cover" role="img" aria-label="개강 캠퍼스 코디 이미지" />
-            <div className="outfit-content">
-              <div className="outfit-head"><div><span className="badge">개강·새학기</span><h2>부드러운 캠퍼스 레이어드</h2><p className="helper">{mate.name} · {budgetRangeLabel(state.requestBudget.personal.minCode, state.requestBudget.personal.maxCode)}</p></div><span className="badge dark">개인 코칭</span></div>
-              <OutfitItems
-                top={{ name: "소프트 핑크 가디건", url: "https://example.com/products/pink-cardigan" }}
-                bottom={{ name: "아이보리 A라인 스커트", url: "https://example.com/products/a-line-skirt" }}
-              />
-              <div className="coach-message"><h3>P1님께 전하는 말</h3><p>허리선이 자연스럽게 잡히는 짧은 가디건과 무릎 위 A라인 스커트로 전체 비율을 정리했어요. 너무 꾸민 느낌이 부담스럽다면 이너를 기본 티셔츠로 바꿔도 좋아요.</p></div>
-            </div>
-          </article>
-        ) : (
-          <div>
-            <div className="group-result-grid">
-              <article className="outfit-card"><div className="outfit-cover" style={{ backgroundImage: "var(--photo-1)" }} /><div className="outfit-content"><span className="badge">구성원 A · P4</span><h2>라이트 캐주얼 여행룩</h2><OutfitItems top={{ name: "블루 가디건", url: "https://example.com/products/blue-cardigan" }} bottom={{ name: "A라인 스커트", url: "https://example.com/products/travel-skirt" }} /></div></article>
-              <article className="outfit-card"><div className="outfit-cover" style={{ backgroundImage: "var(--photo-4)" }} /><div className="outfit-content"><span className="badge">구성원 B · P5</span><h2>클린 레이어드 여행룩</h2><OutfitItems top={{ name: "옥스퍼드 셔츠", url: "https://example.com/products/oxford-shirt" }} bottom={{ name: "와이드 슬랙스", url: "https://example.com/products/wide-slacks" }} /></div></article>
-            </div>
-            <div className="coach-message" style={{ marginTop: 14 }}><h3>P4님과 P5님께 전하는 말</h3><p>두 코디 모두 소프트 블루와 화이트를 공통 색으로 잡고, 상체는 가벼운 레이어드로 연결했어요. 실루엣은 각자의 핏 기준을 유지해 사진에서는 조화롭고 실제 착용은 편안하게 구성했습니다.</p></div>
-          </div>
-        )}
-      </div>
-    </FlowShell>
-  );
-}
-
-function OutfitItems({ top, bottom }: { top: ProductItem; bottom: ProductItem }) {
-  return (
-    <div className="item-list">
-      {([['상의', top], ['하의', bottom]] as const).map(([label, product]) => (
-        <div className="item" key={label}>
-          <small>{label}</small>
-          <strong>{product.name}</strong>
-          <a href={product.url} target="_blank" rel="noreferrer">상품 링크 보기</a>
+      {status === "loading" ? (
+        <div className="soft-card" aria-live="polite">코디 카드를 불러오는 중이에요.</div>
+      ) : null}
+      {status === "error" ? (
+        <div className="soft-card" aria-live="polite">
+          <p className="error-copy" style={{ display: "block" }}>코디 카드를 불러오지 못했어요.</p>
         </div>
-      ))}
-    </div>
+      ) : null}
+      {status === "success" && !card ? (
+        <div className="status-state">
+          <div className="status-icon">◷</div>
+          <span className="badge">코디 카드 준비 중</span>
+          <p>스타일메이트가 코디 카드를 만들고 있어요. 완성되면 이 화면에서 확인할 수 있어요.</p>
+        </div>
+      ) : null}
+      {card ? (
+        <div ref={cardRef}>
+          <DeliveredOutfitCard card={card} />
+        </div>
+      ) : null}
+    </FlowShell>
   );
 }

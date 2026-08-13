@@ -95,6 +95,65 @@ export function reviewOutfit(
   return postJson<OutfitReviewResponse>("/api/outfit/review", input, signal);
 }
 
+export interface OutfitCardItemView {
+  memberLabel: "self" | "A" | "B";
+  itemType: "top" | "bottom";
+  name: string;
+  url: string;
+}
+
+export interface OutfitCardView {
+  outfitCardId: string;
+  matchResultId: string;
+  coachingType: "personal" | "group";
+  title: string;
+  message: string;
+  tpoCode: string;
+  tpoLabel: string;
+  budgetLabel: string;
+  budgetApproach: string;
+  influencerName: string;
+  deliveredAt: string | null;
+  items: OutfitCardItemView[];
+}
+
+/**
+ * 코디 카드를 전달한다. 검수를 통과하지 못하면 오류가 아니라
+ * `delivered: false`와 검수 내역이 온다. 그때는 아무것도 저장되지 않았다.
+ */
+export function deliverOutfitCard(
+  input: {
+    matchResultId: string;
+    title: string;
+    message: string;
+    cards: Array<{
+      memberId: "self" | "A" | "B";
+      top: { name: string; url: string };
+      bottom: { name: string; url: string };
+    }>;
+  },
+  signal?: AbortSignal,
+) {
+  return postJson<{
+    delivered: boolean;
+    outfitCardId: string | null;
+    review: OutfitReviewResponse;
+  }>("/api/outfit/deliver", input, signal);
+}
+
+/**
+ * 전달된 코디 카드. 아직 전달 전이면 `card`가 null이다.
+ * id를 생략하면 로그인한 사용자의 가장 최근 카드를 준다 —
+ * 요청을 보낸 뒤 브라우저를 닫았다 돌아온 경우다.
+ */
+export function getOutfitCard(matchResultId?: string, signal?: AbortSignal) {
+  return postJson<{ card: OutfitCardView | null }>(
+    "/api/outfit/get",
+    matchResultId ? { matchResultId } : {},
+    signal,
+  );
+}
+
 export function saveTestResult(
   input: TestResultPayload,
   signal?: AbortSignal,
@@ -198,6 +257,13 @@ export interface DiagnosisMemberView {
   styleScores: Array<{ style: string; score: number; rank: number }>;
 }
 
+export interface RequestCardView {
+  messageText: string;
+  ownedItemsText: string | null;
+  avoidText: string | null;
+  sentAt: string | null;
+}
+
 export interface DiagnosisResultView {
   matchResultId: string;
   coachingType: "personal" | "group";
@@ -210,4 +276,6 @@ export interface DiagnosisResultView {
   relationship: string | null;
   members: DiagnosisMemberView[];
   selectedInfluencerName: string | null;
+  /** 사용자가 실제로 쓴 부탁해요 카드. 아직 안 보냈으면 null. */
+  requestCard: RequestCardView | null;
 }

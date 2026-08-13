@@ -17,6 +17,8 @@ function isValidOutfitFields(fields: OutfitFields) {
 }
 
 export function isValidOutfitDraft(draft: PersonalOutfitDraft | GroupOutfitDraft) {
+  // 제목과 전하는 말은 outfit_cards의 필수 컬럼이다. 여기서 막지 않으면 전달에서 400이 난다.
+  if (!draft.title.trim() || !draft.message.trim()) return false;
   if ("memberA" in draft) {
     return isValidOutfitFields(draft.memberA) && isValidOutfitFields(draft.memberB);
   }

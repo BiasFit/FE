@@ -37,6 +37,14 @@ export interface DiagnosisMemberView {
   styleScores: Array<{ style: string; score: number; rank: number }>;
 }
 
+/** 사용자가 실제로 쓴 부탁해요 카드. 인플루언서 상세 화면이 그대로 보여준다. */
+export interface RequestCardView {
+  messageText: string;
+  ownedItemsText: string | null;
+  avoidText: string | null;
+  sentAt: string | null;
+}
+
 export interface DiagnosisResultView {
   matchResultId: string;
   coachingType: "personal" | "group";
@@ -53,6 +61,8 @@ export interface DiagnosisResultView {
   relationship: string | null;
   members: DiagnosisMemberView[];
   selectedInfluencerName: string | null;
+  /** 아직 보내지 않았으면 null. */
+  requestCard: RequestCardView | null;
 }
 
 function one<T>(value: T | T[] | null | undefined): T | null {
@@ -209,6 +219,26 @@ export async function loadDiagnosisResult(
     });
   }
 
+  // 부탁해요 카드 원문. 인플루언서 화면이 브라우저 로컬 값을 읽으면
+  // 다른 기기에서는 빈 화면이 된다. 저장된 원문을 함께 내려준다.
+  const requestCardRow = await client
+    .from("request_cards")
+    .select("message_text, owned_items_text, avoid_text, sent_at")
+    .eq("match_result_id", matchResultId)
+    .maybeSingle();
+  if (requestCardRow.error) {
+    console.error("[BiasFit 조회] request_cards 조회 실패", requestCardRow.error);
+  }
+  const cardRow = requestCardRow.data as Record<string, any> | null;
+  const requestCard: RequestCardView | null = cardRow
+    ? {
+        messageText: cardRow.message_text ?? "",
+        ownedItemsText: cardRow.owned_items_text ?? null,
+        avoidText: cardRow.avoid_text ?? null,
+        sentAt: cardRow.sent_at ?? null,
+      }
+    : null;
+
   let selectedInfluencerName: string | null = null;
   if (matchRow.selected_influencer_profile_id) {
     const selected = await client
@@ -239,6 +269,7 @@ export async function loadDiagnosisResult(
     relationship: groupRow ? code(groupRow.diagnosis_options) : null,
     members: memberViews,
     selectedInfluencerName,
+    requestCard,
   };
 }
 
