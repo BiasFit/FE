@@ -1,4 +1,30 @@
 {
+  // `tsc -b`는 아래 references만 쓰고 이 compilerOptions는 보지 않는다 (files가 비어 있다).
+  //
+  // 이걸 채워 두는 이유는 **Vercel 때문**이다. Vercel은 `api/**`를 서버리스 함수로 따로
+  // 컴파일하면서 이 파일을 찾는데, 여기가 비어 있으면 자기 기본값(`moduleResolution: node16`,
+  // 낮은 target)으로 떨어진다. 그러면 `api/**`와 거기서 끌어 쓰는 `src/**` 전체에
+  // TS2835(상대 경로에 .js 확장자를 붙이라)가 쏟아진다.
+  //
+  // 값은 tsconfig.app.json과 같게 맞춘다. 두 곳이 어긋나면 로컬에서는 통과하고
+  // 배포 로그에서만 터지는 상황이 다시 생긴다.
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowJs": false,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx"
+  },
   "files": [],
   "references": [
     {
