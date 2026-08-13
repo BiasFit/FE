@@ -13,10 +13,27 @@ function jsonResponse(value: unknown) {
 
 /** /api/results/save로 실제 전송된 스냅샷. 화면 값과 저장 값이 같은지 검사할 때 쓴다. */
 const savedPayloads: any[] = [];
+/** /api/outfit/deliver로 전송된 코디 카드. */
+const deliveredPayloads: any[] = [];
+/** 전달 뒤 /api/outfit/get이 돌려줄 카드. 전달 전에는 null이다. */
+let deliveredCard: any = null;
+
+function passingReview(cards: any[]) {
+  return {
+    reviewStatus: "pass",
+    safeLanguageIssues: [],
+    linkChecks: cards.flatMap((card: any) => [
+      { memberId: card.memberId, itemType: "top", inputUrl: card.top.url, finalUrl: card.top.url, status: "pass", reason: "접속 가능", action: "조치 없음" },
+      { memberId: card.memberId, itemType: "bottom", inputUrl: card.bottom.url, finalUrl: card.bottom.url, status: "pass", reason: "접속 가능", action: "조치 없음" },
+    ]),
+  };
+}
 
 beforeEach(() => {
   localStorage.clear();
   savedPayloads.length = 0;
+  deliveredPayloads.length = 0;
+  deliveredCard = null;
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -78,14 +95,35 @@ beforeEach(() => {
         });
       }
       if (url.endsWith("/api/outfit/review")) {
-        return jsonResponse({
-          reviewStatus: "pass",
-          safeLanguageIssues: [],
-          linkChecks: body.cards.flatMap((card: any) => [
-            { memberId: card.memberId, itemType: "top", inputUrl: card.top.url, finalUrl: card.top.url, status: "pass", reason: "접속 가능", action: "조치 없음" },
-            { memberId: card.memberId, itemType: "bottom", inputUrl: card.bottom.url, finalUrl: card.bottom.url, status: "pass", reason: "접속 가능", action: "조치 없음" },
+        return jsonResponse(passingReview(body.cards));
+      }
+      if (url.endsWith("/api/outfit/deliver")) {
+        deliveredPayloads.push(body);
+        deliveredCard = {
+          outfitCardId: "card-1",
+          matchResultId: body.matchResultId,
+          coachingType: body.cards.length === 2 ? "group" : "personal",
+          title: body.title,
+          message: body.message,
+          tpoCode: "new_semester",
+          tpoLabel: "개강 행사",
+          budgetLabel: "3~6만 원",
+          budgetApproach: "총액 절약형",
+          influencerName: "STYLEMATE 01",
+          deliveredAt: "2026-08-13T10:00:00.000Z",
+          items: body.cards.flatMap((card: any) => [
+            { memberLabel: card.memberId, itemType: "top", name: card.top.name, url: card.top.url },
+            { memberLabel: card.memberId, itemType: "bottom", name: card.bottom.name, url: card.bottom.url },
           ]),
+        };
+        return jsonResponse({
+          delivered: true,
+          outfitCardId: "card-1",
+          review: passingReview(body.cards),
         });
+      }
+      if (url.endsWith("/api/outfit/get")) {
+        return jsonResponse({ card: deliveredCard });
       }
       if (url.endsWith("/api/results/save")) {
         savedPayloads.push(body);
@@ -246,9 +284,11 @@ describe("user feature screens", () => {
 
     window.location.hash = "#/user/outfit";
     render(<App />);
+    // 인플루언서가 아직 전달하지 않았으면 예시 코디가 아니라 준비 중 안내를 본다.
+    expect(await screen.findByText("코디 카드 준비 중")).toBeVisible();
     expect(
-      await screen.findByRole("button", { name: /이미지로 저장하기/ }),
-    ).toBeVisible();
+      screen.queryByRole("button", { name: /이미지로 저장하기/ }),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -264,6 +304,20 @@ describe("influencer feature screens", () => {
     expect(screen.queryAllByRole("button", { name: /요청/ })).toHaveLength(0);
   });
 
+  /** 코디 카드 입력폼을 처음부터 채운다. 기본값은 비어 있다. */
+  function fillPersonalOutfit() {
+    const type = (name: string, value: string) =>
+      fireEvent.change(screen.getByRole("textbox", { name }), { target: { value } });
+    type("코디 카드 제목", "부드러운 캠퍼스 레이어드");
+    type("상의 제품명", "소프트 핑크 가디건");
+    type("상의 상품 링크", "https://shop.test/top/1");
+    type("하의 제품명", "아이보리 A라인 스커트");
+    type("하의 상품 링크", "https://shop.test/bottom/1");
+    fireEvent.change(screen.getByRole("textbox", { name: /스타일메이트의 한마디/ }), {
+      target: { value: "허리선이 자연스럽게 잡히는 길이로 골랐어요." },
+    });
+  }
+
   it("shows Style DNA, request context and outfit fields on one page", async () => {
     window.location.hash = "#/influencer/detail";
     render(<App />);
@@ -277,24 +331,107 @@ describe("influencer feature screens", () => {
     expect(screen.getByRole("textbox", { name: "상의 상품 링크" })).toBeVisible();
     expect(screen.queryByRole("textbox", { name: "신발" })).not.toBeInTheDocument();
     expect(screen.getByText(/요청 예산/)).toBeVisible();
+
+    // 예시 제품이 미리 채워져 있으면 그대로 전달돼 버린다. 빈 칸에서 시작해야 한다.
     const deliver = screen.getByRole("button", { name: /전달하기/ });
+    expect(screen.getByRole("textbox", { name: "상의 제품명" })).toHaveValue("");
+    expect(deliver).toBeDisabled();
+
+    fillPersonalOutfit();
     expect(deliver).toBeEnabled();
+
     fireEvent.change(screen.getByRole("textbox", { name: "상의 상품 링크" }), {
       target: { value: "잘못된 링크" },
     });
     expect(deliver).toBeDisabled();
   });
 
-  it("reviews an outfit before enabling final delivery", async () => {
+  it("전달 확정은 서버 검수를 거쳐 실제 카드를 남긴다", async () => {
+    const base = fetch as any;
+    const original = base.getMockImplementation();
+    base.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).endsWith("/api/requests/list")) {
+        return jsonResponse({
+          requests: [
+            {
+              requestCardId: "req-1",
+              matchResultId: "match-1",
+              coachingType: "personal",
+              tpoCode: "new_semester",
+              tpoLabel: "개강 행사",
+              status: "sent",
+              sentAt: "2026-08-13T09:00:00.000Z",
+              delivered: false,
+            },
+          ],
+        });
+      }
+      return original(input, init);
+    });
+
+    window.location.hash = "#/influencer/requests";
+    render(<App />);
+
+    // 목록에서 요청을 골라야 어떤 매칭에 카드를 붙일지가 정해진다.
+    fireEvent.click(await screen.findByRole("button", { name: /작성 필요/ }));
+
+    await screen.findByRole("heading", { name: "코디 카드 작성" });
+    fillPersonalOutfit();
+    fireEvent.click(screen.getByRole("button", { name: /전달하기/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "전달 확정" }));
+
+    await waitFor(() => expect(deliveredPayloads).toHaveLength(1));
+    // 검수는 서버가 한다. 프런트가 통과 여부를 판단하지 않는다.
+    expect(deliveredPayloads[0].matchResultId).toBe("match-1");
+    expect(deliveredPayloads[0].title).toBe("부드러운 캠퍼스 레이어드");
+    expect(deliveredPayloads[0].cards[0].top.url).toBe("https://shop.test/top/1");
+
+    // 전달 완료 화면은 저장된 카드를 다시 읽어 보여준다.
+    expect(
+      await screen.findByRole("heading", { name: "부드러운 캠퍼스 레이어드" }),
+    ).toBeVisible();
+    expect(screen.getByText("소프트 핑크 가디건")).toBeVisible();
+  });
+
+  it("검수를 통과하지 못하면 전달하지 않고 내용을 유지한다", async () => {
+    (fetch as any).mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/api/outfit/deliver")) {
+        return jsonResponse({
+          delivered: false,
+          outfitCardId: null,
+          review: {
+            reviewStatus: "needs_revision",
+            safeLanguageIssues: [],
+            linkChecks: [
+              {
+                memberId: "self",
+                itemType: "top",
+                inputUrl: "https://shop.test/top/1",
+                finalUrl: null,
+                status: "needs_revision",
+                reason: "제품 페이지를 찾을 수 없습니다. (404)",
+                action: "링크 수정",
+              },
+            ],
+          },
+        });
+      }
+      return new Response("Not found", { status: 404 });
+    });
+
     window.location.hash = "#/influencer/detail";
     render(<App />);
 
-    fireEvent.click(await screen.findByRole("button", { name: /전달하기/ }));
-    fireEvent.click(screen.getByRole("button", { name: /검수 시작/ }));
+    await screen.findByRole("heading", { name: "코디 카드 작성" });
+    fillPersonalOutfit();
+    fireEvent.click(screen.getByRole("button", { name: /전달하기/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "전달 확정" }));
 
-    expect(await screen.findByText("검수 통과")).toBeVisible();
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "전달 확정" })).toBeEnabled(),
+    expect(await screen.findByText(/수정한 뒤 다시 전달해 주세요/)).toBeVisible();
+    // 작성 내용은 그대로 남는다.
+    expect(screen.getByRole("textbox", { name: "상의 제품명" })).toHaveValue(
+      "소프트 핑크 가디건",
     );
   });
 });

@@ -4,7 +4,7 @@ import { calculateStyleScores } from "../../src/domain/scoring";
 import type { StyleDnaExplanationRequest } from "../../src/domain/aiContracts";
 import { createStyleDnaExplanation } from "./style-dna-explanation";
 
-function member(memberId: "personal" | "A" | "B", personaId: "P1" | "P4" | "P5") {
+function member(memberId: "self" | "A" | "B", personaId: "P1" | "P4" | "P5") {
   const form = personaForms[personaId];
   return {
     memberId,

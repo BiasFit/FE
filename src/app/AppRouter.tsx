@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import {
   CoachingScreen,
@@ -36,6 +37,17 @@ import {
 } from "../features/user/CoachingScreens";
 import { SiteNav } from "../shared/SiteNav";
 import { useAppState } from "./AppStateProvider";
+import { RequireRole } from "./RequireRole";
+
+/** 로그인·회원가입을 뺀 사용자 흐름은 사용자 계정만 볼 수 있다. */
+function UserOnly({ children }: { children: ReactElement }) {
+  return <RequireRole role="user">{children}</RequireRole>;
+}
+
+/** 인플루언서 워크스페이스는 인플루언서 계정만 볼 수 있다 (INFLUENCER_SCREEN_SPEC 3.1). */
+function InfluencerOnly({ children }: { children: ReactElement }) {
+  return <RequireRole role="influencer">{children}</RequireRole>;
+}
 
 export function AppRouter() {
   const { state } = useAppState();
@@ -51,19 +63,19 @@ export function AppRouter() {
           <Route path="/signup" element={<SignupRoleScreen />} />
           <Route path="/user/login" element={<UserLoginScreen />} />
           <Route path="/user/signup" element={<UserSignupScreen />} />
-          <Route path="/user/coaching" element={<CoachingScreen />} />
-          <Route path="/user/body" element={<BodyScreen />} />
-          <Route path="/user/style" element={<StyleScreen />} />
-          <Route path="/user/signals" element={<SignalsScreen />} />
-          <Route path="/user/budget" element={<BudgetScreen />} />
-          <Route path="/user/tpo" element={<TpoScreen />} />
-          <Route path="/user/loading" element={<LoadingDnaScreen />} />
-          <Route path="/user/dna" element={<DnaScreen />} />
-          <Route path="/user/top3" element={<Top3Screen />} />
-          <Route path="/user/match" element={<MatchScreen />} />
-          <Route path="/user/request" element={<RequestScreen />} />
-          <Route path="/user/wait" element={<WaitScreen />} />
-          <Route path="/user/outfit" element={<OutfitScreen />} />
+          <Route path="/user/coaching" element={<UserOnly><CoachingScreen /></UserOnly>} />
+          <Route path="/user/body" element={<UserOnly><BodyScreen /></UserOnly>} />
+          <Route path="/user/style" element={<UserOnly><StyleScreen /></UserOnly>} />
+          <Route path="/user/signals" element={<UserOnly><SignalsScreen /></UserOnly>} />
+          <Route path="/user/budget" element={<UserOnly><BudgetScreen /></UserOnly>} />
+          <Route path="/user/tpo" element={<UserOnly><TpoScreen /></UserOnly>} />
+          <Route path="/user/loading" element={<UserOnly><LoadingDnaScreen /></UserOnly>} />
+          <Route path="/user/dna" element={<UserOnly><DnaScreen /></UserOnly>} />
+          <Route path="/user/top3" element={<UserOnly><Top3Screen /></UserOnly>} />
+          <Route path="/user/match" element={<UserOnly><MatchScreen /></UserOnly>} />
+          <Route path="/user/request" element={<UserOnly><RequestScreen /></UserOnly>} />
+          <Route path="/user/wait" element={<UserOnly><WaitScreen /></UserOnly>} />
+          <Route path="/user/outfit" element={<UserOnly><OutfitScreen /></UserOnly>} />
           <Route
             path="/influencer/login"
             element={<InfluencerLoginScreen />}
@@ -74,19 +86,19 @@ export function AppRouter() {
           />
           <Route
             path="/influencer/profile"
-            element={<InfluencerProfileScreen />}
+            element={<InfluencerOnly><InfluencerProfileScreen /></InfluencerOnly>}
           />
           <Route
             path="/influencer/requests"
-            element={<InfluencerRequestsScreen />}
+            element={<InfluencerOnly><InfluencerRequestsScreen /></InfluencerOnly>}
           />
           <Route
             path="/influencer/detail"
-            element={<InfluencerDetailScreen />}
+            element={<InfluencerOnly><InfluencerDetailScreen /></InfluencerOnly>}
           />
           <Route
             path="/influencer/delivered"
-            element={<DeliveredScreen />}
+            element={<InfluencerOnly><DeliveredScreen /></InfluencerOnly>}
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

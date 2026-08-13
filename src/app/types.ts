@@ -74,11 +74,14 @@ export interface OutfitFields {
 }
 
 export interface PersonalOutfitDraft extends OutfitFields {
+  /** `outfit_cards.title`. 사용자 화면 카드의 제목이 된다. */
+  title: string;
   message: string;
 }
 
 export interface GroupOutfitDraft {
   memberA: OutfitFields;
   memberB: OutfitFields;
+  title: string;
   message: string;
 }

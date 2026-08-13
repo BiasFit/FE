@@ -4,7 +4,6 @@ import type { AppState } from "../../app/appState";
 import type { DiagnosisForm, MatchPriority } from "../../app/types";
 import { useAppState } from "../../app/AppStateProvider";
 import { budgetRangeLabel, tpoLabel } from "../../data/options";
-import { influencers } from "../../data/influencers";
 import type {
   MatchExplanation,
   MatchExplanationsRequest,
@@ -14,6 +13,8 @@ import {
   STYLE_NAMES,
   calculateGroupCompatibility,
   calculateStyleScores,
+  personalFitDetail,
+  styleScoreDetail,
   type PersonalMatchInput,
   type RankMatchInput,
   type RankedInfluencer,
@@ -22,6 +23,7 @@ import {
 import { MATCH_PRIORITY_WEIGHTS } from "../../domain/matchPriority";
 import type { TestResultPayload } from "../../domain/resultSnapshot";
 import {
+  getInfluencers,
   getMatchExplanations,
   getTopThree,
   saveTestResult,
@@ -31,15 +33,30 @@ import { anonUserKey } from "../../storage/anonUser";
 import { MatchReason } from "./MatchReason";
 import { StyleDnaExplanation } from "./StyleDnaExplanation";
 
-function scoresFor(form: DiagnosisForm) {
-  return calculateStyleScores({
+function styleSignalOf(form: DiagnosisForm) {
+  return {
     preferredStyle: form.preferredStyle,
     avoidedStyle: form.avoidedStyle,
     keywords: form.keywords,
     designElements: form.designElements,
     preferredItems: form.preferredItems,
     avoidedElements: form.avoidedElements,
-  });
+  };
+}
+
+function scoresFor(form: DiagnosisForm) {
+  return calculateStyleScores(styleSignalOf(form));
+}
+
+/**
+ * 스타일별 항목 내역. `style_score_breakdowns`에 그대로 들어간다.
+ * 총점은 `scoresFor`와 같은 계산에서 나오므로 둘이 어긋날 수 없다.
+ */
+function breakdownsFor(form: DiagnosisForm) {
+  const signal = styleSignalOf(form);
+  return Object.fromEntries(
+    STYLE_NAMES.map((style) => [style, styleScoreDetail(signal, style).breakdowns]),
+  );
 }
 
 function personalInput(
@@ -89,7 +106,7 @@ function styleDnaRequest(
       priority,
       members: [
         {
-          memberId: "personal",
+          memberId: "self",
           form: state.personal,
           styleScores: scoresFor(state.personal),
         },
@@ -126,6 +143,7 @@ function resultSnapshot(
     matchExplanations: state.matchExplanations,
   };
   // 인플루언서 프로필 전체가 아니라 식별자와 점수만 남긴다.
+  // 개인은 체형·핏 25점의 내역을 함께 담는다. 그룹은 체형을 점수에 쓰지 않아 없다.
   const rankedInfluencers = ranked.map(
     ({ rank, influencer, baseBreakdown, breakdown }) => ({
       rank,
@@ -133,6 +151,16 @@ function resultSnapshot(
       influencerName: influencer.name,
       baseBreakdown,
       breakdown,
+      fitDetail:
+        state.mode === "personal"
+          ? personalFitDetail(
+              {
+                bodyType: state.personal.bodyType,
+                fitConcerns: state.personal.fitConcerns,
+              },
+              influencer,
+            )
+          : undefined,
     }),
   );
 
@@ -142,11 +170,15 @@ function resultSnapshot(
       priority,
       tpo: state.personal.tpo,
       anonUserKey: anonUserKey(),
-      input: { members: [{ memberId: "personal", form: state.personal }] },
+      input: { members: [{ memberId: "self", form: state.personal }] },
       ai,
       score: {
         styleScores: [
-          { memberId: "personal", scores: scoresFor(state.personal) },
+          {
+            memberId: "self",
+            scores: scoresFor(state.personal),
+            breakdowns: breakdownsFor(state.personal),
+          },
         ],
         rankedInfluencers,
       },
@@ -173,8 +205,8 @@ function resultSnapshot(
     ai,
     score: {
       styleScores: [
-        { memberId: "A", scores: groupA },
-        { memberId: "B", scores: groupB },
+        { memberId: "A", scores: groupA, breakdowns: breakdownsFor(state.group.members.A) },
+        { memberId: "B", scores: groupB, breakdowns: breakdownsFor(state.group.members.B) },
       ],
       groupCompatibility: calculateGroupCompatibility(
         {
@@ -378,6 +410,23 @@ export function Top3Screen() {
     return () => controller.abort();
   }, [rankedKey, reasonRetry]);
 
+  // 카드 표시용 스타일메이트 목록. 한 번만 받아 appState에 둔다.
+  // 우선순위를 고르기 전에는 어떤 API도 부르지 않는다 (PLAN.MD 1부 규칙).
+  const directoryLoaded = state.influencerDirectory.length > 0;
+  useEffect(() => {
+    if (!input || directoryLoaded) return;
+    const controller = new AbortController();
+    void getInfluencers(controller.signal)
+      .then(({ influencers }) =>
+        dispatch({ type: "setInfluencerDirectory", influencers }),
+      )
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        console.log("[BiasFit 매칭] 스타일메이트 목록 호출 실패", error);
+      });
+    return () => controller.abort();
+  }, [directoryLoaded]);
+
   // 흐름이 끝난 시점에 화면에 쓴 값을 그대로 한 번만 저장한다.
   // 같은 입력으로 다시 렌더링돼도 중복 행이 생기지 않게 저장한 inputKey를 기억한다.
   const [savedKey, setSavedKey] = useState<string | null>(null);
@@ -438,7 +487,10 @@ export function Top3Screen() {
       <div className="match-grid" style={{ marginTop: 18 }} role="radiogroup" aria-label="스타일메이트 TOP 3">
         {ranked.map(({ influencer, breakdown }, index) => {
           const selected = state.selectedInfluencerId === influencer.id;
-          const view = influencers.find((profile) => profile.id === influencer.id)!;
+          // 목록은 DB에서 받아 appState에 둔다. 못 받았으면 순위 결과의 값으로 대신한다.
+          const view = state.influencerDirectory.find(
+            (profile) => profile.id === influencer.id,
+          );
           return (
             <button
               className={`match-card ${selected ? "selected" : ""}`}
@@ -451,11 +503,11 @@ export function Top3Screen() {
               <span className="match-photo"><span className="rank">TOP {index + 1}</span></span>
               <span className="match-content">
                 <span className="match-top">
-                  <span><small>{view.tagline}</small><h3>{influencer.name}</h3></span>
+                  <span><small>{view?.tagline}</small><h3>{influencer.name}</h3></span>
                   <span className="match-score">{breakdown.matchScore}<small>% 매칭</small></span>
                 </span>
-                <p>{view.description}</p>
-                <span className="facts"><span className="fact">◇ {view.price}</span><span className="fact">◇ {view.occasions}</span></span>
+                <p>{view?.description}</p>
+                <span className="facts"><span className="fact">◇ {view?.price}</span><span className="fact">◇ {view?.occasions}</span></span>
                 <span className="reason-bars">
                   <span className="reason-bar">스타일 취향 <b>{Math.round(breakdown.style)}/{weights.style}</b><span className="mini-track"><span className="mini-fill" style={{ width: `${(breakdown.style / weights.style) * 100}%` }} /></span></span>
                   <span className="reason-bar">체형·핏 <b>{Math.round(breakdown.fit)}/{weights.fit}</b><span className="mini-track"><span className="mini-fill" style={{ width: `${(breakdown.fit / weights.fit) * 100}%` }} /></span></span>

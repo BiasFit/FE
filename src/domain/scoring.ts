@@ -73,15 +73,77 @@ function countSignals(selections: string[], mapping: Record<string, StyleName[]>
 }
 
 export function calculateStyleScores(input: StyleSignalInput): StyleScores {
-  return Object.fromEntries(STYLE_NAMES.map((style) => {
-    const keywordScore = 25 * (countSignals(input.keywords, keywordStyles, style) / 3);
-    const designScore = 25 * (countSignals(input.designElements, designStyles, style) / 3);
-    const itemScore = 25 * (countSignals(input.preferredItems, itemStyles, style) / 3);
-    const conflictCount = countSignals(input.avoidedElements, avoidedStyles, style);
-    const conflictScore = input.avoidedStyle === style ? 0 : Math.max(0, 15 - conflictCount * 5);
-    const preferredScore = input.preferredStyle === style ? 10 : 0;
-    return [style, Math.round(keywordScore + designScore + itemScore + conflictScore + preferredScore)];
-  })) as StyleScores;
+  return Object.fromEntries(
+    STYLE_NAMES.map((style) => [style, styleScoreDetail(input, style).score]),
+  ) as StyleScores;
+}
+
+/**
+ * `style_score_breakdowns.criterion_code` (DB_SCHEMA.md 5.14)와 1:1로 대응한다.
+ * 배점은 STYLE_SCORING_DRAFT.md 72~101행을 따른다.
+ */
+export const STYLE_CRITERIA = [
+  { code: "preferred_keyword", label: "선호 키워드 일치", maxScore: 25 },
+  { code: "design_element", label: "디자인 요소 일치", maxScore: 25 },
+  { code: "preferred_item", label: "선호 아이템 일치", maxScore: 25 },
+  { code: "avoid_adjustment", label: "비선호·충돌 요소 보정", maxScore: 15 },
+  { code: "preferred_style_bonus", label: "선호 스타일 보너스", maxScore: 10 },
+] as const;
+
+export type StyleCriterionCode = (typeof STYLE_CRITERIA)[number]["code"];
+
+export interface StyleScoreBreakdown {
+  criterionCode: StyleCriterionCode;
+  criterionLabel: string;
+  score: number;
+  maxScore: number;
+}
+
+export interface StyleScoreDetail {
+  score: number;
+  breakdowns: StyleScoreBreakdown[];
+}
+
+/**
+ * 한 스타일의 점수와 항목별 내역을 함께 낸다.
+ * `calculateStyleScores`가 쓰던 계산을 그대로 옮겼을 뿐 합계는 달라지지 않는다.
+ * 내역이 필요한 이유는 저장(`style_score_breakdowns`)과 마이페이지의 "그때 근거" 표시다.
+ */
+export function styleScoreDetail(input: StyleSignalInput, style: StyleName): StyleScoreDetail {
+  const keywordScore = 25 * (countSignals(input.keywords, keywordStyles, style) / 3);
+  const designScore = 25 * (countSignals(input.designElements, designStyles, style) / 3);
+  const itemScore = 25 * (countSignals(input.preferredItems, itemStyles, style) / 3);
+  const conflictCount = countSignals(input.avoidedElements, avoidedStyles, style);
+  const conflictScore = input.avoidedStyle === style ? 0 : Math.max(0, 15 - conflictCount * 5);
+  const preferredScore = input.preferredStyle === style ? 10 : 0;
+  const parts = [keywordScore, designScore, itemScore, conflictScore, preferredScore];
+
+  return {
+    score: Math.round(parts.reduce((sum, part) => sum + part, 0)),
+    breakdowns: STYLE_CRITERIA.map((criterion, index) => ({
+      criterionCode: criterion.code,
+      criterionLabel: criterion.label,
+      score: Math.round(parts[index]),
+      maxScore: criterion.maxScore,
+    })),
+  };
+}
+
+/**
+ * `style_scores.level` (DB_SCHEMA.md 5.13). **내부 분류다.**
+ *
+ * ⚠️ 이 값을 화면이나 AI 프롬프트에 절대 넘기지 마라.
+ * 여러 문서가 사용자에게 `등급`을 보여주는 것을 금지한다 —
+ * `Design_system.md`의 Avoid 목록, `Style-DNA-Criteria.md`의 주의할 표현,
+ * `PRD.md`, `AGENTS.md`, `STYLE_DNA_AI_FUNCTIONS.md`.
+ *
+ * 임계값은 어느 문서에도 정의돼 있지 않아 여기서 정했다. 바꾸려면 이 함수만 고치면 된다.
+ */
+export function styleScoreLevel(score: number) {
+  if (score >= 70) return "strong" as const;
+  if (score >= 40) return "medium" as const;
+  if (score >= 20) return "weak" as const;
+  return "low" as const;
 }
 
 interface GroupMemberCompatibilityInput {
@@ -122,7 +184,17 @@ export function calculateGroupMatchScore(input: GroupScoreInput): MatchBreakdown
   return { ...scores, rawTotal, matchScore: normalizeMatchScore(rawTotal) };
 }
 
-export type CoachingSupport = "personal" | "group" | "both";
+/**
+ * DB_SCHEMA.md 5.15 `influencer_profiles.coaching_support_type`과 같은 값을 쓴다.
+ * 코드 쪽에서 `personal`/`group`으로 줄여 쓰면 DB와 어긋나고,
+ * 그 틈에서 조용히 0점이 되는 사고가 이 프로젝트에서 두 번 났다.
+ */
+export type CoachingSupport = "personal_only" | "group_only" | "both";
+
+/** `personal` 코칭 모드 → `personal_only` 지원 유형. 비교 전에 반드시 이걸 거친다. */
+export function coachingSupportFor(mode: MatchMode): CoachingSupport {
+  return mode === "group" ? "group_only" : "personal_only";
+}
 export interface InfluencerProfile {
   id: string;
   name: string;
@@ -166,8 +238,38 @@ function matchingConcernScore(input: Pick<MatchMemberInput, "fitConcerns">, infl
   return Math.round((matches / input.fitConcerns.length) * maximum);
 }
 
+/**
+ * 개인 체형·핏 25점의 내역. 체형 유형 15점 + 핏 고민 최대 10점이다
+ * (STYLE_SCORING_DRAFT.md 4.2, DB_SCHEMA.md 5.21).
+ *
+ * `match_score_breakdowns`가 `body_fit_response`와 `fit_concern_fit`을 따로 요구해서 노출한다.
+ * 계산을 옮겼을 뿐 합계는 그대로다.
+ */
+export interface PersonalFitDetail {
+  bodyFitResponse: number;
+  fitConcernFit: number;
+  bodyTypeMatched: boolean;
+  matchedConcerns: string[];
+}
+
+export function personalFitDetail(
+  input: Pick<MatchMemberInput, "bodyType" | "fitConcerns">,
+  influencer: InfluencerProfile,
+): PersonalFitDetail {
+  const bodyTypeMatched = input.bodyType === influencer.bodyType;
+  return {
+    bodyFitResponse: bodyTypeMatched ? 15 : 0,
+    fitConcernFit: matchingConcernScore(input, influencer, 10),
+    bodyTypeMatched,
+    matchedConcerns: input.fitConcerns.filter((concern) =>
+      influencer.fitConcerns.includes(concern),
+    ),
+  };
+}
+
 function scorePersonalFit(input: Pick<MatchMemberInput, "bodyType" | "fitConcerns">, influencer: InfluencerProfile) {
-  return (input.bodyType === influencer.bodyType ? 15 : 0) + matchingConcernScore(input, influencer, 10);
+  const detail = personalFitDetail(input, influencer);
+  return detail.bodyFitResponse + detail.fitConcernFit;
 }
 
 function scoreGroupFit(input: Pick<MatchMemberInput, "fitConcerns">, influencer: InfluencerProfile) {
@@ -212,9 +314,33 @@ export interface RankedInfluencer {
   matchedEvidence: MatchedEvidence;
 }
 
-export function filterEligibleInfluencers(mode: MatchMode, profiles: InfluencerProfile[]) {
-  return profiles.filter((profile) => profile.profileCompleted && (profile.coachingType === "both" || profile.coachingType === mode));
+/**
+ * 후보 필터. **점수 계산 전에 제외한다.** 가점·감점이 아니다 (STYLE_SCORING_DRAFT.md 3장).
+ *
+ * `receivedRequestCounts`는 인플루언서별 누적 수신 부탁해요 카드 수다.
+ * 한도에 도달한 프로필은 후보에서 빠진다. 서버가 DB에서 직접 세어 넘긴다 —
+ * 프런트가 보내면 조작할 수 있다.
+ *
+ * 기본값이 있어 카운트를 주지 않으면 예전과 같이 동작한다.
+ */
+export function filterEligibleInfluencers(
+  mode: MatchMode,
+  profiles: InfluencerProfile[],
+  receivedRequestCounts: Record<string, number> = {},
+  limits: Record<string, number> = {},
+) {
+  const required = coachingSupportFor(mode);
+  return profiles.filter((profile) => {
+    if (!profile.profileCompleted) return false;
+    if (profile.coachingType !== "both" && profile.coachingType !== required) return false;
+    const received = receivedRequestCounts[profile.id] ?? 0;
+    const limit = limits[profile.id] ?? DEFAULT_RECEIVED_REQUEST_LIMIT;
+    return received < limit;
+  });
 }
+
+/** `influencer_profiles.max_received_request_count`의 MVP 기본값 (DB_SCHEMA.md 5.15). */
+export const DEFAULT_RECEIVED_REQUEST_LIMIT = 3;
 
 function memberEvidence(prefix: string, member: MatchMemberInput, tpo: TpoCode, influencer: InfluencerProfile, includeBodyType: boolean): MatchedEvidence {
   const styleNames = [influencer.primaryStyle, influencer.secondaryStyle].filter((style) => style !== member.avoidedStyle);
@@ -267,8 +393,18 @@ function groupBaseBreakdown(input: Extract<RankMatchInput, { mode: "group" }>, i
   return { style: result.style, fit: result.fit, budget: result.budget, tpo: result.tpo };
 }
 
-export function rankInfluencers(input: RankMatchInput, profiles: InfluencerProfile[]): RankedInfluencer[] {
-  const ranked = filterEligibleInfluencers(input.mode, profiles).map((influencer) => {
+export function rankInfluencers(
+  input: RankMatchInput,
+  profiles: InfluencerProfile[],
+  /** 인플루언서별 누적 수신 수와 한도. 서버가 DB에서 세어 넘긴다. */
+  received: { counts?: Record<string, number>; limits?: Record<string, number> } = {},
+): RankedInfluencer[] {
+  const ranked = filterEligibleInfluencers(
+    input.mode,
+    profiles,
+    received.counts,
+    received.limits,
+  ).map((influencer) => {
     if (input.mode === "personal") {
       const baseBreakdown = calculatePersonalBaseBreakdown(input, influencer);
       return {

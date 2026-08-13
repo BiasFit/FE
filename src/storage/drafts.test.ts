@@ -25,6 +25,7 @@ describe("outfit draft storage", () => {
         name: "아이보리 A라인 스커트",
         url: "https://shop.test/bottom/1",
       },
+      title: "부드러운 캠퍼스 레이어드",
       message: "편안하게 선택할 수 있는 조합이에요.",
     };
 
