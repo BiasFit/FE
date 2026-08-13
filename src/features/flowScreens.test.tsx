@@ -151,7 +151,7 @@ describe("user feature screens", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: /옷을 고를 때 고민되는 핏을 알려주세요/,
+        name: /본인의 체형 정보와 평소 핏에 대해 느끼는 고민을 알려주세요/,
       }),
     ).toBeInTheDocument();
     expect(screen.getByRole("spinbutton", { name: "키" })).toHaveValue(158);
@@ -192,7 +192,7 @@ describe("user feature screens", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: /나와 잘 맞는 스타일메이트를 비교해 보세요/,
+        name: /스타일링을 받고 싶은 인플루언서 1명을 선택해 주세요/,
       }),
     ).toBeInTheDocument();
     expect(await screen.findAllByRole("radio")).toHaveLength(3);
@@ -298,7 +298,7 @@ describe("influencer feature screens", () => {
     render(<App />);
 
     expect(
-      await screen.findByRole("heading", { name: "내 배정 요청" }),
+      await screen.findByRole("heading", { name: "스타일링 요청 목록" }),
     ).toBeInTheDocument();
     // 사용자가 부탁해요 카드를 보내기 전에는 배정된 요청이 없다.
     expect(screen.queryAllByRole("button", { name: /요청/ })).toHaveLength(0);

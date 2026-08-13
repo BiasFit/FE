@@ -52,12 +52,12 @@ export function MatchScreen() {
       eyebrow="MATCH CONFIRM"
       title={
         <>
-          이 스타일메이트와
+          이 스타일메이트에게
           <br />
-          코칭을 시작할까요?
+          스타일링을 요청할까요?
         </>
       }
-      description="전달되는 Style DNA와 요청 조건을 확인해 주세요."
+      description="최종 선택 후에는 변경할 수 없으니, 신중히 선택해 주세요."
       actions={
         <>
           <button className="btn-secondary" type="button" onClick={() => navigate("/user/top3")}>
@@ -85,7 +85,7 @@ export function MatchScreen() {
       </div>
       <h2 className="section-title">전달할 정보</h2>
       <dl className="summary-list card">
-        <div className="summary-row"><dt>코칭 유형</dt><dd>{state.mode === "personal" ? "개인 코칭" : "2인 그룹 코칭"}</dd></div>
+        <div className="summary-row"><dt>스타일링 유형</dt><dd>{state.mode === "personal" ? "개인 스타일링" : "2인 그룹 스타일링"}</dd></div>
         <div className="summary-row"><dt>TPO</dt><dd>{tpo}</dd></div>
         <div className="summary-row"><dt>예산 기준</dt><dd>{state.mode === "personal" ? `${budgetRangeLabel(state.personal.budgetMinCode, state.personal.budgetMaxCode)} · ${state.personal.budgetApproach}` : `P4 ${budgetRangeLabel(state.group.members.A.budgetMinCode, state.group.members.A.budgetMaxCode)} · P5 ${budgetRangeLabel(state.group.members.B.budgetMinCode, state.group.members.B.budgetMaxCode)}`}</dd></div>
         <div className="summary-row"><dt>핏 기준</dt><dd>{state.mode === "personal" ? `${form.bodyType} · ${form.fitConcerns.join(" · ")}` : "P4 하의 길이/비율 · P5 상체 여유/어깨선"}</dd></div>
@@ -145,9 +145,9 @@ export function RequestScreen() {
       eyebrow="PLEASE CARD"
       title={
         <>
-          스타일메이트에게
+          스타일메이트에게 요청하고 싶은
           <br />
-          조금 더 부탁해 주세요.
+          내용을 자세히 적어주세요.
         </>
       }
       description="꼭 반영하고 싶은 상황, 보유 아이템, 피하고 싶은 느낌을 적어주세요."
@@ -166,7 +166,7 @@ export function RequestScreen() {
         <div className="selected-avatar" style={{ width: 74, height: 74 }} />
         <div>
           <strong>{mate.name}</strong>
-          <p className="helper">{state.mode === "personal" ? "개인 코칭" : "2인 그룹 코칭"} · {tpo}</p>
+          <p className="helper">{state.mode === "personal" ? "개인 스타일링" : "2인 그룹 스타일링"} · {tpo}</p>
         </div>
       </div>
       <details className="disclosure" open>
@@ -228,7 +228,7 @@ export function WaitScreen() {
           <div className="status-state">
             <div className="status-icon">◷</div>
             <span className="badge">전송 완료</span>
-            <h2 style={{ marginTop: 14 }}>스타일메이트가<br />코디 카드를 만들고 있어요.</h2>
+            <h2 style={{ marginTop: 14 }}>작성하신 내용이<br />스타일메이트에게 전달되었어요.</h2>
             <p>부탁해요 카드와 스타일 진단 결과가 전달됐어요. 코디가 완성되면 결과 화면에서 확인할 수 있어요.</p>
             <button className="btn-primary" type="button" onClick={() => navigate("/user/outfit")}>
               완성된 코디 카드 보기 <span aria-hidden="true">→</span>

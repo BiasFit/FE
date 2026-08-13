@@ -13,7 +13,7 @@ describe("BiasFit React flow", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: /내 취향과 핏에 맞는 코디를 받아보세요/,
+        name: /내 취향은 그대로, 오늘의 코디는 더 쉽게/,
       }),
     ).toBeInTheDocument();
 
@@ -22,7 +22,7 @@ describe("BiasFit React flow", () => {
     );
     expect(
       await screen.findByRole("heading", {
-        name: /먼저 스타일 진단을 시작할게요/,
+        name: /Style DNA 진단 받기/,
       }),
     ).toBeInTheDocument();
 
@@ -31,7 +31,7 @@ describe("BiasFit React flow", () => {
     );
     expect(
       await screen.findByRole("heading", {
-        name: /어떤 코디가 필요하세요/,
+        name: /어떤 스타일링을 원하나요/,
       }),
     ).toBeInTheDocument();
   });
@@ -44,7 +44,7 @@ describe("BiasFit React flow", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: /배정된 요청을 확인하고 코디 카드를 전달하세요/,
+        name: /사전에 안내된 개인 테스트 계정으로 로그인해 주세요/,
       }),
     ).toBeInTheDocument();
   });
@@ -88,7 +88,7 @@ describe("BiasFit React flow", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: /어떤 코디가 필요하세요/,
+        name: /어떤 스타일링을 원하나요/,
       }),
     ).toBeInTheDocument();
   });
@@ -128,7 +128,7 @@ describe("BiasFit React flow", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: /매칭에 사용할 코칭 정보를 선택해 주세요/,
+        name: /사용자와의 매칭에 활용될 스타일링 정보를 입력해 주세요/,
       }),
     ).toBeInTheDocument();
   });
