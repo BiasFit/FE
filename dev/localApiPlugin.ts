@@ -27,6 +27,8 @@ interface LocalApiRequest {
    * 이걸 빠뜨리면 로컬에서만 인증이 전부 401이 난다.
    */
   headers?: Record<string, string | string[] | undefined>;
+  /** 묶음 함수가 어느 핸들러로 보낼지 결정하는 값. 없으면 전부 404가 된다. */
+  url?: string;
 }
 
 interface LocalApiResponse {
@@ -43,22 +45,32 @@ export type LocalApiRoutes = Record<string, LocalApiHandler>;
 
 type NextFunction = (error?: unknown) => void;
 
+/**
+ * 주소 → 그 주소를 처리하는 **묶음 함수** 파일.
+ *
+ * 핸들러 파일을 직접 가리키지 않고 일부러 `[action].ts`를 거친다.
+ * 그래야 로컬과 Vercel이 **같은 경로 분기 코드를 통과**한다.
+ * 여기서 지름길을 내면 "로컬은 되는데 배포는 안 되는" 상태가 다시 생긴다.
+ *
+ * 주소 목록을 손으로 유지하는 이유는, 이 파일이 곧 열려 있는 주소의 목록이기 때문이다.
+ * 새 엔드포인트를 만들면 **여기와 해당 `[action].ts` 두 곳에 등록**한다.
+ */
 const biasFitApiModules = {
-  "/api/accounts/me": "/api/accounts/me.ts",
-  "/api/accounts/upsert": "/api/accounts/upsert.ts",
-  "/api/ai/match-explanations": "/api/ai/match-explanations.ts",
-  "/api/ai/priority-options": "/api/ai/priority-options.ts",
-  "/api/ai/style-dna-explanation": "/api/ai/style-dna-explanation.ts",
-  "/api/influencers/list": "/api/influencers/list.ts",
-  "/api/influencers/upsert": "/api/influencers/upsert.ts",
-  "/api/matches/top-three": "/api/matches/top-three.ts",
-  "/api/outfit/deliver": "/api/outfit/deliver.ts",
-  "/api/outfit/get": "/api/outfit/get.ts",
-  "/api/outfit/review": "/api/outfit/review.ts",
-  "/api/requests/list": "/api/requests/list.ts",
-  "/api/requests/send": "/api/requests/send.ts",
-  "/api/results/get": "/api/results/get.ts",
-  "/api/results/save": "/api/results/save.ts",
+  "/api/accounts/me": "/api/accounts/[action].ts",
+  "/api/accounts/upsert": "/api/accounts/[action].ts",
+  "/api/ai/match-explanations": "/api/ai/[action].ts",
+  "/api/ai/priority-options": "/api/ai/[action].ts",
+  "/api/ai/style-dna-explanation": "/api/ai/[action].ts",
+  "/api/influencers/list": "/api/influencers/[action].ts",
+  "/api/influencers/upsert": "/api/influencers/[action].ts",
+  "/api/matches/top-three": "/api/matches/[action].ts",
+  "/api/outfit/deliver": "/api/outfit/[action].ts",
+  "/api/outfit/get": "/api/outfit/[action].ts",
+  "/api/outfit/review": "/api/outfit/[action].ts",
+  "/api/requests/list": "/api/requests/[action].ts",
+  "/api/requests/send": "/api/requests/[action].ts",
+  "/api/results/get": "/api/results/[action].ts",
+  "/api/results/save": "/api/results/[action].ts",
 };
 
 function readRequestBody(request: LocalIncomingMessage) {
@@ -107,6 +119,7 @@ export function createLocalApiMiddleware(routes: LocalApiRoutes) {
         {
           method: request.method,
           headers: request.headers ?? {},
+          url: request.url,
           body: await readRequestBody(request),
         },
         createApiResponse(response),

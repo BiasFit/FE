@@ -1,21 +1,21 @@
-import { isMatchPriority } from "../../src/domain/aiContracts";
+import { isMatchPriority } from "../../../src/domain/aiContracts";
 import {
   filterEligibleInfluencers,
   rankInfluencers,
   type InfluencerProfile,
   type RankMatchInput,
-} from "../../src/domain/scoring";
+} from "../../../src/domain/scoring";
 import {
   loadInfluencerProfiles,
   loadReceivedRequestCounts,
-} from "../_lib/influencerProfiles";
+} from "../../_lib/influencerProfiles";
 import {
   readJsonBody,
   requirePost,
   sendApiError,
   type ApiRequest,
   type ApiResponse,
-} from "../_lib/http";
+} from "../../_lib/http";
 
 /**
  * 후보 모집단은 DB에서 읽는다. 하드코딩 배열로 폴백하지 않는다 —

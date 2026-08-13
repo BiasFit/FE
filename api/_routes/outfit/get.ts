@@ -1,12 +1,12 @@
-import { budgetRangeLabel, tpoLabel } from "../../src/data/options";
-import { AuthError, requireAccount, sendAuthAwareError } from "../_lib/auth";
-import { supabaseAdmin } from "../_lib/supabase";
+import { budgetRangeLabel, tpoLabel } from "../../../src/data/options";
+import { AuthError, requireAccount, sendAuthAwareError } from "../../_lib/auth";
+import { supabaseAdmin } from "../../_lib/supabase";
 import {
   readJsonBody,
   requirePost,
   type ApiRequest,
   type ApiResponse,
-} from "../_lib/http";
+} from "../../_lib/http";
 import type { MemberLabel } from "./deliver";
 
 /**

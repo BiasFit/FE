@@ -1,11 +1,11 @@
-import { AuthError, requireAccount, requireRole, sendAuthAwareError } from "../_lib/auth";
-import { supabaseAdmin } from "../_lib/supabase";
+import { AuthError, requireAccount, requireRole, sendAuthAwareError } from "../../_lib/auth";
+import { supabaseAdmin } from "../../_lib/supabase";
 import {
   readJsonBody,
   requirePost,
   type ApiRequest,
   type ApiResponse,
-} from "../_lib/http";
+} from "../../_lib/http";
 
 /**
  * 부탁해요 카드를 전송한다. 매칭 1건당 1장이다 (DB_SCHEMA.md 5.22).

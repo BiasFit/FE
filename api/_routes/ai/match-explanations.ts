@@ -4,20 +4,20 @@ import {
   validateMatchExplanations,
   type MatchExplanationsRequest,
   type MatchExplanationsResponse,
-} from "../../src/domain/aiContracts";
+} from "../../../src/domain/aiContracts";
 import {
   callOpenAiStructured,
   generateWithRepair,
   type StructuredOpenAiCaller,
-} from "../_lib/openai";
-import { SAFE_LANGUAGE_RULES, assertSafeLanguage } from "../_lib/safe-language";
+} from "../../_lib/openai";
+import { SAFE_LANGUAGE_RULES, assertSafeLanguage } from "../../_lib/safe-language";
 import {
   readJsonBody,
   requirePost,
   sendApiError,
   type ApiRequest,
   type ApiResponse,
-} from "../_lib/http";
+} from "../../_lib/http";
 
 const CATEGORY_LABEL = {
   style: "스타일 취향 일치도",

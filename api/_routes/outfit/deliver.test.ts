@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { OutfitReviewResponse } from "../../src/domain/aiContracts";
+import type { OutfitReviewResponse } from "../../../src/domain/aiContracts";
 import { deliverOutfitCard, validateDeliverInput, type DeliverOutfitInput } from "./deliver";
 
 const personalInput: DeliverOutfitInput = {

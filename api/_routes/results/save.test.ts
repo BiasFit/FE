@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { TestResultPayload } from "../../src/domain/resultSnapshot";
+import type { TestResultPayload } from "../../../src/domain/resultSnapshot";
 import { saveDiagnosis, validateTestResultPayload } from "./save";
 
 const personalForm = {

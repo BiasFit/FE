@@ -1,12 +1,12 @@
-import { budgetRangeLabel, tpoLabel } from "../../src/data/options";
-import { requireAccount, sendAuthAwareError, AuthError } from "../_lib/auth";
-import { supabaseAdmin } from "../_lib/supabase";
+import { budgetRangeLabel, tpoLabel } from "../../../src/data/options";
+import { requireAccount, sendAuthAwareError, AuthError } from "../../_lib/auth";
+import { supabaseAdmin } from "../../_lib/supabase";
 import {
   readJsonBody,
   requirePost,
   type ApiRequest,
   type ApiResponse,
-} from "../_lib/http";
+} from "../../_lib/http";
 
 /**
  * 저장된 진단 결과를 매칭 1건 기준으로 조립해 돌려준다.

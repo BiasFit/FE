@@ -1,10 +1,10 @@
-import { loadInfluencerProfiles } from "../_lib/influencerProfiles";
+import { loadInfluencerProfiles } from "../../_lib/influencerProfiles";
 import {
   requirePost,
   sendApiError,
   type ApiRequest,
   type ApiResponse,
-} from "../_lib/http";
+} from "../../_lib/http";
 
 /**
  * 프로필이 완료된 스타일메이트 전체를 돌려준다.
