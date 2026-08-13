@@ -29,6 +29,7 @@ import {
   saveTestResult,
 } from "../../lib/biasfitApi.js";
 import { FlowShell } from "../../shared/FlowShell.js";
+import { influencerPhotoStyle } from "../../shared/influencerPhoto.js";
 import { anonUserKey } from "../../storage/anonUser.js";
 import { MatchReason } from "./MatchReason.js";
 import { StyleDnaExplanation } from "./StyleDnaExplanation.js";
@@ -500,7 +501,7 @@ export function Top3Screen() {
               key={influencer.id}
               onClick={() => dispatch({ type: "selectInfluencer", influencerId: influencer.id, score: breakdown.matchScore })}
             >
-              <span className="match-photo"><span className="rank">TOP {index + 1}</span></span>
+              <span className="match-photo" style={influencerPhotoStyle(view?.profileImageUrl)}><span className="rank">TOP {index + 1}</span></span>
               <span className="match-content">
                 <span className="match-top">
                   <span><small>{view?.tagline}</small><h3>{influencer.name}</h3></span>

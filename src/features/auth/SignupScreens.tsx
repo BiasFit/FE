@@ -23,7 +23,6 @@ const emptyForm: SignupForm = {
   password: "",
   passwordConfirm: "",
   birthDate: "",
-  profileImageName: "",
 };
 
 function SignupContext({
@@ -181,13 +180,7 @@ function SignupFormScreen({ role }: { role: AccountRole }) {
   const update =
     (field: keyof SignupForm) =>
     (event: ChangeEvent<HTMLInputElement>) => {
-      setForm((current) => ({
-        ...current,
-        [field]:
-          field === "profileImageName"
-            ? event.target.files?.[0]?.name ?? ""
-            : event.target.value,
-      }));
+      setForm((current) => ({ ...current, [field]: event.target.value }));
       if (field in errors) {
         setErrors((current) => ({ ...current, [field]: undefined }));
       }
@@ -378,24 +371,12 @@ function SignupFormScreen({ role }: { role: AccountRole }) {
                   />
                 </label>
 
-                <label className="field">
-                  <span className="field-label">프로필 사진</span>
-                  <input
-                    className="signup-file-input"
-                    type="file"
-                    accept="image/*"
-                    onChange={update("profileImageName")}
-                  />
-                  <span className="helper">
-                    테스트용 샘플 이미지만 선택해 주세요. 사진 내용은 저장하지
-                    않아요.
-                  </span>
-                  {form.profileImageName ? (
-                    <span className="signup-file-name">
-                      선택됨 · {form.profileImageName}
-                    </span>
-                  ) : null}
-                </label>
+                {/*
+                  프로필 사진 입력을 뺐다.
+                  파일을 고르면 "선택됨"까지 떴지만 그 값은 화면에만 남고
+                  서버로 가지 않았다 — 등록했다고 믿게 만드는 죽은 입력이었다.
+                  사진은 운영에서 넣는다 (MEMO/이미지_처리.md).
+                */}
               </div>
 
               {submitError ? (

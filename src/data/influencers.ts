@@ -5,6 +5,13 @@ export interface StylemateView extends InfluencerProfile {
   description: string;
   price: string;
   occasions: string;
+  /**
+   * `influencer_profiles.profile_image_url`. `/assets/influencers/stylemate01.jpg` 같은 경로다.
+   *
+   * **없으면 null이고, 화면은 중립 배경을 쓴다.** 다른 사람 사진으로 대신 채우지 않는다.
+   * 사용자는 그 사진을 그 사람 사진이라고 믿기 때문이다. 등록 절차는 `MEMO/이미지_처리.md`.
+   */
+  profileImageUrl: string | null;
 }
 
 export const influencers: StylemateView[] = [
@@ -25,6 +32,7 @@ export const influencers: StylemateView[] = [
       "부드러운 무드와 하의 비율 고민을 함께 살리는 제안에 강해요.",
     price: "7.2만 원 이하",
     occasions: "개강·OT·여행",
+    profileImageUrl: null,
   },
   {
     id: "stylemate-02",
@@ -43,6 +51,7 @@ export const influencers: StylemateView[] = [
       "단정한 색감과 편안한 캠퍼스 조합을 자연스럽게 만들어요.",
     price: "6.5만 원 이하",
     occasions: "수업·과팅·나들이",
+    profileImageUrl: null,
   },
   {
     id: "stylemate-03",
@@ -61,6 +70,7 @@ export const influencers: StylemateView[] = [
       "기본 아이템을 중심으로 재현하기 쉬운 조합을 제안해요.",
     price: "7.8만 원 이하",
     occasions: "동아리·일상·여행",
+    profileImageUrl: null,
   },
   {
     id: "stylemate-04",
@@ -78,6 +88,7 @@ export const influencers: StylemateView[] = [
     description: "레이어드와 포인트 아이템으로 개성 있는 균형을 만들어요.",
     price: "10만 원 이하",
     occasions: "축제·공연·모임",
+    profileImageUrl: null,
   },
   {
     id: "stylemate-05",
@@ -96,6 +107,7 @@ export const influencers: StylemateView[] = [
       "서로 다른 취향을 색감과 소재로 연결하는 그룹 제안에 강해요.",
     price: "11만 원 이하",
     occasions: "발표·데이트·여행",
+    profileImageUrl: null,
   },
   // 06~08은 TPO 커버리지를 채우기 위한 임시 테스트 프로필이다.
   // 01~05만으로는 축제·친구 모임·데이트를 그룹 또는 개인에서 아무도 담당하지 못했다.
@@ -115,6 +127,7 @@ export const influencers: StylemateView[] = [
     description: "포인트 하나로 분위기를 바꾸는 조합을 제안해요.",
     price: "12만 원 이하",
     occasions: "축제·모임·데이트",
+    profileImageUrl: null,
   },
   {
     id: "stylemate-07",
@@ -132,6 +145,7 @@ export const influencers: StylemateView[] = [
     description: "단정함을 지키면서 부드러운 인상을 더해요.",
     price: "15만 원 이하",
     occasions: "데이트·발표·개강",
+    profileImageUrl: null,
   },
   {
     id: "stylemate-08",
@@ -149,5 +163,6 @@ export const influencers: StylemateView[] = [
     description: "가진 아이템에 빈티지 무드를 얹는 방법을 알려줘요.",
     price: "8만 원 이하",
     occasions: "모임·동아리·축제",
+    profileImageUrl: null,
   },
 ];
