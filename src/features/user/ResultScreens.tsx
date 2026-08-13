@@ -309,7 +309,7 @@ export function DnaScreen() {
       {state.mode === "personal" ? (
         <>
           <ScoreBoard scores={personalScores} />
-          <h2 className="section-title">나의 핵심 기준</h2>
+          <h2 className="section-title">스타일링 기준</h2>
           <div className="criteria-grid">
             <div className="criterion"><div><strong>{state.personal.bodyType}</strong><p>{state.personal.fitConcerns.join(" · ")}</p></div></div>
             <div className="criterion"><div><strong>{state.personal.preferredStyle} / {state.personal.avoidedStyle}</strong><p>선호 / 피하고 싶은 스타일</p></div></div>
@@ -460,8 +460,8 @@ export function Top3Screen() {
       step={4}
       wide
       eyebrow="STYLEMATE TOP 3"
-      title={<>나와 잘 맞는 스타일메이트를<br />비교해 보세요.</>}
-      description="매칭 적합도는 입력한 취향·핏·예산과 스타일메이트의 강점이 얼마나 맞는지 보여줘요."
+      title={<>스타일링을 받고 싶은<br />인플루언서 1명을 선택해 주세요.</>}
+      description="표시된 퍼센트는 나의 스타일 기준과 요청 조건이 인플루언서와 얼마나 잘 맞는지를 보여줘요."
       actions={
         <>
           <button className="btn-secondary" type="button" onClick={() => navigate("/user/body")}>조건 수정</button>

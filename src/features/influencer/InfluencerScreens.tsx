@@ -85,9 +85,9 @@ export function InfluencerLoginScreen() {
       eyebrow="INFLUENCER WORKSPACE"
       title={
         <>
-          배정된 요청을 확인하고
+          사전에 안내된 개인 테스트 계정으로
           <br />
-          코디 카드를 전달하세요.
+          로그인해 주세요.
         </>
       }
       description="팀이 만든 인플루언서 테스트 계정으로만 이용합니다."
@@ -142,8 +142,8 @@ export function InfluencerLoginScreen() {
 const REQUIRED_PROFILE_TPO_COUNT = 3;
 
 const COACHING_TYPE_LABEL: Record<CoachingSupport, string> = {
-  personal_only: "개인 코칭만",
-  group_only: "2인 그룹 코칭만",
+  personal_only: "개인 스타일링만",
+  group_only: "2인 그룹 스타일링만",
   both: "개인·2인 그룹 모두",
 };
 
@@ -182,9 +182,9 @@ export function InfluencerProfileScreen() {
       eyebrow="FIRST PROFILE"
       title={
         <>
-          매칭에 사용할
+          사용자와의 매칭에 활용될
           <br />
-          코칭 정보를 선택해 주세요.
+          스타일링 정보를 입력해 주세요.
         </>
       }
       description="프로필은 테스트 계정별 첫 로그인 시 한 번만 생성합니다."
@@ -272,7 +272,7 @@ export function InfluencerProfileScreen() {
         />
       </div>
       <div className="field">
-        <div className="field-label">지원 코칭 유형 <span className="required">1개</span></div>
+        <div className="field-label">지원 스타일링 유형 <span className="required">1개</span></div>
         <SingleChoice
           values={Object.keys(COACHING_TYPE_LABEL)}
           selected={coachingType}
@@ -354,7 +354,7 @@ export function InfluencerRequestsScreen() {
       flow="influencer"
       step={2}
       eyebrow="MY REQUESTS"
-      title="내 배정 요청"
+      title="스타일링 요청 목록"
       description={`${account?.displayName ?? "내"} 계정에 배정된 요청만 표시합니다.`}
       actions={
         <>
@@ -395,7 +395,7 @@ export function InfluencerRequestsScreen() {
                 <span className="badge">{request.coachingType === "group" ? "2인 그룹" : "개인"}</span>
                 <span className="badge blue">{request.tpoLabel}</span>
               </span>
-              <h3>{request.coachingType === "group" ? "2인 그룹 코칭" : "개인 코칭"}</h3>
+              <h3>{request.coachingType === "group" ? "2인 그룹 스타일링" : "개인 스타일링"}</h3>
               <p>{sentAtLabel(request.sentAt)}</p>
             </span>
             <span className={request.delivered ? "state-done" : "state-needed"}>
@@ -536,7 +536,7 @@ export function InfluencerDetailScreen() {
         title="코디 카드 작성"
         description={
           diagnosis
-            ? `${diagnosis.coachingType === "group" ? "2인 그룹 코칭" : "개인 코칭"} · ${diagnosis.tpoLabel}`
+            ? `${diagnosis.coachingType === "group" ? "2인 그룹 스타일링" : "개인 스타일링"} · ${diagnosis.tpoLabel}`
             : "요청 내용을 불러오는 중이에요."
         }
         actions={
@@ -594,7 +594,7 @@ export function InfluencerDetailScreen() {
                   <div className="summary-row">
                     <dt>공통 조건</dt>
                     <dd>
-                      {diagnosis.coachingType === "group" ? "2인 그룹 코칭" : "개인 코칭"}
+                      {diagnosis.coachingType === "group" ? "2인 그룹 스타일링" : "개인 스타일링"}
                       {" · "}
                       {/* TPO는 내부 코드로 저장되고 화면에서만 라벨로 바꾼다. */}
                       {diagnosis.tpoLabel}
@@ -893,7 +893,7 @@ export function DeliveredOutfitCard({ card }: { card: OutfitCardView }) {
                     </p>
                   </div>
                   <span className="badge dark">
-                    {memberLabel === "self" ? "개인 코칭" : `구성원 ${memberLabel}`}
+                    {memberLabel === "self" ? "개인 스타일링" : `구성원 ${memberLabel}`}
                   </span>
                 </div>
                 <div className="item-list">

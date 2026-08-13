@@ -9,6 +9,7 @@ import {
   fitConcerns,
   keywords,
   preferredItems,
+  sizeOptions,
   styleOptions,
   TPO_OPTIONS,
   type TpoCode,
@@ -76,12 +77,12 @@ export function BodyScreen() {
       eyebrow="입력 1 / 5 · 체형과 핏"
       title={
         <>
-          옷을 고를 때 고민되는
+          본인의 체형 정보와 평소 핏에 대해
           <br />
-          핏을 알려주세요.
+          느끼는 고민을 알려주세요.
         </>
       }
-      description="체형 정보는 스타일 선택을 돕는 참고 기준으로만 사용해요."
+      description="입력하신 정보는 나에 딱 맞는 스타일링을 추천하는 데 참고 기준으로 활용돼요."
       actions={
         <Actions
           back="/user/coaching"
@@ -97,7 +98,7 @@ export function BodyScreen() {
     >
       {state.mode === "group" ? (
         <div className="soft-card" style={{ marginBottom: 20 }}>
-          <h2 className="sub-title">함께 코칭받을 두 사람</h2>
+          <h2 className="sub-title">함께 스타일링받을 두 사람</h2>
           <p className="helper">
             관계와 공통 약속을 먼저 정하고 구성원별 정보를 입력해요.
           </p>
@@ -179,7 +180,7 @@ export function BodyScreen() {
             value={form.topSize}
             onChange={(event) => update({ topSize: event.target.value })}
           >
-            {["S", "S~M", "M", "L"].map((size) => (
+            {sizeOptions.map((size) => (
               <option key={size}>{size}</option>
             ))}
           </select>
@@ -191,7 +192,7 @@ export function BodyScreen() {
             value={form.bottomSize}
             onChange={(event) => update({ bottomSize: event.target.value })}
           >
-            {["S", "M", "L"].map((size) => (
+            {sizeOptions.map((size) => (
               <option key={size}>{size}</option>
             ))}
           </select>
@@ -240,7 +241,8 @@ export function BodyScreen() {
       </div>
       <label className="field">
         <span className="field-label">
-          조금 더 알려주기 <span className="caption">선택</span>
+          체형이나 핏과 관련해 평소 고민하는 부분을 자세히 적어주세요.{" "}
+          <span className="caption">선택</span>
         </span>
         <textarea
           className="textarea"
@@ -338,12 +340,12 @@ export function SignalsScreen() {
       eyebrow="입력 3 / 5 · 세부 취향"
       title={
         <>
-          내가 좋아하는 느낌을
+          내가 좋아하는 패션 요소를
           <br />
-          조금 더 구체적으로 골라요.
+          더 구체적으로 골라보세요.
         </>
       }
-      description="각 영역에서 필수로 3가지씩 선택하면 Style DNA가 더 선명해져요."
+      description="각 영역에서 가장 끌리는 항목을 3개씩 골라주세요."
       actions={
         <Actions
           back="/user/style"
@@ -398,17 +400,17 @@ export function BudgetScreen() {
       eyebrow="입력 4 / 5 · 예산"
       title={
         <>
-          코디 1세트 기준
+          평소 패션에 사용하는
           <br />
-          예산을 알려주세요.
+          비용을 알려주세요.
         </>
       }
-      description="상의 1개와 하의 1개 조합의 최소·최고 금액을 선택해요."
+      description="상의·하의·신발을 모두 구매하는 경우를 기준으로 선택해 주세요."
       actions={<Actions back="/user/signals" next="/user/tpo" nextLabel="마지막 조건 고르기" />}
     >
       <MemberSwitch />
       <div className="field">
-        <div className="field-label">원하는 가격대</div>
+        <div className="field-label">평소 소비 금액</div>
         <BudgetRangeSlider
           minCode={form.budgetMinCode}
           maxCode={form.budgetMaxCode}
@@ -422,8 +424,8 @@ export function BudgetScreen() {
         />
       </div>
       <div className="field">
-        <div className="field-label">예산 접근 방식</div>
-        <div className="card-grid" role="radiogroup" aria-label="예산 접근 방식">
+        <div className="field-label">평소 구매 기준</div>
+        <div className="card-grid" role="radiogroup" aria-label="평소 구매 기준">
           {budgetApproaches.map((approach) => (
             <button
               className={`option-card ${form.budgetApproach === approach ? "selected" : ""}`}
@@ -513,12 +515,11 @@ export function TpoScreen() {
           group: state.group,
         }}
       />
-      <div className="soft-card">
-        <strong>입력한 정보는 이렇게 사용해요</strong>
-        <p className="helper" style={{ marginTop: 7 }}>
-          입력한 정보는 추천 이유를 만드는 데만 사용돼요.
-        </p>
-      </div>
+      {/*
+        「입력한 정보는 이렇게 사용해요」 안내를 여기서 뺐다 (문구 피드백 2026-08-14).
+        외모·체형을 평가하지 않는다는 안내가 필요하면 조건 입력 **전**,
+        스타일링 유형을 고른 직후 팝업으로 보여주자는 제안이 있었다. 팝업은 아직 만들지 않았다.
+      */}
     </FlowShell>
   );
 }

@@ -10,6 +10,15 @@ export const fitConcerns = [
   "전체 기장·비율", "밑위·하의 길이", "힙·허벅지 여유", "어깨선·소매 길이", "가슴·상체 여유", "허리·복부 여유",
 ];
 
+/**
+ * 상·하의 사이즈 선택지. 여기 있는 문자열이 그대로 `member_style_inputs.top_size`에 저장된다.
+ *
+ * 목록을 화면과 페르소나 기본값 두 곳에 따로 두면 값이 어긋난다.
+ * 이 프로젝트에서 어휘가 갈라져 점수가 조용히 0점이 된 사고가 두 번 있었다. 한 곳에서만 정의한다.
+ * (사이즈는 점수 계산에 쓰이지 않지만 같은 규칙을 지킨다.)
+ */
+export const sizeOptions = ["44 (XS)", "55 (S)", "66 (M)", "77 (L)", "88 (XL)"] as const;
+
 export const styleOptions: { name: StyleName; description: string }[] = [
   { name: "캐주얼", description: "편안하고 자연스러운 일상 중심 스타일" },
   { name: "로맨틱", description: "부드럽고 화사한 분위기를 살린 스타일" },

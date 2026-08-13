@@ -11,13 +11,14 @@ export function HomeScreen() {
       <div className="home-wrap">
         <div className="home-copy">
           <h1>
-            내 취향과 핏에 맞는
+            내 취향은 그대로,
             <br />
-            코디를 받아보세요.
+            오늘의 코디는 더 쉽게.
           </h1>
+          {/* 홈에서는 내부 용어(Style DNA·스타일메이트)를 쓰지 않는다. 처음 온 사람이 읽는 첫 문장이다. */}
           <p>
-            핏 고민, 취향, 예산, 입을 상황을 알려주면 나에게 맞는
-            스타일메이트가 코디를 제안해요.
+            체형·취향·예산·TPO를 바탕으로 나와 비슷한 패션 인플루언서의 코디
+            추천을 받아보세요.
           </p>
           <div className="home-actions">
             <button
@@ -33,15 +34,11 @@ export function HomeScreen() {
             데이터로 체험합니다.
           </p>
         </div>
+        {/* 아래 문구는 제목과 같은 말이라 삭제했다 (문구 피드백 2026-08-14). */}
         <div className="home-visual" aria-label="BiasFit 캠퍼스 스타일 이미지">
           <div className="photo-tile one" />
           <div className="photo-tile two" />
           <div className="photo-tile three" />
-          <div className="visual-note">
-            내 취향은 그대로,
-            <br />
-            오늘의 선택은 더 쉬워지게.
-          </div>
         </div>
       </div>
     </section>
@@ -83,13 +80,12 @@ export function UserLoginScreen() {
           <div className="work-head">
             <p className="eyebrow">USER START</p>
             <h1 className="page-title">
-              먼저 스타일 진단을
-              <br />
-              시작할게요.
+              Style DNA 진단 받기
             </h1>
             <p className="page-desc">
-              테스트 계정으로 로그인하고 개인 또는 그룹 코칭을 선택할 수
-              있어요.
+              BiasFit과 함께, ‘나만의 스타일’을 찾아봐요.
+              <br />
+              사전에 안내드린 개인 테스트 계정으로 로그인해 주세요.
             </p>
           </div>
           <div className="work-body">
@@ -178,28 +174,31 @@ export function CoachingScreen() {
         <aside className="context-panel">
           <p className="context-brand">BiasFit</p>
           <p className="context-step">USER FLOW · 01 / 05</p>
-          <h2>코칭의 기준을 정해요.</h2>
+          <h2>스타일링의 기준을 정해요.</h2>
           <p>혼자 또는 두 사람이 함께 사용할 스타일 기준을 선택합니다.</p>
         </aside>
         <div className="work-panel">
           <div className="work-head">
-            <h1 className="page-title">어떤 코디가 필요하세요?</h1>
+            <h1 className="page-title">어떤 스타일링을 원하나요?</h1>
             <p className="page-desc">
-              혼자만의 기준을 찾거나, 두 사람의 취향을 함께 살릴 수 있어요.
+              나에게 어울리는 코디를 찾는다면 ‘개인 스타일링’을, 친구·가족 등 두
+              사람이 함께 어울리는 코디를 찾는다면 ‘2인 그룹 스타일링’을 선택해
+              주세요.
             </p>
           </div>
           <div className="work-body">
-            <div className="card-grid" role="radiogroup" aria-label="코칭 유형">
+            <div className="card-grid" role="radiogroup" aria-label="스타일링 유형">
               {[
                 {
                   mode: "personal" as const,
-                  title: "나만의 코디",
-                  copy: "내 핏 고민과 취향에 맞는 코디를 받아요.",
+                  title: "개인 스타일링(코디)",
+                  // 초기 화면에서는 '스타일메이트' 대신 '패션 인플루언서'로 안내한다.
+                  copy: "내 체형, 취향, 예산, TPO를 기준으로 나와 딱 맞는 패션 인플루언서를 연결해줘요.",
                 },
                 {
                   mode: "group" as const,
-                  title: "둘이 함께 입는 코디",
-                  copy: "각자의 취향은 살리고, 함께 보일 때 조화로운 코디를 받아요.",
+                  title: "2인 그룹 스타일링(코디)",
+                  copy: "각자의 취향을 존중하면서도, 친구·가족 등 소중한 사람과 함께 입고 싶은 시밀러룩 스타일링을 요청할 수 있어요.",
                 },
               ].map((option) => (
                 <button
