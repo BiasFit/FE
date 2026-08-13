@@ -1,11 +1,11 @@
-import { tpoLabel } from "../../src/data/options";
-import { requireAccount, requireRole, sendAuthAwareError } from "../_lib/auth";
-import { supabaseAdmin } from "../_lib/supabase";
+import { tpoLabel } from "../../../src/data/options";
+import { requireAccount, requireRole, sendAuthAwareError } from "../../_lib/auth";
+import { supabaseAdmin } from "../../_lib/supabase";
 import {
   requirePost,
   type ApiRequest,
   type ApiResponse,
-} from "../_lib/http";
+} from "../../_lib/http";
 
 /**
  * 로그인한 인플루언서에게 배정된 부탁해요 카드 목록.

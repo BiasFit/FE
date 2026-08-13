@@ -3,16 +3,16 @@ import type {
   OutfitReviewRequest,
   OutfitReviewResponse,
   SafeLanguageIssue,
-} from "../../src/domain/aiContracts";
-import { checkProductLinks } from "../_lib/link-checker";
-import { reviewSafeLanguage } from "../_lib/safe-language";
+} from "../../../src/domain/aiContracts";
+import { checkProductLinks } from "../../_lib/link-checker";
+import { reviewSafeLanguage } from "../../_lib/safe-language";
 import {
   readJsonBody,
   requirePost,
   sendApiError,
   type ApiRequest,
   type ApiResponse,
-} from "../_lib/http";
+} from "../../_lib/http";
 
 interface ReviewDependencies {
   reviewLanguage(message: string): Promise<{ issues: SafeLanguageIssue[] }>;

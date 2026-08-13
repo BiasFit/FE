@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { MatchExplanationsRequest } from "../../src/domain/aiContracts";
+import type { MatchExplanationsRequest } from "../../../src/domain/aiContracts";
 import { createMatchExplanations } from "./match-explanations";
 
 const request: MatchExplanationsRequest = {

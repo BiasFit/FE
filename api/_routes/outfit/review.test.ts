@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest";
 import type {
   LinkCheck,
   OutfitReviewRequest,
-} from "../../src/domain/aiContracts";
+} from "../../../src/domain/aiContracts";
 import {
   classifyLinkStatus,
   isBlockedHostname,
   isRetryableLinkStatus,
-} from "../_lib/link-checker";
+} from "../../_lib/link-checker";
 import { reviewOutfitCard } from "./review";
 
 const request: OutfitReviewRequest = {

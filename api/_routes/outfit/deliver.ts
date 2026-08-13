@@ -1,12 +1,12 @@
-import type { OutfitReviewRequest, OutfitReviewResponse } from "../../src/domain/aiContracts";
-import { AuthError, requireAccount, requireRole, sendAuthAwareError } from "../_lib/auth";
-import { supabaseAdmin } from "../_lib/supabase";
+import type { OutfitReviewRequest, OutfitReviewResponse } from "../../../src/domain/aiContracts";
+import { AuthError, requireAccount, requireRole, sendAuthAwareError } from "../../_lib/auth";
+import { supabaseAdmin } from "../../_lib/supabase";
 import {
   readJsonBody,
   requirePost,
   type ApiRequest,
   type ApiResponse,
-} from "../_lib/http";
+} from "../../_lib/http";
 import { reviewOutfitCard } from "./review";
 
 /**
