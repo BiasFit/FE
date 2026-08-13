@@ -4,7 +4,6 @@ import type { AppState } from "../../app/appState";
 import type { DiagnosisForm, MatchPriority } from "../../app/types";
 import { useAppState } from "../../app/AppStateProvider";
 import { budgetRangeLabel, tpoLabel } from "../../data/options";
-import { influencers } from "../../data/influencers";
 import type {
   MatchExplanation,
   MatchExplanationsRequest,
@@ -24,6 +23,7 @@ import {
 import { MATCH_PRIORITY_WEIGHTS } from "../../domain/matchPriority";
 import type { TestResultPayload } from "../../domain/resultSnapshot";
 import {
+  getInfluencers,
   getMatchExplanations,
   getTopThree,
   saveTestResult,
@@ -410,6 +410,23 @@ export function Top3Screen() {
     return () => controller.abort();
   }, [rankedKey, reasonRetry]);
 
+  // 카드 표시용 스타일메이트 목록. 한 번만 받아 appState에 둔다.
+  // 우선순위를 고르기 전에는 어떤 API도 부르지 않는다 (PLAN.MD 1부 규칙).
+  const directoryLoaded = state.influencerDirectory.length > 0;
+  useEffect(() => {
+    if (!input || directoryLoaded) return;
+    const controller = new AbortController();
+    void getInfluencers(controller.signal)
+      .then(({ influencers }) =>
+        dispatch({ type: "setInfluencerDirectory", influencers }),
+      )
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        console.log("[BiasFit 매칭] 스타일메이트 목록 호출 실패", error);
+      });
+    return () => controller.abort();
+  }, [directoryLoaded]);
+
   // 흐름이 끝난 시점에 화면에 쓴 값을 그대로 한 번만 저장한다.
   // 같은 입력으로 다시 렌더링돼도 중복 행이 생기지 않게 저장한 inputKey를 기억한다.
   const [savedKey, setSavedKey] = useState<string | null>(null);
@@ -470,7 +487,10 @@ export function Top3Screen() {
       <div className="match-grid" style={{ marginTop: 18 }} role="radiogroup" aria-label="스타일메이트 TOP 3">
         {ranked.map(({ influencer, breakdown }, index) => {
           const selected = state.selectedInfluencerId === influencer.id;
-          const view = influencers.find((profile) => profile.id === influencer.id)!;
+          // 목록은 DB에서 받아 appState에 둔다. 못 받았으면 순위 결과의 값으로 대신한다.
+          const view = state.influencerDirectory.find(
+            (profile) => profile.id === influencer.id,
+          );
           return (
             <button
               className={`match-card ${selected ? "selected" : ""}`}
@@ -483,11 +503,11 @@ export function Top3Screen() {
               <span className="match-photo"><span className="rank">TOP {index + 1}</span></span>
               <span className="match-content">
                 <span className="match-top">
-                  <span><small>{view.tagline}</small><h3>{influencer.name}</h3></span>
+                  <span><small>{view?.tagline}</small><h3>{influencer.name}</h3></span>
                   <span className="match-score">{breakdown.matchScore}<small>% 매칭</small></span>
                 </span>
-                <p>{view.description}</p>
-                <span className="facts"><span className="fact">◇ {view.price}</span><span className="fact">◇ {view.occasions}</span></span>
+                <p>{view?.description}</p>
+                <span className="facts"><span className="fact">◇ {view?.price}</span><span className="fact">◇ {view?.occasions}</span></span>
                 <span className="reason-bars">
                   <span className="reason-bar">스타일 취향 <b>{Math.round(breakdown.style)}/{weights.style}</b><span className="mini-track"><span className="mini-fill" style={{ width: `${(breakdown.style / weights.style) * 100}%` }} /></span></span>
                   <span className="reason-bar">체형·핏 <b>{Math.round(breakdown.fit)}/{weights.fit}</b><span className="mini-track"><span className="mini-fill" style={{ width: `${(breakdown.fit / weights.fit) * 100}%` }} /></span></span>

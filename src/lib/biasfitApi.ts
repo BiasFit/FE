@@ -12,6 +12,7 @@ import type {
   SavedTestResult,
   TestResultPayload,
 } from "../domain/resultSnapshot";
+import type { StylemateView } from "../data/influencers";
 import type { RankedInfluencer, RankMatchInput } from "../domain/scoring";
 import { isAuthConfigured, supabase } from "./supabaseClient";
 
@@ -118,4 +119,9 @@ export function createAccount(
 /** 현재 로그인 계정의 역할을 서버에 물어본다. 브라우저가 기억한 값은 조작할 수 있다. */
 export function getMyAccount(signal?: AbortSignal) {
   return postJson<AccountView>("/api/accounts/me", {}, signal);
+}
+
+/** 프로필이 완료된 스타일메이트 전체. TOP 3 카드의 표시용 정보에 쓴다. */
+export function getInfluencers(signal?: AbortSignal) {
+  return postJson<{ influencers: StylemateView[] }>("/api/influencers/list", {}, signal);
 }

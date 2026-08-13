@@ -12,6 +12,7 @@ import type {
   StyleDnaExplanationResponse,
 } from "../domain/aiContracts";
 import type { RankedInfluencer } from "../domain/scoring";
+import type { StylemateView } from "../data/influencers";
 import { personaForms } from "../data/personas";
 
 export interface AppState {
@@ -29,8 +30,13 @@ export interface AppState {
   /** AI4 추천 근거. */
   matchExplanations: MatchExplanation[];
   matchExplanationStatus: AiRequestStatus;
-  /** 저장된 test_results 행의 id. 인플루언서 화면이 이 결과를 조회할 때 쓴다. */
+  /** 저장된 `match_results.id`. 부탁해요 카드와 코디 카드가 이 id로 붙는다. */
   savedResultId: string;
+  /**
+   * DB에서 읽은 스타일메이트 목록. 카드의 소개·가격대·강점 TPO 표시에 쓴다.
+   * 하드코딩 배열을 대체한다.
+   */
+  influencerDirectory: StylemateView[];
   personal: DiagnosisForm;
   group: {
     relationship: "friend" | "family" | "other";
@@ -64,6 +70,7 @@ export type AppAction =
   | { type: "setMatchExplanations"; explanations: MatchExplanation[] }
   | { type: "setMatchExplanationsError" }
   | { type: "setSavedResultId"; id: string }
+  | { type: "setInfluencerDirectory"; influencers: StylemateView[] }
   | { type: "selectMatchPriority"; priority: MatchPriority }
   | { type: "updatePersonal"; patch: Partial<DiagnosisForm> }
   | {
@@ -107,6 +114,7 @@ export function createInitialState(): AppState {
     matchExplanations: [],
     matchExplanationStatus: "idle",
     savedResultId: "",
+    influencerDirectory: [],
     personal: copyForm(personaForms.P1),
     group: {
       relationship: "friend",
@@ -218,6 +226,9 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       };
     case "setSavedResultId":
       return { ...state, savedResultId: action.id };
+    case "setInfluencerDirectory":
+      // 진단 입력과 무관한 참조 데이터라 무효화 대상이 아니다.
+      return { ...state, influencerDirectory: action.influencers };
     case "selectMatchPriority":
       // 우선순위는 Style DNA와 TOP 3 계산에 모두 들어간다. 바뀌면 둘 다 다시 받아야 한다.
       return {

@@ -49,6 +49,7 @@ const biasFitApiModules = {
   "/api/ai/match-explanations": "/api/ai/match-explanations.ts",
   "/api/ai/priority-options": "/api/ai/priority-options.ts",
   "/api/ai/style-dna-explanation": "/api/ai/style-dna-explanation.ts",
+  "/api/influencers/list": "/api/influencers/list.ts",
   "/api/matches/top-three": "/api/matches/top-three.ts",
   "/api/outfit/review": "/api/outfit/review.ts",
   "/api/results/save": "/api/results/save.ts",

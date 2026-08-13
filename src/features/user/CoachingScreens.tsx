@@ -2,15 +2,36 @@ import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppState } from "../../app/AppStateProvider";
 import type { ProductItem } from "../../app/types";
-import { influencers } from "../../data/influencers";
+import type { StylemateView } from "../../data/influencers";
 import { budgetRangeLabel, tpoLabel } from "../../data/options";
 import { FlowShell } from "../../shared/FlowShell";
 
+/** 목록을 아직 못 받았을 때 화면이 깨지지 않게 쓰는 빈 값. */
+const EMPTY_MATE: StylemateView = {
+  id: "",
+  name: "",
+  profileCompleted: false,
+  primaryStyle: "캐주얼",
+  secondaryStyle: "로맨틱",
+  bodyType: "웨이브",
+  fitConcerns: [],
+  budgetCodes: [],
+  budgetApproach: "총액 절약형",
+  tpos: [],
+  coachingType: "both",
+  tagline: "",
+  description: "",
+  price: "",
+  occasions: "",
+};
+
 function useSelectedMate() {
   const { state } = useAppState();
+  const directory = state.influencerDirectory;
   return (
-    influencers.find((profile) => profile.id === state.selectedInfluencerId) ??
-    influencers[0]
+    directory.find((profile) => profile.id === state.selectedInfluencerId) ??
+    directory[0] ??
+    EMPTY_MATE
   );
 }
 
