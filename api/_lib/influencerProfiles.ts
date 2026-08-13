@@ -162,3 +162,50 @@ export async function loadInfluencerProfiles(client: Client = supabaseAdmin()) {
 
   return rows.map(toStylemateView).sort((left, right) => left.id.localeCompare(right.id));
 }
+
+/**
+ * 인플루언서별 누적 수신 부탁해요 카드 수와 한도를 센다.
+ *
+ * `status in ('sent','read')`만 센다. `draft`는 전송되지 않았으므로 제외하고,
+ * 코디 카드가 전달돼도 같은 요청을 다시 세지 않는다 (DB_SCHEMA.md 5.22).
+ *
+ * **반드시 서버에서 센다.** 프런트가 보낸 값을 쓰면 한도를 우회할 수 있다.
+ */
+export async function loadReceivedRequestCounts(client: Client = supabaseAdmin()) {
+  const profiles = await client
+    .from("influencer_profiles")
+    .select("id, max_received_request_count, accounts!inner(dummy_login_id)");
+
+  if (profiles.error) {
+    console.error("[BiasFit 매칭] 수신 한도 조회 실패", profiles.error);
+    throw new Error("스타일메이트 정보를 불러오지 못했어요.");
+  }
+
+  const loginIdByProfile = new Map<string, string>();
+  const limits: Record<string, number> = {};
+  for (const row of ((profiles.data ?? []) as Array<Record<string, any>>)) {
+    const account = one<{ dummy_login_id: string }>(row.accounts);
+    if (!account) continue;
+    loginIdByProfile.set(row.id, account.dummy_login_id);
+    limits[account.dummy_login_id] = row.max_received_request_count;
+  }
+
+  const cards = await client
+    .from("request_cards")
+    .select("receiver_influencer_profile_id")
+    .in("status", ["sent", "read"]);
+
+  if (cards.error) {
+    console.error("[BiasFit 매칭] 수신 수 집계 실패", cards.error);
+    throw new Error("스타일메이트 정보를 불러오지 못했어요.");
+  }
+
+  const counts: Record<string, number> = {};
+  for (const row of ((cards.data ?? []) as Array<{ receiver_influencer_profile_id: string }>)) {
+    const loginId = loginIdByProfile.get(row.receiver_influencer_profile_id);
+    if (!loginId) continue;
+    counts[loginId] = (counts[loginId] ?? 0) + 1;
+  }
+
+  return { counts, limits };
+}

@@ -125,3 +125,70 @@ export function getMyAccount(signal?: AbortSignal) {
 export function getInfluencers(signal?: AbortSignal) {
   return postJson<{ influencers: StylemateView[] }>("/api/influencers/list", {}, signal);
 }
+
+/** 부탁해요 카드 전송. 수신 한도에 걸리면 409와 함께 안내 문구가 온다. */
+export function sendRequestCard(
+  input: {
+    matchResultId: string;
+    influencerId: string;
+    messageText: string;
+    ownedItemsText?: string;
+    avoidText?: string;
+  },
+  signal?: AbortSignal,
+) {
+  return postJson<{ id: string }>("/api/requests/send", input, signal);
+}
+
+export interface AssignedRequestView {
+  requestCardId: string;
+  matchResultId: string;
+  coachingType: "personal" | "group";
+  tpoCode: string;
+  tpoLabel: string;
+  status: "draft" | "sent" | "read";
+  sentAt: string | null;
+  delivered: boolean;
+}
+
+/** 로그인한 인플루언서에게 배정된 요청만 돌려준다. */
+export function getAssignedRequests(signal?: AbortSignal) {
+  return postJson<{ requests: AssignedRequestView[] }>("/api/requests/list", {}, signal);
+}
+
+/** 저장된 진단 결과. 인플루언서 화면이 사용자 정보를 보여줄 때 쓴다. */
+export function getDiagnosisResult(matchResultId: string, signal?: AbortSignal) {
+  return postJson<DiagnosisResultView>("/api/results/get", { matchResultId }, signal);
+}
+
+export interface DiagnosisMemberView {
+  memberLabel: "self" | "A" | "B";
+  personaCode: string | null;
+  heightCm: number | null;
+  bodyType: string;
+  preferredStyle: string;
+  avoidedStyle: string;
+  budgetLabel: string;
+  budgetApproach: string;
+  fitConcerns: string[];
+  keywords: string[];
+  designElements: string[];
+  preferredItems: string[];
+  avoidedElements: string[];
+  fitNote: string | null;
+  styleScores: Array<{ style: string; score: number; rank: number }>;
+}
+
+export interface DiagnosisResultView {
+  matchResultId: string;
+  coachingType: "personal" | "group";
+  priority: string;
+  tpoCode: string;
+  tpoLabel: string;
+  styleDnaSummary: string;
+  matchingPoints: Array<{ text: string }>;
+  groupCombination: { score: number | null; title: string | null; description: string | null } | null;
+  relationship: string | null;
+  members: DiagnosisMemberView[];
+  selectedInfluencerName: string | null;
+}

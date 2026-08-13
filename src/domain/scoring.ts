@@ -314,10 +314,33 @@ export interface RankedInfluencer {
   matchedEvidence: MatchedEvidence;
 }
 
-export function filterEligibleInfluencers(mode: MatchMode, profiles: InfluencerProfile[]) {
+/**
+ * 후보 필터. **점수 계산 전에 제외한다.** 가점·감점이 아니다 (STYLE_SCORING_DRAFT.md 3장).
+ *
+ * `receivedRequestCounts`는 인플루언서별 누적 수신 부탁해요 카드 수다.
+ * 한도에 도달한 프로필은 후보에서 빠진다. 서버가 DB에서 직접 세어 넘긴다 —
+ * 프런트가 보내면 조작할 수 있다.
+ *
+ * 기본값이 있어 카운트를 주지 않으면 예전과 같이 동작한다.
+ */
+export function filterEligibleInfluencers(
+  mode: MatchMode,
+  profiles: InfluencerProfile[],
+  receivedRequestCounts: Record<string, number> = {},
+  limits: Record<string, number> = {},
+) {
   const required = coachingSupportFor(mode);
-  return profiles.filter((profile) => profile.profileCompleted && (profile.coachingType === "both" || profile.coachingType === required));
+  return profiles.filter((profile) => {
+    if (!profile.profileCompleted) return false;
+    if (profile.coachingType !== "both" && profile.coachingType !== required) return false;
+    const received = receivedRequestCounts[profile.id] ?? 0;
+    const limit = limits[profile.id] ?? DEFAULT_RECEIVED_REQUEST_LIMIT;
+    return received < limit;
+  });
 }
+
+/** `influencer_profiles.max_received_request_count`의 MVP 기본값 (DB_SCHEMA.md 5.15). */
+export const DEFAULT_RECEIVED_REQUEST_LIMIT = 3;
 
 function memberEvidence(prefix: string, member: MatchMemberInput, tpo: TpoCode, influencer: InfluencerProfile, includeBodyType: boolean): MatchedEvidence {
   const styleNames = [influencer.primaryStyle, influencer.secondaryStyle].filter((style) => style !== member.avoidedStyle);
@@ -370,8 +393,18 @@ function groupBaseBreakdown(input: Extract<RankMatchInput, { mode: "group" }>, i
   return { style: result.style, fit: result.fit, budget: result.budget, tpo: result.tpo };
 }
 
-export function rankInfluencers(input: RankMatchInput, profiles: InfluencerProfile[]): RankedInfluencer[] {
-  const ranked = filterEligibleInfluencers(input.mode, profiles).map((influencer) => {
+export function rankInfluencers(
+  input: RankMatchInput,
+  profiles: InfluencerProfile[],
+  /** 인플루언서별 누적 수신 수와 한도. 서버가 DB에서 세어 넘긴다. */
+  received: { counts?: Record<string, number>; limits?: Record<string, number> } = {},
+): RankedInfluencer[] {
+  const ranked = filterEligibleInfluencers(
+    input.mode,
+    profiles,
+    received.counts,
+    received.limits,
+  ).map((influencer) => {
     if (input.mode === "personal") {
       const baseBreakdown = calculatePersonalBaseBreakdown(input, influencer);
       return {

@@ -15,7 +15,13 @@ import {
 import type { CoachingSupport } from "../../domain/scoring";
 import { personaForms } from "../../data/personas";
 import { isValidOutfitDraft, isValidProductUrl, toOutfitReviewRequest } from "../../domain/outfit";
-import { reviewOutfit } from "../../lib/biasfitApi";
+import {
+  getAssignedRequests,
+  getDiagnosisResult,
+  reviewOutfit,
+  type AssignedRequestView,
+  type DiagnosisResultView,
+} from "../../lib/biasfitApi";
 import {
   clearDraft,
   loadDraft,
@@ -324,18 +330,36 @@ const assignedRequests = [
   },
 ];
 
+function sentAtLabel(sentAt: string | null) {
+  if (!sentAt) return "전송 시각 없음";
+  const date = new Date(sentAt);
+  return `부탁해요 카드 · ${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}.`;
+}
+
 export function InfluencerRequestsScreen() {
   const navigate = useNavigate();
-  const { state, dispatch } = useAppState();
-  const activeRequests = state.activeRequestId
-    ? [{
-        id: state.activeRequestId,
-        mode: state.mode === "group" ? "2인 그룹" : "개인",
-        tpo: state.mode === "group" ? state.group.tpo : state.personal.tpo,
-        detail: "방금 전 생성된 부탁해요 카드",
-        done: false,
-      }]
-    : [];
+  const { dispatch } = useAppState();
+  const { account } = useAuth();
+  const [requests, setRequests] = useState<AssignedRequestView[]>([]);
+  const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
+
+  // 내게 배정된 요청만 받는다. 수신자 판별은 서버가 토큰으로 한다.
+  useEffect(() => {
+    const controller = new AbortController();
+    setStatus("loading");
+    void getAssignedRequests(controller.signal)
+      .then(({ requests: list }) => {
+        setRequests(list);
+        setStatus("success");
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        console.log("[BiasFit 인플루언서] 배정 요청 조회 실패", error);
+        setStatus("error");
+      });
+    return () => controller.abort();
+  }, [account?.accountId]);
+
   return (
     <FlowShell
       flow="influencer"
@@ -350,28 +374,43 @@ export function InfluencerRequestsScreen() {
         </>
       }
     >
+      {status === "loading" ? (
+        <div className="soft-card" aria-live="polite">배정된 요청을 불러오는 중이에요.</div>
+      ) : null}
+      {status === "error" ? (
+        <div className="soft-card" aria-live="polite">
+          <p className="error-copy" style={{ display: "block" }}>배정 요청을 불러오지 못했어요.</p>
+        </div>
+      ) : null}
+      {status === "success" && requests.length === 0 ? (
+        <div className="soft-card" aria-live="polite">
+          <p>아직 배정된 요청이 없어요.</p>
+          <p className="helper">사용자가 부탁해요 카드를 보내면 여기에 표시돼요.</p>
+        </div>
+      ) : null}
       <div className="influencer-list">
-        {activeRequests.map((request) => (
+        {requests.map((request) => (
           <button
             className="request-row"
             type="button"
-            aria-label={`${request.id} 요청 ${request.done ? "전달 완료" : "작성 필요"}`}
-            key={request.id}
+            aria-label={`요청 ${request.delivered ? "전달 완료" : "작성 필요"}`}
+            key={request.requestCardId}
             onClick={() => {
-              dispatch({ type: "selectRequest", requestId: request.id });
-              navigate(request.done ? "/influencer/delivered" : "/influencer/detail");
+              // 상세 화면이 이 매칭 id로 사용자 진단 결과를 조회한다.
+              dispatch({ type: "selectRequest", requestId: request.matchResultId });
+              navigate(request.delivered ? "/influencer/delivered" : "/influencer/detail");
             }}
           >
             <span>
               <span className="request-meta">
-                <span className="badge">{request.mode}</span>
-                <span className="badge blue">{tpoLabel(request.tpo)}</span>
+                <span className="badge">{request.coachingType === "group" ? "2인 그룹" : "개인"}</span>
+                <span className="badge blue">{request.tpoLabel}</span>
               </span>
-              <h3>{request.id}</h3>
-              <p>{request.detail}</p>
+              <h3>{request.coachingType === "group" ? "2인 그룹 코칭" : "개인 코칭"}</h3>
+              <p>{sentAtLabel(request.sentAt)}</p>
             </span>
-            <span className={request.done ? "state-done" : "state-needed"}>
-              {request.done ? "전달 완료" : "작성 필요"} <span aria-hidden="true">›</span>
+            <span className={request.delivered ? "state-done" : "state-needed"}>
+              {request.delivered ? "전달 완료" : "작성 필요"} <span aria-hidden="true">›</span>
             </span>
           </button>
         ))}
@@ -387,7 +426,30 @@ function isGroupDraft(draft: OutfitDraft): draft is GroupOutfitDraft {
 export function InfluencerDetailScreen() {
   const navigate = useNavigate();
   const { state } = useAppState();
-  const group = state.mode === "group";
+
+  // 사용자가 실제로 입력한 값을 읽는다. 고정 문구를 쓰면 누가 무엇을 입력했든 같은 화면이 된다.
+  const [diagnosis, setDiagnosis] = useState<DiagnosisResultView | null>(null);
+  const [diagnosisStatus, setDiagnosisStatus] =
+    useState<"loading" | "success" | "error">("loading");
+
+  useEffect(() => {
+    if (!state.activeRequestId) return;
+    const controller = new AbortController();
+    setDiagnosisStatus("loading");
+    void getDiagnosisResult(state.activeRequestId, controller.signal)
+      .then((result) => {
+        setDiagnosis(result);
+        setDiagnosisStatus("success");
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        console.log("[BiasFit 인플루언서] 진단 결과 조회 실패", error);
+        setDiagnosisStatus("error");
+      });
+    return () => controller.abort();
+  }, [state.activeRequestId]);
+
+  const group = diagnosis ? diagnosis.coachingType === "group" : state.mode === "group";
   const initial = useMemo(() => {
     const saved = loadDraft("stylemate-01", state.activeRequestId);
     if (saved && isGroupDraft(saved) === group) return saved;
@@ -456,7 +518,11 @@ export function InfluencerDetailScreen() {
         step={3}
         eyebrow="REQUEST DETAIL"
         title="코디 카드 작성"
-        description={`${state.activeRequestId} · ${group ? "2인 그룹 코칭 · 여행·사진" : "개인 코칭 · 개강·새학기"}`}
+        description={
+          diagnosis
+            ? `${diagnosis.coachingType === "group" ? "2인 그룹 코칭" : "개인 코칭"} · ${diagnosis.tpoLabel}`
+            : "요청 내용을 불러오는 중이에요."
+        }
         actions={
           <>
             <span className="draft-state">{draftState}</span>
@@ -485,31 +551,78 @@ export function InfluencerDetailScreen() {
         </button>
         <section className="compose-section">
           <h2 className="section-title">스타일 진단 결과</h2>
-          <div className="dark-card">
-            <span className="badge">Style DNA</span>
-            <h3>{group ? "서로 다른 취향을 잇는 여행 시밀러 밸런스" : "부드럽고 단정한 캠퍼스 밸런스"}</h3>
-            <p>
-              {group
-                ? "P4 캐주얼 75 · P5 오피스 75 · 그룹 스타일 조합도 61"
-                : "로맨틱 75 · 웨이브 · 전체 기장/비율 · 3만~6만 원"}
-            </p>
-          </div>
-          <div className="soft-card input-summary-card">
-            {group ? (
-              <dl className="summary-list">
-                <div className="summary-row"><dt>공통 조건</dt><dd>친구 · 여행·사진 · 그룹 스타일 조합도 61</dd></div>
-                <div className="summary-row"><dt>P4 입력</dt><dd>157cm · 웨이브 · 캐주얼 · 하의 길이/비율 · 3만~6만 원</dd></div>
-                <div className="summary-row"><dt>P5 입력</dt><dd>165cm · 내추럴 · 오피스 & 비즈니스캐주얼 · 상체 여유/어깨선 · 6만~9만 원</dd></div>
-              </dl>
-            ) : (
-              <dl className="summary-list">
-                <div className="summary-row"><dt>체형·핏</dt><dd>{personaForms.P1.height}cm · S / S · 웨이브 · 밑위·하의 길이, 전체 기장·비율</dd></div>
-                <div className="summary-row"><dt>선호 / 비선호</dt><dd>로맨틱 / 스트릿</dd></div>
-                <div className="summary-row"><dt>키워드</dt><dd>부드러운 · 사랑스러운 · 자연스러운</dd></div>
-                <div className="summary-row"><dt>예산·TPO</dt><dd>3만~6만 원 · 가성비 중심 · 개강·새학기</dd></div>
-              </dl>
-            )}
-          </div>
+          {diagnosisStatus === "loading" ? (
+            <div className="soft-card" aria-live="polite">진단 결과를 불러오는 중이에요.</div>
+          ) : null}
+          {diagnosisStatus === "error" ? (
+            <div className="soft-card" aria-live="polite">
+              <p className="error-copy" style={{ display: "block" }}>진단 결과를 불러오지 못했어요.</p>
+            </div>
+          ) : null}
+          {diagnosis ? (
+            <>
+              <div className="dark-card">
+                <span className="badge">Style DNA</span>
+                {/* AI2가 만든 한 줄 결과를 그대로 쓴다. */}
+                <h3>{diagnosis.styleDnaSummary}</h3>
+                {diagnosis.matchingPoints.length ? (
+                  <ul>
+                    {diagnosis.matchingPoints.map((point) => (
+                      <li key={point.text}>{point.text}</li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+              <div className="soft-card input-summary-card">
+                <dl className="summary-list">
+                  <div className="summary-row">
+                    <dt>공통 조건</dt>
+                    <dd>
+                      {diagnosis.coachingType === "group" ? "2인 그룹 코칭" : "개인 코칭"}
+                      {" · "}
+                      {/* TPO는 내부 코드로 저장되고 화면에서만 라벨로 바꾼다. */}
+                      {diagnosis.tpoLabel}
+                      {diagnosis.groupCombination?.score != null
+                        ? ` · 그룹 스타일 조합도 ${diagnosis.groupCombination.score}`
+                        : ""}
+                    </dd>
+                  </div>
+                  {diagnosis.members.map((member) => (
+                    <div className="summary-row" key={member.memberLabel}>
+                      <dt>
+                        {member.memberLabel === "self"
+                          ? "입력"
+                          : `구성원 ${member.memberLabel}`}
+                      </dt>
+                      <dd>
+                        {[
+                          member.heightCm ? `${member.heightCm}cm` : null,
+                          member.bodyType,
+                          `${member.preferredStyle} / ${member.avoidedStyle}`,
+                          member.fitConcerns.join(", "),
+                          `${member.budgetLabel} · ${member.budgetApproach}`,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </dd>
+                    </div>
+                  ))}
+                  {diagnosis.members.map((member) =>
+                    member.keywords.length ? (
+                      <div className="summary-row" key={`${member.memberLabel}-keywords`}>
+                        <dt>
+                          {member.memberLabel === "self"
+                            ? "키워드"
+                            : `${member.memberLabel} 키워드`}
+                        </dt>
+                        <dd>{member.keywords.join(" · ")}</dd>
+                      </div>
+                    ) : null,
+                  )}
+                </dl>
+              </div>
+            </>
+          ) : null}
         </section>
         <section className="compose-section">
           <h2 className="section-title">부탁해요 카드</h2>

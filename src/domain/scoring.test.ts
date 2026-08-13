@@ -4,6 +4,7 @@ import { influencers } from "../data/influencers";
 import { personaForms } from "../data/personas";
 import { MATCH_PRIORITY_WEIGHTS } from "./matchPriority";
 import {
+  DEFAULT_RECEIVED_REQUEST_LIMIT,
   STYLE_CRITERIA,
   STYLE_NAMES,
   calculateGroupCompatibility,
@@ -300,5 +301,71 @@ describe("coachingSupportFor", () => {
     for (const profile of groupOnly) {
       expect(personalCandidates).not.toContain(profile);
     }
+  });
+});
+
+describe("수신 부탁해요 카드 한도", () => {
+  // STYLE_SCORING_DRAFT.md 3장: 한도는 가점·감점이 아니라 점수 계산 전 제외다.
+  it("한도에 도달한 프로필은 후보에서 빠진다", () => {
+    const target = influencers[0];
+    const eligible = filterEligibleInfluencers("personal", influencers, {
+      [target.id]: DEFAULT_RECEIVED_REQUEST_LIMIT,
+    });
+
+    expect(eligible).not.toContain(target);
+  });
+
+  it("한도 미만이면 남는다", () => {
+    const target = influencers[0];
+    const eligible = filterEligibleInfluencers("personal", influencers, {
+      [target.id]: DEFAULT_RECEIVED_REQUEST_LIMIT - 1,
+    });
+
+    expect(eligible).toContain(target);
+  });
+
+  it("카운트를 주지 않으면 예전과 같이 동작한다", () => {
+    expect(filterEligibleInfluencers("personal", influencers)).toEqual(
+      filterEligibleInfluencers("personal", influencers, {}),
+    );
+  });
+
+  it("프로필별 한도를 따로 읽는다", () => {
+    const target = influencers[0];
+    const eligible = filterEligibleInfluencers(
+      "personal",
+      influencers,
+      { [target.id]: 1 },
+      { [target.id]: 1 },
+    );
+
+    expect(eligible).not.toContain(target);
+  });
+
+  it("후보가 3명 미만이면 TOP 3도 그 수만큼만 나온다", () => {
+    const full = Object.fromEntries(
+      influencers.slice(2).map((profile) => [profile.id, DEFAULT_RECEIVED_REQUEST_LIMIT]),
+    );
+    const ranked = rankInfluencers(
+      {
+        mode: "personal",
+        priority: "fit_first",
+        styleScores: scoresForPersona("P1"),
+        avoidedStyle: personaForms.P1.avoidedStyle,
+        bodyType: personaForms.P1.bodyType,
+        fitConcerns: personaForms.P1.fitConcerns,
+        budgetMinCode: 2,
+        budgetMaxCode: 3,
+        budgetApproach: personaForms.P1.budgetApproach,
+        tpo: "new_semester",
+      },
+      influencers,
+      { counts: full },
+    );
+
+    expect(ranked.length).toBeLessThanOrEqual(2);
+    expect(ranked.map((item) => item.rank)).toEqual(
+      Array.from({ length: ranked.length }, (_, index) => index + 1),
+    );
   });
 });

@@ -52,6 +52,9 @@ const biasFitApiModules = {
   "/api/influencers/list": "/api/influencers/list.ts",
   "/api/matches/top-three": "/api/matches/top-three.ts",
   "/api/outfit/review": "/api/outfit/review.ts",
+  "/api/requests/list": "/api/requests/list.ts",
+  "/api/requests/send": "/api/requests/send.ts",
+  "/api/results/get": "/api/results/get.ts",
   "/api/results/save": "/api/results/save.ts",
 };
 

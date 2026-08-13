@@ -4,6 +4,7 @@ import { useAppState } from "../../app/AppStateProvider";
 import type { ProductItem } from "../../app/types";
 import type { StylemateView } from "../../data/influencers";
 import { budgetRangeLabel, tpoLabel } from "../../data/options";
+import { sendRequestCard } from "../../lib/biasfitApi";
 import { FlowShell } from "../../shared/FlowShell";
 
 /** 목록을 아직 못 받았을 때 화면이 깨지지 않게 쓰는 빈 값. */
@@ -100,6 +101,7 @@ export function RequestScreen() {
   const value = state.requestText[state.mode];
   const [error, setError] = useState(false);
   const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState("");
   const tpo = tpoLabel(state.mode === "personal" ? state.personal.tpo : state.group.tpo);
   const send = () => {
     if (!value.trim()) {
@@ -107,9 +109,31 @@ export function RequestScreen() {
       return;
     }
     setError(false);
-    dispatch({ type: "submitRequest" });
+    setSendError("");
+
+    if (!state.savedResultId || !state.selectedInfluencerId) {
+      setSendError("진단 결과를 먼저 저장해야 요청을 보낼 수 있어요.");
+      return;
+    }
+
     setSending(true);
-    window.setTimeout(() => navigate("/user/wait"), 700);
+    void sendRequestCard({
+      matchResultId: state.savedResultId,
+      influencerId: state.selectedInfluencerId,
+      messageText: value,
+    })
+      .then(() => {
+        dispatch({ type: "submitRequest" });
+        navigate("/user/wait");
+      })
+      .catch((error: unknown) => {
+        // 수신 한도에 걸리면 409와 함께 안내 문구가 온다.
+        // 남은 자리 수는 사용자에게 보여주지 않는다 (SCREEN_SPEC.md).
+        setSendError(
+          error instanceof Error ? error.message : "부탁해요 카드를 보내지 못했어요.",
+        );
+        setSending(false);
+      });
   };
   return (
     <FlowShell
@@ -145,9 +169,12 @@ export function RequestScreen() {
         <summary>Style DNA 요약 보기</summary>
         <div className="detail-content">
           <p className="helper style-summary-copy">
-            {state.mode === "personal"
-              ? "로맨틱 75 · 웨이브 · 전체 기장/비율 · 가성비 중심 · 개강/새학기"
-              : "P4 캐주얼 75 · P5 오피스 75 · 그룹 스타일 조합도 61 · 여행/사진"}
+            {/* 저장된 AI2 결과를 그대로 쓴다. 고정 문구를 쓰면 입력과 어긋난다. */}
+            {state.styleDna
+              ? state.styleDna.mode === "personal"
+                ? state.styleDna.personalStyleDnaSummary
+                : state.styleDna.groupStyleDnaSummary
+              : "Style DNA 결과를 불러오는 중이에요."}
           </p>
         </div>
       </details>
@@ -181,6 +208,7 @@ export function RequestScreen() {
         </label>
         <p className="helper">꼭 반영하고 싶은 상황, 보유 아이템, 피하고 싶은 느낌을 적어주세요.</p>
         {error ? <p className="error-copy" style={{ display: "block" }}>부탁해요 카드 내용을 입력해 주세요.</p> : null}
+        {sendError ? <p className="error-copy" style={{ display: "block" }} aria-live="polite">{sendError}</p> : null}
       </div>
     </FlowShell>
   );
