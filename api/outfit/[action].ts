@@ -1,7 +1,7 @@
-import { createRouter } from "../_lib/http";
-import deliver from "../_routes/outfit/deliver";
-import get from "../_routes/outfit/get";
-import review from "../_routes/outfit/review";
+import { createRouter } from "../_lib/http.js";
+import deliver from "../_routes/outfit/deliver.js";
+import get from "../_routes/outfit/get.js";
+import review from "../_routes/outfit/review.js";
 
 /**
  * `/api/outfit/deliver`, `/api/outfit/get`, `/api/outfit/review`

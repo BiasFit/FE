@@ -1,8 +1,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import App from "../App";
-import { influencers } from "../data/influencers";
-import { rankInfluencers } from "../domain/scoring";
+import App from "../App.js";
+import { influencers } from "../data/influencers.js";
+import { rankInfluencers } from "../domain/scoring.js";
 
 function jsonResponse(value: unknown) {
   return new Response(JSON.stringify(value), {

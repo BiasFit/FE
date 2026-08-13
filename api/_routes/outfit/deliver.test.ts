@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { OutfitReviewResponse } from "../../../src/domain/aiContracts";
-import { deliverOutfitCard, validateDeliverInput, type DeliverOutfitInput } from "./deliver";
+import type { OutfitReviewResponse } from "../../../src/domain/aiContracts.js";
+import { deliverOutfitCard, validateDeliverInput, type DeliverOutfitInput } from "./deliver.js";
 
 const personalInput: DeliverOutfitInput = {
   matchResultId: "match-1",

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createRouter, routeAction, type ApiRequest } from "./http";
+import { createRouter, routeAction, type ApiRequest } from "./http.js";
 
 function fakeResponse() {
   const sent: Array<{ status: number; payload: unknown }> = [];

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertSafeLanguage, findUnsafePhrases } from "./safe-language";
+import { assertSafeLanguage, findUnsafePhrases } from "./safe-language.js";
 
 describe("findUnsafePhrases", () => {
   // 실제 AI1 출력에서 관찰된 위반 문구들

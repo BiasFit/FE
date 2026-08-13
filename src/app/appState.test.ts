@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { appReducer, createInitialState } from "./appState";
+import { appReducer, createInitialState } from "./appState.js";
 
 describe("appReducer", () => {
   it("starts without a preselected stylemate score", () => {

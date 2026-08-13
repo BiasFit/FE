@@ -1,16 +1,16 @@
-import type { DiagnosisForm, MatchPriority, PriorityOption } from "../app/types";
-import type { TpoCode } from "../data/options";
+import type { DiagnosisForm, MatchPriority, PriorityOption } from "../app/types.js";
+import type { TpoCode } from "../data/options.js";
 import type {
   MatchExplanation,
   StyleDnaExplanationResponse,
-} from "./aiContracts";
-import type { CategoryScores } from "./matchPriority";
+} from "./aiContracts.js";
+import type { CategoryScores } from "./matchPriority.js";
 import type {
   MatchBreakdown,
   PersonalFitDetail,
   StyleScoreBreakdown,
   StyleScores,
-} from "./scoring";
+} from "./scoring.js";
 
 /**
  * 한 번의 진단 흐름을 그대로 남기는 스냅샷.

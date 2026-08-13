@@ -3,7 +3,7 @@ import {
   CODED_OPTION_GROUPS,
   optionSeedRows,
   optionSeedSql,
-} from "./optionsSeed";
+} from "./optionsSeed.js";
 import {
   TPO_CODES,
   avoidedElements,
@@ -15,7 +15,7 @@ import {
   keywords,
   preferredItems,
   styleOptions,
-} from "./options";
+} from "./options.js";
 
 /**
  * DB의 `diagnosis_options`와 앱의 어휘가 어긋나면 오류 없이 매칭 점수만 0점이 된다.

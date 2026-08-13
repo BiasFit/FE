@@ -1,5 +1,5 @@
-import type { DiagnosisForm, MatchPriority } from "../app/types";
-import { budgetRangeLabel, tpoLabel, type TpoCode } from "../data/options";
+import type { DiagnosisForm, MatchPriority } from "../app/types.js";
+import { budgetRangeLabel, tpoLabel, type TpoCode } from "../data/options.js";
 import {
   PRIORITY_CATEGORY,
   applyPriorityWeights,
@@ -7,9 +7,9 @@ import {
   type CategoryScores,
   type MatchCategory,
   type MatchMode,
-} from "./matchPriority";
+} from "./matchPriority.js";
 
-export { applyPriorityWeights, normalizeMatchScore } from "./matchPriority";
+export { applyPriorityWeights, normalizeMatchScore } from "./matchPriority.js";
 
 export const STYLE_NAMES = [
   "캐주얼",

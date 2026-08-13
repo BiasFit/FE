@@ -3,7 +3,7 @@ import {
   isValidOutfitDraft,
   isValidProductUrl,
   toOutfitReviewRequest,
-} from "./outfit";
+} from "./outfit.js";
 
 describe("outfit product validation", () => {
   it("accepts only complete products with http or https links", () => {

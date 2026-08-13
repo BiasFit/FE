@@ -1,5 +1,5 @@
-import type { GroupOutfitDraft, OutfitFields, PersonalOutfitDraft } from "../app/types";
-import type { OutfitReviewRequest } from "./aiContracts";
+import type { GroupOutfitDraft, OutfitFields, PersonalOutfitDraft } from "../app/types.js";
+import type { OutfitReviewRequest } from "./aiContracts.js";
 
 export function isValidProductUrl(value: string) {
   try {

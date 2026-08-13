@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import type { MatchExplanationsRequest } from "../../../src/domain/aiContracts";
-import { createMatchExplanations } from "./match-explanations";
+import type { MatchExplanationsRequest } from "../../../src/domain/aiContracts.js";
+import { createMatchExplanations } from "./match-explanations.js";
 
 const request: MatchExplanationsRequest = {
   mode: "group",

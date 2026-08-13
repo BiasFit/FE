@@ -1,7 +1,7 @@
-import { budgetRangeLabel, isTpoCode, tpoLabel } from "../../src/data/options";
-import { STYLE_NAMES, type InfluencerProfile, type StyleName } from "../../src/domain/scoring";
-import type { StylemateView } from "../../src/data/influencers";
-import { supabaseAdmin } from "./supabase";
+import { budgetRangeLabel, isTpoCode, tpoLabel } from "../../src/data/options.js";
+import { STYLE_NAMES, type InfluencerProfile, type StyleName } from "../../src/domain/scoring.js";
+import type { StylemateView } from "../../src/data/influencers.js";
+import { supabaseAdmin } from "./supabase.js";
 
 /**
  * `influencer_profiles`와 자식 3개를 읽어 매칭 엔진이 쓰는 `InfluencerProfile`로 바꾼다.

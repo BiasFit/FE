@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { useAppState } from "../../app/AppStateProvider";
-import type { StyleDnaExplanationRequest } from "../../domain/aiContracts";
-import { getStyleDnaExplanation } from "../../lib/biasfitApi";
+import { useAppState } from "../../app/AppStateProvider.js";
+import type { StyleDnaExplanationRequest } from "../../domain/aiContracts.js";
+import { getStyleDnaExplanation } from "../../lib/biasfitApi.js";
 
 export function StyleDnaExplanation({
   request,

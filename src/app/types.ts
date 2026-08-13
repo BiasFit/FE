@@ -1,5 +1,5 @@
-import type { TpoCode } from "../data/options";
-import type { StyleName, StyleScores } from "../domain/scoring";
+import type { TpoCode } from "../data/options.js";
+import type { StyleName, StyleScores } from "../domain/scoring.js";
 
 export type CoachingMode = "personal" | "group";
 export type MemberId = "A" | "B";

@@ -4,7 +4,7 @@ import {
   draftStorageKey,
   loadDraft,
   saveDraft,
-} from "./drafts";
+} from "./drafts.js";
 
 describe("outfit draft storage", () => {
   beforeEach(() => localStorage.clear());

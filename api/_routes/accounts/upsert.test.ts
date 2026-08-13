@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { upsertAccount, validateAccountInput } from "./upsert";
+import { upsertAccount, validateAccountInput } from "./upsert.js";
 
 type QueryResult = { data: unknown; error: unknown };
 

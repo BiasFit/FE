@@ -1,4 +1,4 @@
-import type { StyleName } from "../domain/scoring";
+import type { StyleName } from "../domain/scoring.js";
 
 export const bodyTypes = [
   { name: "스트레이트", description: "상체와 하체의 균형감을 바탕으로 깔끔한 실루엣을 보는 유형", tone: "#F1F4FF" },

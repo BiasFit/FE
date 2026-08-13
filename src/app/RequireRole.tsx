@@ -1,7 +1,7 @@
 import { Navigate } from "react-router-dom";
 import type { ReactNode } from "react";
-import { useAuth } from "./AuthProvider";
-import { isAuthConfigured } from "../lib/supabaseClient";
+import { useAuth } from "./AuthProvider.js";
+import { isAuthConfigured } from "../lib/supabaseClient.js";
 
 /**
  * 역할이 다른 화면에 들어가지 못하게 막는다.

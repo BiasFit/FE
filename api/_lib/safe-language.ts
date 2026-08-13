@@ -1,11 +1,11 @@
 import {
   safeLanguageSchema,
   type SafeLanguageIssue,
-} from "../../src/domain/aiContracts";
+} from "../../src/domain/aiContracts.js";
 import {
   callOpenAiStructured,
   type StructuredOpenAiCaller,
-} from "./openai";
+} from "./openai.js";
 
 /**
  * AI1·AI2·AI4가 공통으로 쓰는 안전 표현 지시.

@@ -1,18 +1,18 @@
 {
   // `tsc -b`는 아래 references만 쓰고 이 compilerOptions는 보지 않는다 (files가 비어 있다).
   //
-  // 이걸 채워 두는 이유는 **Vercel 때문**이다. Vercel은 `api/**`를 서버리스 함수로 따로
-  // 컴파일하면서 이 파일을 찾는데, 여기가 비어 있으면 자기 기본값(`moduleResolution: node16`,
-  // 낮은 target)으로 떨어진다. 그러면 `api/**`와 거기서 끌어 쓰는 `src/**` 전체에
-  // TS2835(상대 경로에 .js 확장자를 붙이라)가 쏟아진다.
+  // 이건 **Vercel이 읽는 설정**이다. Vercel은 api/**를 묶지 않고 파일 그대로 두고,
+  // package.json에 "type": "module"이 있어 Node가 ESM으로 실행한다.
+  // 그래서 여기 값은 **배포에서 실제로 벌어지는 일**과 같아야 한다 — 그게 NodeNext다.
   //
-  // 값은 tsconfig.app.json과 같게 맞춘다. 두 곳이 어긋나면 로컬에서는 통과하고
-  // 배포 로그에서만 터지는 상황이 다시 생긴다.
+  // ⚠️ 여기를 Bundler로 바꾸지 마라. 그러면 TS2835 경고가 사라지는데,
+  //    경고만 사라지고 배포는 ERR_MODULE_NOT_FOUND로 죽는다. 실제로 그렇게 한 번 깨졌다.
+  //    상대 경로 import에 `.js`가 빠지면 여기서 잡혀야 한다.
   "compilerOptions": {
-    "target": "ES2020",
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "allowJs": false,
     "skipLibCheck": true,
     "esModuleInterop": true,

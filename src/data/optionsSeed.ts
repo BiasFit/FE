@@ -9,7 +9,7 @@ import {
   keywords,
   preferredItems,
   styleOptions,
-} from "./options";
+} from "./options.js";
 
 /**
  * Supabase `diagnosis_options` 테이블에 넣을 선택지 행이다.

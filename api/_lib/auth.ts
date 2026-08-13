@@ -1,5 +1,5 @@
-import { supabaseAdmin } from "./supabase";
-import type { ApiRequest } from "./http";
+import { supabaseAdmin } from "./supabase.js";
+import type { ApiRequest } from "./http.js";
 
 /**
  * 요청자의 신원은 **오직 JWT에서만** 꺼낸다.

@@ -1,5 +1,5 @@
-import { requireAccount, sendAuthAwareError } from "../../_lib/auth";
-import { requirePost, type ApiRequest, type ApiResponse } from "../../_lib/http";
+import { requireAccount, sendAuthAwareError } from "../../_lib/auth.js";
+import { requirePost, type ApiRequest, type ApiResponse } from "../../_lib/http.js";
 
 /**
  * 로그인한 계정의 역할과 표시 이름을 돌려준다.

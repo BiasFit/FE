@@ -1,5 +1,5 @@
-import type { DiagnosisForm } from "../../src/app/types";
-import { STYLE_NAMES, type StyleName } from "../../src/domain/scoring";
+import type { DiagnosisForm } from "../../src/app/types.js";
+import { STYLE_NAMES, type StyleName } from "../../src/domain/scoring.js";
 
 /**
  * evidenceRefs는 참조가 존재하는지만 검사하고, 그 참조가 가리키는 값과 문장이

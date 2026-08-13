@@ -1,4 +1,4 @@
-import type { OutfitReviewResponse } from "../../domain/aiContracts";
+import type { OutfitReviewResponse } from "../../domain/aiContracts.js";
 
 const statusLabel = {
   pass: "검수 통과",

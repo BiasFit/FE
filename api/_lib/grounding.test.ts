@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { personaForms } from "../../src/data/personas";
-import { assertGrounded, findUngroundedTerms } from "./grounding";
+import { personaForms } from "../../src/data/personas.js";
+import { assertGrounded, findUngroundedTerms } from "./grounding.js";
 
 // P4 캐주얼 / P5 오피스 & 비즈니스캐주얼 — 실측에서 AI1이 "빈티지"를 만들어 낸 그룹
 const groupForms = [personaForms.P4, personaForms.P5];

@@ -2,12 +2,12 @@ import type {
   DiagnosisForm,
   MatchPriority,
   PriorityOption,
-} from "../app/types";
+} from "../app/types.js";
 import type {
   MatchBreakdown,
   MatchedEvidence,
   StyleScores,
-} from "./scoring";
+} from "./scoring.js";
 
 export const PRIORITY_QUESTION =
   "이번 스타일링에서 가장 중요하게 생각하는 기준을 골라주세요." as const;

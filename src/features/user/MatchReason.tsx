@@ -1,5 +1,5 @@
-import type { AiRequestStatus } from "../../app/types";
-import type { MatchExplanation } from "../../domain/aiContracts";
+import type { AiRequestStatus } from "../../app/types.js";
+import type { MatchExplanation } from "../../domain/aiContracts.js";
 
 export function MatchReason({
   explanation,

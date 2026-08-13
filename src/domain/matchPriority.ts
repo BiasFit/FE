@@ -1,4 +1,4 @@
-import type { MatchPriority } from "../app/types";
+import type { MatchPriority } from "../app/types.js";
 
 export type MatchMode = "personal" | "group";
 export type MatchCategory = "style" | "fit" | "budget" | "tpo";

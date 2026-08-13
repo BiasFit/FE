@@ -5,15 +5,15 @@ import type {
   MatchPriority,
   MemberId,
   PriorityOption,
-} from "./types";
-import type { TpoCode } from "../data/options";
+} from "./types.js";
+import type { TpoCode } from "../data/options.js";
 import type {
   MatchExplanation,
   StyleDnaExplanationResponse,
-} from "../domain/aiContracts";
-import type { RankedInfluencer } from "../domain/scoring";
-import type { StylemateView } from "../data/influencers";
-import { personaForms } from "../data/personas";
+} from "../domain/aiContracts.js";
+import type { RankedInfluencer } from "../domain/scoring.js";
+import type { StylemateView } from "../data/influencers.js";
+import { personaForms } from "../data/personas.js";
 
 export interface AppState {
   mode: "personal" | "group";

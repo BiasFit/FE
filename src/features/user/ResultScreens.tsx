@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import type { AppState } from "../../app/appState";
-import type { DiagnosisForm, MatchPriority } from "../../app/types";
-import { useAppState } from "../../app/AppStateProvider";
-import { budgetRangeLabel, tpoLabel } from "../../data/options";
+import type { AppState } from "../../app/appState.js";
+import type { DiagnosisForm, MatchPriority } from "../../app/types.js";
+import { useAppState } from "../../app/AppStateProvider.js";
+import { budgetRangeLabel, tpoLabel } from "../../data/options.js";
 import type {
   MatchExplanation,
   MatchExplanationsRequest,
   StyleDnaExplanationRequest,
-} from "../../domain/aiContracts";
+} from "../../domain/aiContracts.js";
 import {
   STYLE_NAMES,
   calculateGroupCompatibility,
@@ -19,19 +19,19 @@ import {
   type RankMatchInput,
   type RankedInfluencer,
   type StyleScores,
-} from "../../domain/scoring";
-import { MATCH_PRIORITY_WEIGHTS } from "../../domain/matchPriority";
-import type { TestResultPayload } from "../../domain/resultSnapshot";
+} from "../../domain/scoring.js";
+import { MATCH_PRIORITY_WEIGHTS } from "../../domain/matchPriority.js";
+import type { TestResultPayload } from "../../domain/resultSnapshot.js";
 import {
   getInfluencers,
   getMatchExplanations,
   getTopThree,
   saveTestResult,
-} from "../../lib/biasfitApi";
-import { FlowShell } from "../../shared/FlowShell";
-import { anonUserKey } from "../../storage/anonUser";
-import { MatchReason } from "./MatchReason";
-import { StyleDnaExplanation } from "./StyleDnaExplanation";
+} from "../../lib/biasfitApi.js";
+import { FlowShell } from "../../shared/FlowShell.js";
+import { anonUserKey } from "../../storage/anonUser.js";
+import { MatchReason } from "./MatchReason.js";
+import { StyleDnaExplanation } from "./StyleDnaExplanation.js";
 
 function styleSignalOf(form: DiagnosisForm) {
   return {

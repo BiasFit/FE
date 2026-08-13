@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAppState } from "../../app/AppStateProvider";
-import type { StylemateView } from "../../data/influencers";
-import { budgetRangeLabel, tpoLabel } from "../../data/options";
+import { useAppState } from "../../app/AppStateProvider.js";
+import type { StylemateView } from "../../data/influencers.js";
+import { budgetRangeLabel, tpoLabel } from "../../data/options.js";
 import {
   getOutfitCard,
   sendRequestCard,
   type OutfitCardView,
-} from "../../lib/biasfitApi";
-import { DeliveredOutfitCard } from "../influencer/InfluencerScreens";
-import { FlowShell } from "../../shared/FlowShell";
+} from "../../lib/biasfitApi.js";
+import { DeliveredOutfitCard } from "../influencer/InfluencerScreens.js";
+import { FlowShell } from "../../shared/FlowShell.js";
 
 /** 목록을 아직 못 받았을 때 화면이 깨지지 않게 쓰는 빈 값. */
 const EMPTY_MATE: StylemateView = {
