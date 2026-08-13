@@ -4,22 +4,22 @@ import {
   priorityOptionsSchema,
   type PriorityOptionsRequest,
   type PriorityOptionsResponse,
-} from "../../../src/domain/aiContracts";
-import { tpoLabel } from "../../../src/data/options";
-import { GROUNDING_RULES, assertGrounded } from "../../_lib/grounding";
-import { SAFE_LANGUAGE_RULES, assertSafeLanguage } from "../../_lib/safe-language";
+} from "../../../src/domain/aiContracts.js";
+import { tpoLabel } from "../../../src/data/options.js";
+import { GROUNDING_RULES, assertGrounded } from "../../_lib/grounding.js";
+import { SAFE_LANGUAGE_RULES, assertSafeLanguage } from "../../_lib/safe-language.js";
 import {
   callOpenAiStructured,
   generateWithRepair,
   type StructuredOpenAiCaller,
-} from "../../_lib/openai";
+} from "../../_lib/openai.js";
 import {
   readJsonBody,
   requirePost,
   sendApiError,
   type ApiRequest,
   type ApiResponse,
-} from "../../_lib/http";
+} from "../../_lib/http.js";
 
 const LABEL_MIN_LENGTH = 10;
 // 그룹 선택지는 A와 B의 조건을 함께 담아야 해서 개인보다 길어진다.

@@ -6,22 +6,22 @@ import {
   type GroupStyleDnaExplanation,
   type StyleDnaExplanationRequest,
   type StyleDnaExplanationResponse,
-} from "../../../src/domain/aiContracts";
-import { tpoLabel } from "../../../src/data/options";
-import { GROUNDING_RULES, assertGrounded } from "../../_lib/grounding";
-import { SAFE_LANGUAGE_RULES, assertSafeLanguage } from "../../_lib/safe-language";
+} from "../../../src/domain/aiContracts.js";
+import { tpoLabel } from "../../../src/data/options.js";
+import { GROUNDING_RULES, assertGrounded } from "../../_lib/grounding.js";
+import { SAFE_LANGUAGE_RULES, assertSafeLanguage } from "../../_lib/safe-language.js";
 import {
   callOpenAiStructured,
   generateWithRepair,
   type StructuredOpenAiCaller,
-} from "../../_lib/openai";
+} from "../../_lib/openai.js";
 import {
   readJsonBody,
   requirePost,
   sendApiError,
   type ApiRequest,
   type ApiResponse,
-} from "../../_lib/http";
+} from "../../_lib/http.js";
 
 /** 요약문이 쓸 수 있는 스타일 신호 근거. 그룹 요약은 여기서만 고르게 해 규칙 위반 자체를 막는다. */
 function styleEvidenceRefs(input: StyleDnaExplanationRequest) {

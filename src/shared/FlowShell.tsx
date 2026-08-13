@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useAppState } from "../app/AppStateProvider";
+import { useAppState } from "../app/AppStateProvider.js";
 
 const userSteps = [
   "시작",

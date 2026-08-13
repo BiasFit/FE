@@ -11,8 +11,8 @@ import {
   createAccount,
   getMyAccount,
   type AccountView,
-} from "../lib/biasfitApi";
-import { isAuthConfigured, loginIdToEmail, supabase } from "../lib/supabaseClient";
+} from "../lib/biasfitApi.js";
+import { isAuthConfigured, loginIdToEmail, supabase } from "../lib/supabaseClient.js";
 
 export type AuthStatus = "loading" | "signedOut" | "signedIn";
 

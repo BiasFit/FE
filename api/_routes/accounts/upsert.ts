@@ -3,14 +3,14 @@ import {
   requireAuthUser,
   sendAuthAwareError,
   type AccountRole,
-} from "../../_lib/auth";
-import { supabaseAdmin } from "../../_lib/supabase";
+} from "../../_lib/auth.js";
+import { supabaseAdmin } from "../../_lib/supabase.js";
 import {
   readJsonBody,
   requirePost,
   type ApiRequest,
   type ApiResponse,
-} from "../../_lib/http";
+} from "../../_lib/http.js";
 
 /**
  * 가입 직후 `accounts` 행을 만든다 (DB_SCHEMA.md 5.1).

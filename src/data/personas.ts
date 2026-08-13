@@ -1,4 +1,4 @@
-import type { DiagnosisForm } from "../app/types";
+import type { DiagnosisForm } from "../app/types.js";
 
 export const personaForms: Record<DiagnosisForm["personaId"], DiagnosisForm> = {
   P1: {

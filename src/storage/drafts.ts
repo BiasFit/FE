@@ -1,4 +1,4 @@
-import type { GroupOutfitDraft, PersonalOutfitDraft } from "../app/types";
+import type { GroupOutfitDraft, PersonalOutfitDraft } from "../app/types.js";
 
 export type OutfitDraft = PersonalOutfitDraft | GroupOutfitDraft;
 

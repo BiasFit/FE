@@ -1,4 +1,4 @@
-import type { JsonSchema } from "../../src/domain/aiContracts";
+import type { JsonSchema } from "../../src/domain/aiContracts.js";
 
 declare const process:
   | { env?: Record<string, string | undefined> }

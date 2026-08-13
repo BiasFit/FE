@@ -1,14 +1,14 @@
-import { budgetApproaches, isTpoCode } from "../../../src/data/options";
-import { STYLE_NAMES } from "../../../src/domain/scoring";
-import { requireAccount, requireRole, sendAuthAwareError } from "../../_lib/auth";
-import { loadOptionLookup } from "../../_lib/options";
-import { supabaseAdmin } from "../../_lib/supabase";
+import { budgetApproaches, isTpoCode } from "../../../src/data/options.js";
+import { STYLE_NAMES } from "../../../src/domain/scoring.js";
+import { requireAccount, requireRole, sendAuthAwareError } from "../../_lib/auth.js";
+import { loadOptionLookup } from "../../_lib/options.js";
+import { supabaseAdmin } from "../../_lib/supabase.js";
 import {
   readJsonBody,
   requirePost,
   type ApiRequest,
   type ApiResponse,
-} from "../../_lib/http";
+} from "../../_lib/http.js";
 
 /**
  * 인플루언서 첫 프로필을 만든다 (DB_SCHEMA.md 5.15~5.18).

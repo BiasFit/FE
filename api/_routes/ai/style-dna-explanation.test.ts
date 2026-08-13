@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { personaForms } from "../../../src/data/personas";
-import { calculateStyleScores } from "../../../src/domain/scoring";
-import type { StyleDnaExplanationRequest } from "../../../src/domain/aiContracts";
-import { createStyleDnaExplanation } from "./style-dna-explanation";
+import { personaForms } from "../../../src/data/personas.js";
+import { calculateStyleScores } from "../../../src/domain/scoring.js";
+import type { StyleDnaExplanationRequest } from "../../../src/domain/aiContracts.js";
+import { createStyleDnaExplanation } from "./style-dna-explanation.js";
 
 function member(memberId: "self" | "A" | "B", personaId: "P1" | "P4" | "P5") {
   const form = personaForms[personaId];

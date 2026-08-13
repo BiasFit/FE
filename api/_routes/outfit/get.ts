@@ -1,13 +1,13 @@
-import { budgetRangeLabel, tpoLabel } from "../../../src/data/options";
-import { AuthError, requireAccount, sendAuthAwareError } from "../../_lib/auth";
-import { supabaseAdmin } from "../../_lib/supabase";
+import { budgetRangeLabel, tpoLabel } from "../../../src/data/options.js";
+import { AuthError, requireAccount, sendAuthAwareError } from "../../_lib/auth.js";
+import { supabaseAdmin } from "../../_lib/supabase.js";
 import {
   readJsonBody,
   requirePost,
   type ApiRequest,
   type ApiResponse,
-} from "../../_lib/http";
-import type { MemberLabel } from "./deliver";
+} from "../../_lib/http.js";
+import type { MemberLabel } from "./deliver.js";
 
 /**
  * 전달된 코디 카드를 조회한다. 저장된 내용만 읽고 다시 만들지 않는다 (DB_SCHEMA.md 2.1).

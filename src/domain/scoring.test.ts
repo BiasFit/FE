@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { TPO_CODES, budgetApproaches, type TpoCode } from "../data/options";
-import { influencers } from "../data/influencers";
-import { personaForms } from "../data/personas";
-import { MATCH_PRIORITY_WEIGHTS } from "./matchPriority";
+import { TPO_CODES, budgetApproaches, type TpoCode } from "../data/options.js";
+import { influencers } from "../data/influencers.js";
+import { personaForms } from "../data/personas.js";
+import { MATCH_PRIORITY_WEIGHTS } from "./matchPriority.js";
 import {
   DEFAULT_RECEIVED_REQUEST_LIMIT,
   STYLE_CRITERIA,
@@ -18,7 +18,7 @@ import {
   styleScoreLevel,
   type InfluencerProfile,
   type StyleScores,
-} from "./scoring";
+} from "./scoring.js";
 
 const zeroScores: StyleScores = {
   캐주얼: 0,

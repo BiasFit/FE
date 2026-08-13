@@ -6,8 +6,8 @@ import {
   type RefObject,
 } from "react";
 import { useNavigate } from "react-router-dom";
-import type { AccountRole, SignupForm } from "../../app/types";
-import { useAuth } from "../../app/AuthProvider";
+import type { AccountRole, SignupForm } from "../../app/types.js";
+import { useAuth } from "../../app/AuthProvider.js";
 
 type RequiredField =
   | "loginId"

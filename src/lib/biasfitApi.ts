@@ -7,14 +7,14 @@ import type {
   PriorityOptionsResponse,
   StyleDnaExplanationRequest,
   StyleDnaExplanationResponse,
-} from "../domain/aiContracts";
+} from "../domain/aiContracts.js";
 import type {
   SavedTestResult,
   TestResultPayload,
-} from "../domain/resultSnapshot";
-import type { StylemateView } from "../data/influencers";
-import type { RankedInfluencer, RankMatchInput } from "../domain/scoring";
-import { isAuthConfigured, supabase } from "./supabaseClient";
+} from "../domain/resultSnapshot.js";
+import type { StylemateView } from "../data/influencers.js";
+import type { RankedInfluencer, RankMatchInput } from "../domain/scoring.js";
+import { isAuthConfigured, supabase } from "./supabaseClient.js";
 
 /**
  * 로그인했으면 모든 요청에 토큰을 붙인다. 서버는 이 토큰에서만 신원을 꺼낸다.

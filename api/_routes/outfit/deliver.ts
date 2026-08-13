@@ -1,13 +1,13 @@
-import type { OutfitReviewRequest, OutfitReviewResponse } from "../../../src/domain/aiContracts";
-import { AuthError, requireAccount, requireRole, sendAuthAwareError } from "../../_lib/auth";
-import { supabaseAdmin } from "../../_lib/supabase";
+import type { OutfitReviewRequest, OutfitReviewResponse } from "../../../src/domain/aiContracts.js";
+import { AuthError, requireAccount, requireRole, sendAuthAwareError } from "../../_lib/auth.js";
+import { supabaseAdmin } from "../../_lib/supabase.js";
 import {
   readJsonBody,
   requirePost,
   type ApiRequest,
   type ApiResponse,
-} from "../../_lib/http";
-import { reviewOutfitCard } from "./review";
+} from "../../_lib/http.js";
+import { reviewOutfitCard } from "./review.js";
 
 /**
  * 코디 카드를 사용자에게 전달한다. 요청 1건당 1회뿐이고 전달 후 수정·재전송은 없다

@@ -1,18 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import type { GroupOutfitDraft, OutfitFields as OutfitFieldValues, PersonalOutfitDraft } from "../../app/types";
-import type { OutfitReviewResponse } from "../../domain/aiContracts";
-import { useAppState } from "../../app/AppStateProvider";
-import { useAuth } from "../../app/AuthProvider";
+import type { GroupOutfitDraft, OutfitFields as OutfitFieldValues, PersonalOutfitDraft } from "../../app/types.js";
+import type { OutfitReviewResponse } from "../../domain/aiContracts.js";
+import { useAppState } from "../../app/AppStateProvider.js";
+import { useAuth } from "../../app/AuthProvider.js";
 import {
   TPO_CODES,
   budgetApproaches,
   fitConcerns,
   styleOptions,
   tpoLabel,
-} from "../../data/options";
-import type { CoachingSupport } from "../../domain/scoring";
-import { isValidOutfitDraft, isValidProductUrl, toOutfitReviewRequest } from "../../domain/outfit";
+} from "../../data/options.js";
+import type { CoachingSupport } from "../../domain/scoring.js";
+import { isValidOutfitDraft, isValidProductUrl, toOutfitReviewRequest } from "../../domain/outfit.js";
 import {
   deliverOutfitCard,
   getAssignedRequests,
@@ -22,16 +22,16 @@ import {
   type AssignedRequestView,
   type DiagnosisResultView,
   type OutfitCardView,
-} from "../../lib/biasfitApi";
+} from "../../lib/biasfitApi.js";
 import {
   clearDraft,
   loadDraft,
   saveDraft,
   type OutfitDraft,
-} from "../../storage/drafts";
-import { ChipChoices, FlowShell } from "../../shared/FlowShell";
-import { BudgetRangeSlider } from "../../shared/BudgetRangeSlider";
-import { OutfitReviewPanel } from "./OutfitReviewPanel";
+} from "../../storage/drafts.js";
+import { ChipChoices, FlowShell } from "../../shared/FlowShell.js";
+import { BudgetRangeSlider } from "../../shared/BudgetRangeSlider.js";
+import { OutfitReviewPanel } from "./OutfitReviewPanel.js";
 
 /**
  * 빈 초안으로 시작한다.

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import type { PriorityOptionsRequest } from "../../domain/aiContracts";
-import { getPriorityOptions } from "../../lib/biasfitApi";
-import { useAppState } from "../../app/AppStateProvider";
+import type { PriorityOptionsRequest } from "../../domain/aiContracts.js";
+import { getPriorityOptions } from "../../lib/biasfitApi.js";
+import { useAppState } from "../../app/AppStateProvider.js";
 
 export function PriorityQuestion({
   request,

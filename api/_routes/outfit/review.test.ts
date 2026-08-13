@@ -2,13 +2,13 @@ import { describe, expect, it } from "vitest";
 import type {
   LinkCheck,
   OutfitReviewRequest,
-} from "../../../src/domain/aiContracts";
+} from "../../../src/domain/aiContracts.js";
 import {
   classifyLinkStatus,
   isBlockedHostname,
   isRetryableLinkStatus,
-} from "../../_lib/link-checker";
-import { reviewOutfitCard } from "./review";
+} from "../../_lib/link-checker.js";
+import { reviewOutfitCard } from "./review.js";
 
 const request: OutfitReviewRequest = {
   mode: "personal",

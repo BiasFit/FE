@@ -1,4 +1,4 @@
-import type { InfluencerProfile } from "../domain/scoring";
+import type { InfluencerProfile } from "../domain/scoring.js";
 
 export interface StylemateView extends InfluencerProfile {
   tagline: string;

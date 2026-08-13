@@ -1,16 +1,16 @@
-import { budgetRangeLabel, isTpoCode } from "../../../src/data/options";
-import { isMatchPriority } from "../../../src/domain/aiContracts";
-import type { TestResultPayload } from "../../../src/domain/resultSnapshot";
-import { STYLE_NAMES, styleScoreLevel } from "../../../src/domain/scoring";
-import { requireAccount, sendAuthAwareError } from "../../_lib/auth";
-import { loadOptionLookup, type OptionLookup } from "../../_lib/options";
-import { supabaseAdmin } from "../../_lib/supabase";
+import { budgetRangeLabel, isTpoCode } from "../../../src/data/options.js";
+import { isMatchPriority } from "../../../src/domain/aiContracts.js";
+import type { TestResultPayload } from "../../../src/domain/resultSnapshot.js";
+import { STYLE_NAMES, styleScoreLevel } from "../../../src/domain/scoring.js";
+import { requireAccount, sendAuthAwareError } from "../../_lib/auth.js";
+import { loadOptionLookup, type OptionLookup } from "../../_lib/options.js";
+import { supabaseAdmin } from "../../_lib/supabase.js";
 import {
   readJsonBody,
   requirePost,
   type ApiRequest,
   type ApiResponse,
-} from "../../_lib/http";
+} from "../../_lib/http.js";
 
 /**
  * 한 번의 진단 흐름을 정규화 테이블 13개에 나눠 저장한다.

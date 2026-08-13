@@ -11,7 +11,7 @@ import {
   createInitialState,
   type AppAction,
   type AppState,
-} from "./appState";
+} from "./appState.js";
 
 interface AppStateContextValue {
   state: AppState;

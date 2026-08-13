@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { personaForms } from "../../../src/data/personas";
-import type { PriorityOptionsRequest } from "../../../src/domain/aiContracts";
-import { createPriorityOptions } from "./priority-options";
+import { personaForms } from "../../../src/data/personas.js";
+import type { PriorityOptionsRequest } from "../../../src/domain/aiContracts.js";
+import { createPriorityOptions } from "./priority-options.js";
 
 const groupRequest: PriorityOptionsRequest = {
   mode: "group",

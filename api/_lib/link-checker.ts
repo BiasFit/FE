@@ -1,7 +1,7 @@
 import type {
   LinkCheck,
   OutfitReviewRequest,
-} from "../../src/domain/aiContracts";
+} from "../../src/domain/aiContracts.js";
 
 const MAX_REDIRECTS = 3;
 const TIMEOUT_MS = 5000;

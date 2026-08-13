@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
-import type { DiagnosisForm } from "../../app/types";
-import { useAppState } from "../../app/AppStateProvider";
+import type { DiagnosisForm } from "../../app/types.js";
+import { useAppState } from "../../app/AppStateProvider.js";
 import {
   avoidedElements,
   bodyTypes,
@@ -12,10 +12,10 @@ import {
   styleOptions,
   TPO_OPTIONS,
   type TpoCode,
-} from "../../data/options";
-import { ChipChoices, FlowShell, MemberSwitch } from "../../shared/FlowShell";
-import { BudgetRangeSlider } from "../../shared/BudgetRangeSlider";
-import { PriorityQuestion } from "./PriorityQuestion";
+} from "../../data/options.js";
+import { ChipChoices, FlowShell, MemberSwitch } from "../../shared/FlowShell.js";
+import { BudgetRangeSlider } from "../../shared/BudgetRangeSlider.js";
+import { PriorityQuestion } from "./PriorityQuestion.js";
 
 function useCurrentDiagnosis() {
   const { state, dispatch } = useAppState();

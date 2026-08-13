@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { BudgetRangeSlider } from "./BudgetRangeSlider";
+import { BudgetRangeSlider } from "./BudgetRangeSlider.js";
 
 describe("BudgetRangeSlider", () => {
   it("shows and updates a minimum and maximum budget range", () => {

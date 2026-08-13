@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loadAssignedRequests } from "./list";
+import { loadAssignedRequests } from "./list.js";
 
 /**
  * PostgREST는 관계의 형태에 따라 배열과 객체를 오간다.

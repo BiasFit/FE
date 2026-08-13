@@ -4,40 +4,40 @@ import {
   CoachingScreen,
   HomeScreen,
   UserLoginScreen,
-} from "../features/user/StartScreens";
+} from "../features/user/StartScreens.js";
 import {
   InfluencerSignupScreen,
   SignupRoleScreen,
   UserSignupScreen,
-} from "../features/auth/SignupScreens";
+} from "../features/auth/SignupScreens.js";
 import {
   DeliveredScreen,
   InfluencerDetailScreen,
   InfluencerLoginScreen,
   InfluencerProfileScreen,
   InfluencerRequestsScreen,
-} from "../features/influencer/InfluencerScreens";
+} from "../features/influencer/InfluencerScreens.js";
 import {
   BodyScreen,
   BudgetScreen,
   SignalsScreen,
   StyleScreen,
   TpoScreen,
-} from "../features/user/DiagnosisScreens";
+} from "../features/user/DiagnosisScreens.js";
 import {
   DnaScreen,
   LoadingDnaScreen,
   Top3Screen,
-} from "../features/user/ResultScreens";
+} from "../features/user/ResultScreens.js";
 import {
   MatchScreen,
   OutfitScreen,
   RequestScreen,
   WaitScreen,
-} from "../features/user/CoachingScreens";
-import { SiteNav } from "../shared/SiteNav";
-import { useAppState } from "./AppStateProvider";
-import { RequireRole } from "./RequireRole";
+} from "../features/user/CoachingScreens.js";
+import { SiteNav } from "../shared/SiteNav.js";
+import { useAppState } from "./AppStateProvider.js";
+import { RequireRole } from "./RequireRole.js";
 
 /** 로그인·회원가입을 뺀 사용자 흐름은 사용자 계정만 볼 수 있다. */
 function UserOnly({ children }: { children: ReactElement }) {

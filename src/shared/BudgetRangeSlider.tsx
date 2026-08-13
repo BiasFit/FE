@@ -1,5 +1,5 @@
-import { budgetRangeLabel, budgets } from "../data/options";
-import { Slider } from "../components/ui/slider";
+import { budgetRangeLabel, budgets } from "../data/options.js";
+import { Slider } from "../components/ui/slider.js";
 
 interface BudgetRangeSliderProps {
   minCode: number;

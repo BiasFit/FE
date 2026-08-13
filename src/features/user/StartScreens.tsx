@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAppState } from "../../app/AppStateProvider";
-import { useAuth } from "../../app/AuthProvider";
+import { useAppState } from "../../app/AppStateProvider.js";
+import { useAuth } from "../../app/AuthProvider.js";
 
 export function HomeScreen() {
   const navigate = useNavigate();
