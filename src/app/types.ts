@@ -23,7 +23,6 @@ export interface SignupForm {
   password: string;
   passwordConfirm: string;
   birthDate: string;
-  profileImageName: string;
 }
 
 export interface DiagnosisForm {

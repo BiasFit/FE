@@ -10,6 +10,7 @@ import {
 } from "../../lib/biasfitApi.js";
 import { DeliveredOutfitCard } from "../influencer/InfluencerScreens.js";
 import { FlowShell } from "../../shared/FlowShell.js";
+import { influencerPhotoStyle } from "../../shared/influencerPhoto.js";
 
 /** 목록을 아직 못 받았을 때 화면이 깨지지 않게 쓰는 빈 값. */
 const EMPTY_MATE: StylemateView = {
@@ -28,6 +29,7 @@ const EMPTY_MATE: StylemateView = {
   description: "",
   price: "",
   occasions: "",
+  profileImageUrl: null,
 };
 
 function useSelectedMate() {
@@ -70,7 +72,7 @@ export function MatchScreen() {
       }
     >
       <div className="card selected-mate">
-        <div className="selected-avatar" />
+        <div className="selected-avatar" style={influencerPhotoStyle(mate.profileImageUrl)} />
         <div>
           <span className="badge">TOP 1</span>
           <h3>{mate.name}</h3>
@@ -78,7 +80,11 @@ export function MatchScreen() {
         </div>
         <div className="big-score">{state.selectedInfluencerScore}%</div>
       </div>
-      <div className="mate-gallery" aria-label={`${mate.name} 스타일 무드`}>
+      {/*
+        고정된 공용 무드 이미지 3장이다. 이 사람의 사진이 아니므로
+        이름을 붙여 부르지 않는다 — 사용자가 본인 사진으로 오해한다.
+      */}
+      <div className="mate-gallery" aria-label="스타일 무드 참고 이미지">
         <span />
         <span />
         <span />
@@ -163,7 +169,10 @@ export function RequestScreen() {
       }
     >
       <div className="card selected-mate" style={{ gridTemplateColumns: "74px 1fr" }}>
-        <div className="selected-avatar" style={{ width: 74, height: 74 }} />
+        <div
+          className="selected-avatar"
+          style={{ width: 74, height: 74, ...influencerPhotoStyle(mate.profileImageUrl) }}
+        />
         <div>
           <strong>{mate.name}</strong>
           <p className="helper">{state.mode === "personal" ? "개인 스타일링" : "2인 그룹 스타일링"} · {tpo}</p>

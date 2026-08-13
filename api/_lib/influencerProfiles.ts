@@ -129,6 +129,8 @@ export function toStylemateView(row: Record<string, any>): StylemateView {
     description: descriptionFor(profile),
     price: `${budgetRangeLabel(budgetMin, budgetMax)}`,
     occasions: profile.tpos.map((code) => tpoLabel(code)).join(" · "),
+    // 등록 전에는 null이다. 화면이 중립 배경을 쓰게 그대로 넘긴다 (MEMO/이미지_처리.md).
+    profileImageUrl: row.profile_image_url ?? null,
   };
 }
 
