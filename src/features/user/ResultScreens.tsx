@@ -480,7 +480,23 @@ export function Top3Screen() {
           </p>
         </div>
       </details>
-      {rankStatus === "idle" || rankStatus === "loading" ? <div className="soft-card">TOP 3를 계산하고 있어요.</div> : null}
+      {rankStatus === "idle" || rankStatus === "loading" ? <div className="soft-card">Style DNA와 잘 맞는 인플루언서를 찾는 중이에요.</div> : null}
+      {rankStatus === "success" && ranked.length === 0 ? (
+        // 후보가 0명이 되는 경우가 실제로 있다. 수신 한도에 찬 인플루언서는 후보에서 빠진다.
+        // **남은 자리 수나 수신 수는 절대 보여주지 않는다** (Design_system-2.md 179행).
+        <div className="soft-card" aria-live="polite">
+          <p>현재 요청을 더 받을 수 있는 스타일메이트가 없어요.</p>
+          <p className="helper">잠시 후 다시 확인해 주세요.</p>
+          <button
+            className="btn-secondary"
+            type="button"
+            style={{ marginTop: 12 }}
+            onClick={() => setRankRetry((value) => value + 1)}
+          >
+            다시 추천
+          </button>
+        </div>
+      ) : null}
       {rankStatus === "error" ? (
         <div className="soft-card"><p className="error-copy" style={{ display: "block" }}>TOP 3를 불러오지 못했어요.</p><button className="btn-secondary" type="button" onClick={() => setRankRetry((value) => value + 1)}>다시 시도</button></div>
       ) : null}

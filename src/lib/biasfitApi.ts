@@ -141,6 +141,68 @@ export function deliverOutfitCard(
   }>("/api/outfit/deliver", input, signal);
 }
 
+export interface MypageDiagnosis {
+  styleDnaResultId: string;
+  matchResultId: string | null;
+  diagnosedAt: string;
+  coachingType: "personal" | "group";
+  tpoCode: string;
+  tpoLabel: string;
+  styleDnaSummary: string;
+  styleTags: string[];
+  /** null이면 화면에 `매칭 전`으로 쓴다. */
+  selectedInfluencerName: string | null;
+}
+
+export interface MypageOutfit {
+  outfitCardId: string;
+  matchResultId: string;
+  title: string;
+  coachingType: "personal" | "group";
+  tpoCode: string;
+  tpoLabel: string;
+  influencerName: string;
+  deliveredAt: string | null;
+}
+
+export interface MypagePending {
+  matchResultId: string;
+  coachingType: "personal" | "group";
+  tpoCode: string;
+  tpoLabel: string;
+  influencerName: string | null;
+  requestSentAt: string | null;
+  requestMessage: string;
+}
+
+export interface MypageOverview {
+  loginId: string;
+  displayName: string;
+  summary: {
+    outfitCardCount: number;
+    diagnosisCount: number;
+    lastActivityAt: string | null;
+  };
+  diagnoses: MypageDiagnosis[];
+  outfits: MypageOutfit[];
+  pending: MypagePending[];
+}
+
+/**
+ * 마이페이지 한 화면분 기록. 저장된 스냅샷만 읽고 다시 계산하지 않는다.
+ *
+ * `tpoCode`를 주면 세 목록(진단 기록·코디 카드·준비 중)에 함께 걸린다.
+ * 요약 수치는 필터와 무관한 전체 기준이다.
+ * 코디 카드 본문은 `getOutfitCard(matchResultId)`로 따로 받는다.
+ */
+export function getMypageOverview(tpoCode?: string, signal?: AbortSignal) {
+  return postJson<MypageOverview>(
+    "/api/mypage/overview",
+    tpoCode ? { tpoCode } : {},
+    signal,
+  );
+}
+
 /**
  * 전달된 코디 카드. 아직 전달 전이면 `card`가 null이다.
  * id를 생략하면 로그인한 사용자의 가장 최근 카드를 준다 —

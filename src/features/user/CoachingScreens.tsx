@@ -163,7 +163,7 @@ export function RequestScreen() {
             이전
           </button>
           <button className="btn-primary" type="button" disabled={sending} onClick={send}>
-            {sending ? "보내는 중이에요." : "부탁해요 카드 보내기"} <span aria-hidden="true">→</span>
+            {sending ? "부탁해요 카드를 보내는 중이에요." : "부탁해요 카드 보내기"} <span aria-hidden="true">→</span>
           </button>
         </>
       }
