@@ -57,7 +57,7 @@ export function FlowShell({
     <section className="screen is-active">
       <div className="service-layout">
         <aside className="context-panel">
-          <p className="context-brand">BiasFit</p>
+          <p className="context-brand">Fitto</p>
           <p className="context-step">
             {flow === "user" ? "USER FLOW" : "INFLUENCER FLOW"} ·{" "}
             {String(step).padStart(2, "0")} / {labels.length}

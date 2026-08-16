@@ -145,20 +145,27 @@ describe("user feature screens", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("renders the body and fit input with the P1 defaults", async () => {
+  it("renders the body input with the P1 defaults", async () => {
     window.location.hash = "#/user/body";
     render(<App />);
 
     expect(
-      await screen.findByRole("heading", {
-        name: /본인의 체형 정보와 평소 핏에 대해 느끼는 고민을 알려주세요/,
-      }),
+      await screen.findByRole("heading", { name: /본인의 체형 정보를 알려주세요/ }),
     ).toBeInTheDocument();
     expect(screen.getByRole("spinbutton", { name: "키" })).toHaveValue(158);
   });
 
+  it("renders the fit screen as its own step, separate from body (2026-08-15 split)", async () => {
+    window.location.hash = "#/user/fit";
+    render(<App />);
+
+    expect(
+      await screen.findByRole("heading", { name: /평소 핏에 대해\s*느끼는 고민을 알려주세요/ }),
+    ).toBeInTheDocument();
+  });
+
   it("renders a calculated Style DNA instead of fixed display-only data", async () => {
-    window.location.hash = "#/user/tpo";
+    window.location.hash = "#/user/priority";
     render(<App />);
 
     fireEvent.click(
@@ -167,17 +174,23 @@ describe("user feature screens", () => {
       }),
     );
     fireEvent.click(
-      await screen.findByRole("button", { name: /Style DNA 결과 보기/ }),
+      await screen.findByRole("button", { name: /진단 결과 보기/ }),
     );
 
+    // "진단 결과 보기"는 로딩 화면(LoadingDnaScreen)을 2.4초 거쳐 넘어간다
+    // (애니메이션이 최소 한 번은 보이도록 둔 지연 — 2026-08-16).
     expect(
-      await screen.findByText("부드러운 일상감과 비율을 함께 고려한 스타일"),
+      await screen.findByText(
+        "부드러운 일상감과 비율을 함께 고려한 스타일",
+        {},
+        { timeout: 4000 },
+      ),
     ).toBeInTheDocument();
-    expect(screen.getByText("67", { selector: ".score-value" })).toBeVisible();
+    expect(screen.getByText("67")).toBeVisible();
   });
 
   it("renders three ranked stylemates with matching reasons", async () => {
-    window.location.hash = "#/user/tpo";
+    window.location.hash = "#/user/priority";
     render(<App />);
 
     fireEvent.click(
@@ -186,13 +199,13 @@ describe("user feature screens", () => {
       }),
     );
     fireEvent.click(
-      await screen.findByRole("button", { name: /Style DNA 결과 보기/ }),
+      await screen.findByRole("button", { name: /진단 결과 보기/ }),
     );
     fireEvent.click(await screen.findByRole("button", { name: /TOP 3/ }));
 
     expect(
       await screen.findByRole("heading", {
-        name: /스타일링을 받고 싶은 인플루언서 1명을 선택해 주세요/,
+        name: /스타일링을 받고 싶은\s*인플루언서를 선택해 주세요/,
       }),
     ).toBeInTheDocument();
     expect(await screen.findAllByRole("radio")).toHaveLength(3);
@@ -202,7 +215,7 @@ describe("user feature screens", () => {
   });
 
   it("saves the screen values once, without recalculating or calling OpenAI again", async () => {
-    window.location.hash = "#/user/tpo";
+    window.location.hash = "#/user/priority";
     render(<App />);
 
     fireEvent.click(
@@ -211,7 +224,7 @@ describe("user feature screens", () => {
       }),
     );
     fireEvent.click(
-      await screen.findByRole("button", { name: /Style DNA 결과 보기/ }),
+      await screen.findByRole("button", { name: /진단 결과 보기/ }),
     );
     fireEvent.click(await screen.findByRole("button", { name: /TOP 3/ }));
     await screen.findAllByText(/실제 계산된 핏과 TPO 근거/);
@@ -243,10 +256,10 @@ describe("user feature screens", () => {
   });
 
   it("requires one generated priority option before Style DNA progress", async () => {
-    window.location.hash = "#/user/tpo";
+    window.location.hash = "#/user/priority";
     render(<App />);
 
-    const next = await screen.findByRole("button", { name: /Style DNA 결과 보기/ });
+    const next = await screen.findByRole("button", { name: /진단 결과 보기/ });
     expect(next).toBeDisabled();
     fireEvent.click(
       await screen.findByRole("radio", {
@@ -256,8 +269,9 @@ describe("user feature screens", () => {
     expect(next).toBeEnabled();
   });
 
-  it("blocks progress when an exact-three style signal becomes incomplete", async () => {
-    window.location.hash = "#/user/signals";
+  it("blocks progress when an exact-three keyword signal becomes incomplete", async () => {
+    // 키워드는 U3-3A(스타일 화면)로 옮겨졌다 (2026-08-15 분리).
+    window.location.hash = "#/user/style";
     render(<App />);
 
     const selectedKeyword = await screen.findByRole("button", {
@@ -265,9 +279,20 @@ describe("user feature screens", () => {
     });
     fireEvent.click(selectedKeyword);
 
-    expect(
-      screen.getByRole("button", { name: /예산 입력하기/ }),
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "다음" })).toBeDisabled();
+  });
+
+  it("blocks progress when the design screen's three picks become incomplete", async () => {
+    window.location.hash = "#/user/design";
+    render(<App />);
+
+    // P1 기본값(리본·레이스·데님 소재감)이 이미 3개라 처음엔 다음으로 갈 수 있다.
+    const next = await screen.findByRole("button", { name: "다음" });
+    expect(next).toBeEnabled();
+
+    // 그중 하나를 빼면 2개가 되어 다시 막힌다.
+    fireEvent.click(await screen.findByRole("button", { name: "리본 ✕" }));
+    expect(next).toBeDisabled();
   });
 
   it("renders the request and outfit result screens", async () => {

@@ -4,6 +4,7 @@ dist
 .env.local
 .vercel
 *.tsbuildinfo
+.DS_Store
 
 # Supabase에 직접 실행하는 DDL·시드. 저장소에 올리지 않는다.
 # 03_options_seed.sql과 10_influencer_seed.sql은 scripts/generate*.ts로 다시 만들 수 있다.

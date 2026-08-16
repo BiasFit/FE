@@ -1,0 +1,165 @@
+/**
+ * 사용자가 준 두 개의 HTML 데모(로딩·랜딩)에서 쓰던 애니메이션을 그대로 옮겨 온 CSS다.
+ * v3 화면은 대부분 Tailwind 유틸리티만 쓰는데, `@keyframes`는 유틸리티로 못 쓰니
+ * 여기 한 곳에 모아 두고 필요한 화면에서 클래스명만 갖다 쓴다 (2026-08-16).
+ *
+ * `prefers-reduced-motion`을 존중한다 — 애니메이션을 줄이고 싶은 사용자에게는 끈다.
+ */
+
+/* ---------- 배경 오로라 (로딩 화면·랜딩 화면 공용) ---------- */
+.aurora-blobs {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.aurora-blobs .blob {
+  position: absolute;
+  border-radius: 9999px;
+  animation: bf-drift 19s cubic-bezier(0.22, 1, 0.36, 1) infinite alternate;
+}
+.aurora-blobs::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+@keyframes bf-drift {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(18px, -14px, 0) scale(1.08);
+  }
+  100% {
+    transform: translate3d(-14px, 12px, 0) scale(0.96);
+  }
+}
+
+/* ---------- 떠 있는 카드(랜딩 히어로) ----------
+ * 이 카드들은 `left:50%` + `translateX(-50%)`로 가운데를 잡지 않는다 — 그 방식이면
+ * 아래 keyframe이 `transform`을 통째로 바꿔치기할 때 가운데 정렬 오프셋이 사라져
+ * 카드가 오른쪽으로 쏠려 보인다 (2026-08-16 스크린샷). 원본 데모처럼 고정 픽셀
+ * `left` 값으로 가운데를 맞춰서, `transform`은 이 애니메이션만 쓰게 한다.
+ */
+.hero-float {
+  animation: bf-float 5.5s ease-in-out infinite;
+}
+.hero-float.delayed {
+  animation-delay: 0.6s;
+}
+@keyframes bf-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* ---------- 로딩 오브(진단 계산 중) ---------- */
+.loading-orb {
+  width: 140px;
+  height: 140px;
+  position: relative;
+}
+.loading-orb svg {
+  position: absolute;
+  inset: 0;
+  width: 140px;
+  height: 140px;
+}
+.orb-ring-out {
+  animation: bf-spin 3.2s linear infinite;
+}
+.orb-ring-mid {
+  animation: bf-spin 4.6s linear infinite reverse;
+}
+.orb-core {
+  animation: bf-pulse 1.9s ease-in-out infinite;
+  transform-origin: 70px 70px;
+}
+@keyframes bf-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes bf-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 0.55;
+  }
+}
+
+.loading-track {
+  width: 200px;
+  height: 4px;
+  border-radius: 9999px;
+  background: #dcdce2;
+  overflow: hidden;
+  position: relative;
+}
+.loading-track .bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 40%;
+  border-radius: 9999px;
+  background: var(--ink, #0a0a0a);
+  animation: bf-slide 1.6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+@keyframes bf-slide {
+  0% {
+    left: -40%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+.loading-step-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: #6b4eff;
+  flex: none;
+  animation: bf-blink 1.4s ease-in-out infinite;
+}
+@keyframes bf-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+.loading-step-text {
+  transition: opacity 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.loading-step-text.out {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora-blobs .blob,
+  .hero-float,
+  .orb-ring-out,
+  .orb-ring-mid,
+  .orb-core,
+  .loading-track .bar,
+  .loading-step-dot {
+    animation: none !important;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+}
