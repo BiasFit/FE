@@ -23,10 +23,29 @@ let explanationGate: Promise<void> | null = null;
 let openExplanationGate: (() => void) | null = null;
 /** 추천 근거 호출을 실패시킬지. AI가 죽어도 부탁해요 카드가 나가는지 볼 때 쓴다. */
 let failExplanations = false;
+/** Style DNA 응답을 붙잡아 두는 문. AI2가 끝나기 전 진행을 막는지 검증한다. */
+let styleDnaGate: Promise<void> | null = null;
+let openStyleDnaGate: (() => void) | null = null;
+/** 진단 저장 응답을 붙잡아 두는 문. DB 저장 완료 전 선택을 막는지 검증한다. */
+let diagnosisSaveGate: Promise<void> | null = null;
+let openDiagnosisSaveGate: (() => void) | null = null;
+let failDiagnosisSave = false;
 
 function holdExplanations() {
   explanationGate = new Promise<void>((resolve) => {
     openExplanationGate = resolve;
+  });
+}
+
+function holdStyleDna() {
+  styleDnaGate = new Promise<void>((resolve) => {
+    openStyleDnaGate = resolve;
+  });
+}
+
+function holdDiagnosisSave() {
+  diagnosisSaveGate = new Promise<void>((resolve) => {
+    openDiagnosisSaveGate = resolve;
   });
 }
 /** /api/outfit/deliver로 전송된 코디 카드. */
@@ -55,6 +74,11 @@ beforeEach(() => {
   explanationGate = null;
   openExplanationGate = null;
   failExplanations = false;
+  styleDnaGate = null;
+  openStyleDnaGate = null;
+  diagnosisSaveGate = null;
+  openDiagnosisSaveGate = null;
+  failDiagnosisSave = false;
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -72,6 +96,7 @@ beforeEach(() => {
         });
       }
       if (url.endsWith("/api/ai/style-dna-explanation")) {
+        if (styleDnaGate) await styleDnaGate;
         if (body.mode === "group") {
           return jsonResponse({
             mode: "group",
@@ -155,6 +180,13 @@ beforeEach(() => {
         return jsonResponse({ card: deliveredCard });
       }
       if (url.endsWith("/api/results/save")) {
+        if (diagnosisSaveGate) await diagnosisSaveGate;
+        if (failDiagnosisSave) {
+          return new Response(JSON.stringify({ error: "진단 결과 저장에 실패했습니다." }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
         savedPayloads.push(body);
         return jsonResponse({ id: `saved-${savedPayloads.length}` });
       }
@@ -337,6 +369,37 @@ describe("user feature screens", () => {
    * TOP 3 카드는 순위만 오면 뜨고, 추천 근거는 몇 초 뒤에 온다.
    * 그 사이에 사용자가 넘어가면 저장이 통째로 사라져 마지막 전송에서 막혔었다.
    */
+  async function walkToDna() {
+    window.location.hash = "#/user/priority";
+    render(<App />);
+    fireEvent.click(
+      await screen.findByRole("radio", { name: "좋아하는 분위기를 먼저 지키고 싶어요" }),
+    );
+    fireEvent.click(await screen.findByRole("button", { name: /진단 결과 보기/ }));
+    return screen.findByRole("button", { name: /TOP 3|Style DNA 준비 중/ });
+  }
+
+  it("Style DNA 생성 중에는 TOP 3로 이동할 수 없다", async () => {
+    holdStyleDna();
+    const topThreeButton = await walkToDna();
+
+    expect(await screen.findByText("Style DNA 설명을 만들고 있어요.")).toBeVisible();
+    expect(topThreeButton).toBeDisabled();
+
+    fireEvent.click(topThreeButton);
+    expect(window.location.hash).not.toBe("#/user/top3");
+
+    openStyleDnaGate?.();
+    await waitFor(() => expect(topThreeButton).toBeEnabled());
+
+    fireEvent.click(topThreeButton);
+    expect(
+      await screen.findByRole("heading", {
+        name: /스타일링을 받고 싶은\s*인플루언서를 선택해 주세요/,
+      }),
+    ).toBeVisible();
+  });
+
   async function walkToTopThree() {
     window.location.hash = "#/user/priority";
     render(<App />);
@@ -344,7 +407,9 @@ describe("user feature screens", () => {
       await screen.findByRole("radio", { name: "좋아하는 분위기를 먼저 지키고 싶어요" }),
     );
     fireEvent.click(await screen.findByRole("button", { name: /진단 결과 보기/ }));
-    fireEvent.click(await screen.findByRole("button", { name: /TOP 3/ }));
+    const topThreeButton = await screen.findByRole("button", { name: /TOP 3|Style DNA 준비 중/ });
+    await waitFor(() => expect(topThreeButton).toBeEnabled());
+    fireEvent.click(topThreeButton);
     await screen.findByRole("heading", {
       name: /스타일링을 받고 싶은\s*인플루언서를 선택해 주세요/,
     });
@@ -358,32 +423,77 @@ describe("user feature screens", () => {
     fireEvent.click(await screen.findByRole("button", { name: "전송하기" }));
   }
 
-  it("추천 근거가 오기 전에 스타일메이트를 골라도 저장되고 카드가 나간다", async () => {
+  it("진단 결과가 실제 저장되기 전에는 스타일메이트를 확정할 수 없다", async () => {
+    holdDiagnosisSave();
+    await walkToTopThree();
+
+    const selectButton = await screen.findByRole("button", {
+      name: /진단 결과 저장 중|선택하기/,
+    });
+    expect(selectButton).toBeDisabled();
+
+    fireEvent.click(selectButton);
+    expect(window.location.hash).toBe("#/user/top3");
+
+    openDiagnosisSaveGate?.();
+    await waitFor(() => expect(savedPayloads).toHaveLength(1));
+    await waitFor(() => expect(selectButton).toBeEnabled());
+
+    fireEvent.click(selectButton);
+    expect(window.location.hash).toBe("#/user/match");
+  });
+
+  it("진단 저장 실패 시 다음 단계로 가지 않고 같은 화면에서 재시도한다", async () => {
+    failDiagnosisSave = true;
+    await walkToTopThree();
+
+    expect(await screen.findByText("진단 결과 저장에 실패했어요.")).toBeVisible();
+    expect(screen.getByRole("button", { name: /진단 결과 저장 중/ })).toBeDisabled();
+    expect(window.location.hash).toBe("#/user/top3");
+
+    failDiagnosisSave = false;
+    fireEvent.click(screen.getByRole("button", { name: "저장 다시 시도" }));
+
+    await waitFor(() => expect(savedPayloads).toHaveLength(1));
+    await waitFor(() => expect(screen.getByRole("button", { name: "선택하기" })).toBeEnabled());
+  }, 10_000);
+
+  it("빠르게 진행해도 저장 완료 전에는 선택되지 않고 완료 후 카드가 한 번 나간다", async () => {
     holdExplanations();
     await walkToTopThree();
 
-    // 카드는 이미 떠 있고 근거는 아직 오는 중이다. 이 상태에서 바로 넘어간다.
+    // 카드는 보여도 추천 근거와 진단 저장이 끝나기 전에는 선택할 수 없다.
     expect(await screen.findAllByText("추천 근거를 만들고 있어요.")).not.toHaveLength(0);
-    fireEvent.click(await screen.findByRole("button", { name: "선택하기" }));
+    const waitingButton = await screen.findByRole("button", { name: "진단 결과 저장 중" });
+    expect(waitingButton).toBeDisabled();
+    fireEvent.click(waitingButton);
+    expect(window.location.hash).toBe("#/user/top3");
 
-    // 화면을 떠난 뒤 근거가 도착한다. 요청이 취소되지 않아야 저장까지 이어진다.
+    // 근거와 저장이 끝난 뒤에만 선택할 수 있다.
     openExplanationGate?.();
     await waitFor(() => expect(savedPayloads).toHaveLength(1));
     expect(savedPayloads[0].ai.matchExplanations).toHaveLength(3);
 
+    fireEvent.click(await screen.findByRole("button", { name: "선택하기" }));
     await writeAndSend();
     await waitFor(() => expect(sentCards).toHaveLength(1));
     expect(sentCards[0].matchResultId).toBe("saved-1");
-    // 저장이 두 곳에서 겹쳐 불려도 행은 하나여야 한다.
+    // 저장과 전송은 각각 한 번이어야 한다.
     expect(savedPayloads).toHaveLength(1);
-  });
+  }, 10_000);
 
-  it("추천 근거 호출이 실패해도 전송 시점에 저장하고 카드가 나간다", async () => {
+  it("추천 근거 호출 실패 시 선택을 막고 재시도 성공 후 저장·전송한다", async () => {
     failExplanations = true;
     await walkToTopThree();
 
-    await screen.findByRole("button", { name: "추천 근거 다시 시도" });
+    const retryButton = await screen.findByRole("button", { name: "추천 근거 다시 시도" });
+    expect(screen.getByRole("button", { name: "진단 결과 저장 중" })).toBeDisabled();
     expect(savedPayloads).toHaveLength(0);
+    expect(sentCards).toHaveLength(0);
+
+    failExplanations = false;
+    fireEvent.click(retryButton);
+    await waitFor(() => expect(savedPayloads).toHaveLength(1));
 
     fireEvent.click(await screen.findByRole("button", { name: "선택하기" }));
     await writeAndSend();
@@ -391,7 +501,7 @@ describe("user feature screens", () => {
     await waitFor(() => expect(sentCards).toHaveLength(1));
     expect(savedPayloads).toHaveLength(1);
     expect(sentCards[0].matchResultId).toBe("saved-1");
-  });
+  }, 10_000);
 
   it("진단이 없는 채로 부탁해요 카드에 들어오면 돌아갈 길을 준다", async () => {
     window.location.hash = "#/user/request";
