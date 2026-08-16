@@ -1,6 +1,7 @@
 import {
   createContext,
   useContext,
+  useEffect,
   useMemo,
   useReducer,
   type Dispatch,
@@ -8,10 +9,10 @@ import {
 } from "react";
 import {
   appReducer,
-  createInitialState,
   type AppAction,
   type AppState,
 } from "./appState.js";
+import { loadAppState, saveAppState } from "../storage/diagnosisSession.js";
 
 interface AppStateContextValue {
   state: AppState;
@@ -21,11 +22,9 @@ interface AppStateContextValue {
 const AppStateContext = createContext<AppStateContextValue | null>(null);
 
 export function AppStateProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(
-    appReducer,
-    undefined,
-    createInitialState,
-  );
+  // 새로고침해도 진행 중인 진단이 이어지게 저장된 상태에서 시작한다.
+  const [state, dispatch] = useReducer(appReducer, undefined, loadAppState);
+  useEffect(() => saveAppState(state), [state]);
   const value = useMemo(() => ({ state, dispatch }), [state]);
 
   return (
