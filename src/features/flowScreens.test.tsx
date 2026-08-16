@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../App.js";
 import { influencers } from "../data/influencers.js";
@@ -13,6 +13,22 @@ function jsonResponse(value: unknown) {
 
 /** /api/results/save로 실제 전송된 스냅샷. 화면 값과 저장 값이 같은지 검사할 때 쓴다. */
 const savedPayloads: any[] = [];
+/** /api/requests/send로 전송된 부탁해요 카드. */
+const sentCards: any[] = [];
+/**
+ * 추천 근거 응답을 붙잡아 두는 문. 배포 환경 실측(카드 1.5초 · 근거 4.5초)을 흉내내
+ * "근거가 오기 전에 사용자가 넘어가는" 상황을 재현할 때 쓴다.
+ */
+let explanationGate: Promise<void> | null = null;
+let openExplanationGate: (() => void) | null = null;
+/** 추천 근거 호출을 실패시킬지. AI가 죽어도 부탁해요 카드가 나가는지 볼 때 쓴다. */
+let failExplanations = false;
+
+function holdExplanations() {
+  explanationGate = new Promise<void>((resolve) => {
+    openExplanationGate = resolve;
+  });
+}
 /** /api/outfit/deliver로 전송된 코디 카드. */
 const deliveredPayloads: any[] = [];
 /** 전달 뒤 /api/outfit/get이 돌려줄 카드. 전달 전에는 null이다. */
@@ -31,9 +47,14 @@ function passingReview(cards: any[]) {
 
 beforeEach(() => {
   localStorage.clear();
+  sessionStorage.clear();
   savedPayloads.length = 0;
+  sentCards.length = 0;
   deliveredPayloads.length = 0;
   deliveredCard = null;
+  explanationGate = null;
+  openExplanationGate = null;
+  failExplanations = false;
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -82,6 +103,14 @@ beforeEach(() => {
         return jsonResponse({ rankedInfluencers: rankInfluencers(body, influencers) });
       }
       if (url.endsWith("/api/ai/match-explanations")) {
+        // 문이 걸려 있으면 열어줄 때까지 기다린다 — 실제 배포에서 4.5초 걸리는 구간이다.
+        if (explanationGate) await explanationGate;
+        if (failExplanations) {
+          return new Response(JSON.stringify({ error: "추천 근거를 만들지 못했습니다." }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
         return jsonResponse({
           explanations: body.rankedInfluencers.map((candidate: any) => {
             const evidence = Object.values(candidate.matchedEvidence).flat() as Array<{ ref: string }>;
@@ -128,6 +157,13 @@ beforeEach(() => {
       if (url.endsWith("/api/results/save")) {
         savedPayloads.push(body);
         return jsonResponse({ id: `saved-${savedPayloads.length}` });
+      }
+      if (url.endsWith("/api/requests/send")) {
+        sentCards.push(body);
+        return jsonResponse({ id: `request-${sentCards.length}` });
+      }
+      if (url.endsWith("/api/influencers/list")) {
+        return jsonResponse({ influencers });
       }
       return new Response("Not found", { status: 404 });
     }),
@@ -293,6 +329,97 @@ describe("user feature screens", () => {
     // 그중 하나를 빼면 2개가 되어 다시 막힌다.
     fireEvent.click(await screen.findByRole("button", { name: "리본 ✕" }));
     expect(next).toBeDisabled();
+  });
+
+  /**
+   * 2026-08-17 사건 회귀 테스트 — MEMO/진단결과_저장_실패_사건_스터디.md
+   *
+   * TOP 3 카드는 순위만 오면 뜨고, 추천 근거는 몇 초 뒤에 온다.
+   * 그 사이에 사용자가 넘어가면 저장이 통째로 사라져 마지막 전송에서 막혔었다.
+   */
+  async function walkToTopThree() {
+    window.location.hash = "#/user/priority";
+    render(<App />);
+    fireEvent.click(
+      await screen.findByRole("radio", { name: "좋아하는 분위기를 먼저 지키고 싶어요" }),
+    );
+    fireEvent.click(await screen.findByRole("button", { name: /진단 결과 보기/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /TOP 3/ }));
+    await screen.findByRole("heading", {
+      name: /스타일링을 받고 싶은\s*인플루언서를 선택해 주세요/,
+    });
+  }
+
+  async function writeAndSend() {
+    fireEvent.click(await screen.findByRole("button", { name: "확정하기" }));
+    fireEvent.change(await screen.findByRole("textbox", { name: "부탁해요 카드" }), {
+      target: { value: "개강 첫 주에 입을 옷이 필요해요." },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "전송하기" }));
+  }
+
+  it("추천 근거가 오기 전에 스타일메이트를 골라도 저장되고 카드가 나간다", async () => {
+    holdExplanations();
+    await walkToTopThree();
+
+    // 카드는 이미 떠 있고 근거는 아직 오는 중이다. 이 상태에서 바로 넘어간다.
+    expect(await screen.findAllByText("추천 근거를 만들고 있어요.")).not.toHaveLength(0);
+    fireEvent.click(await screen.findByRole("button", { name: "선택하기" }));
+
+    // 화면을 떠난 뒤 근거가 도착한다. 요청이 취소되지 않아야 저장까지 이어진다.
+    openExplanationGate?.();
+    await waitFor(() => expect(savedPayloads).toHaveLength(1));
+    expect(savedPayloads[0].ai.matchExplanations).toHaveLength(3);
+
+    await writeAndSend();
+    await waitFor(() => expect(sentCards).toHaveLength(1));
+    expect(sentCards[0].matchResultId).toBe("saved-1");
+    // 저장이 두 곳에서 겹쳐 불려도 행은 하나여야 한다.
+    expect(savedPayloads).toHaveLength(1);
+  });
+
+  it("추천 근거 호출이 실패해도 전송 시점에 저장하고 카드가 나간다", async () => {
+    failExplanations = true;
+    await walkToTopThree();
+
+    await screen.findByRole("button", { name: "추천 근거 다시 시도" });
+    expect(savedPayloads).toHaveLength(0);
+
+    fireEvent.click(await screen.findByRole("button", { name: "선택하기" }));
+    await writeAndSend();
+
+    await waitFor(() => expect(sentCards).toHaveLength(1));
+    expect(savedPayloads).toHaveLength(1);
+    expect(sentCards[0].matchResultId).toBe("saved-1");
+  });
+
+  it("진단이 없는 채로 부탁해요 카드에 들어오면 돌아갈 길을 준다", async () => {
+    window.location.hash = "#/user/request";
+    render(<App />);
+
+    fireEvent.change(await screen.findByRole("textbox", { name: "부탁해요 카드" }), {
+      target: { value: "개강 첫 주에 입을 옷이 필요해요." },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "전송하기" }));
+
+    expect(await screen.findByRole("button", { name: "TOP 3 다시 보기" })).toBeVisible();
+    expect(sentCards).toHaveLength(0);
+  });
+
+  it("새로고침해도 진행 중인 진단이 유지된다", async () => {
+    await walkToTopThree();
+    await screen.findAllByText(/실제 계산된 핏과 TPO 근거/);
+    cleanup();
+
+    // 새로고침과 같은 상황 — 앱을 처음부터 다시 렌더링해도 TOP 3가 그대로 있어야 한다.
+    window.location.hash = "#/user/top3";
+    render(<App />);
+    expect(
+      await screen.findByRole("heading", {
+        name: /스타일링을 받고 싶은\s*인플루언서를 선택해 주세요/,
+      }),
+    ).toBeInTheDocument();
+    expect(await screen.findAllByRole("radio")).toHaveLength(3);
   });
 
   it("renders the request and outfit result screens", async () => {

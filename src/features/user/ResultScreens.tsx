@@ -12,55 +12,29 @@ import type {
 import {
   STYLE_NAMES,
   calculateGroupCompatibility,
-  calculateStyleScores,
-  personalFitDetail,
-  styleScoreDetail,
   type PersonalMatchInput,
   type RankMatchInput,
   type RankedInfluencer,
   type StyleScores,
 } from "../../domain/scoring.js";
 import { MATCH_PRIORITY_WEIGHTS } from "../../domain/matchPriority.js";
-import type { TestResultPayload } from "../../domain/resultSnapshot.js";
 import {
   getInfluencers,
   getMatchExplanations,
   getStyleDnaExplanation,
   getTopThree,
-  saveTestResult,
 } from "../../lib/biasfitApi.js";
+import {
+  breakdownsFor,
+  buildResultSnapshot,
+  saveDiagnosisOnce,
+  scoresFor,
+} from "./diagnosisSnapshot.js";
 import { influencerPhotoStyle } from "../../shared/influencerPhoto.js";
-import { anonUserKey } from "../../storage/anonUser.js";
 import { Pill, PrimaryCta, TopBar } from "../../shared/AppShell.js";
 import { MatchReason } from "./MatchReason.js";
 import iconChevronDown from "../../assets/mypage/icon-chevron-down.svg";
 import iconAvatar from "../../assets/mypage/icon-avatar.svg";
-
-function styleSignalOf(form: DiagnosisForm) {
-  return {
-    preferredStyle: form.preferredStyle,
-    avoidedStyle: form.avoidedStyle,
-    keywords: form.keywords,
-    designElements: form.designElements,
-    preferredItems: form.preferredItems,
-    avoidedElements: form.avoidedElements,
-  };
-}
-
-function scoresFor(form: DiagnosisForm) {
-  return calculateStyleScores(styleSignalOf(form));
-}
-
-/**
- * 스타일별 항목 내역. `style_score_breakdowns`에 그대로 들어간다.
- * 총점은 `scoresFor`와 같은 계산에서 나오므로 둘이 어긋날 수 없다.
- */
-function breakdownsFor(form: DiagnosisForm) {
-  const signal = styleSignalOf(form);
-  return Object.fromEntries(
-    STYLE_NAMES.map((style) => [style, styleScoreDetail(signal, style).breakdowns]),
-  );
-}
 
 function personalInput(
   form: DiagnosisForm,
@@ -125,106 +99,6 @@ function styleDnaRequest(
       styleScores: scoresFor(state.group.members[memberId]),
     })),
     groupCompatibility: compatibility,
-  };
-}
-
-/**
- * 화면에 쓴 값을 그대로 모아 저장용 스냅샷을 만든다.
- * 여기서 점수를 다시 계산하거나 AI를 다시 부르지 않는다. 준비가 덜 됐으면 null을 돌려 저장을 미룬다.
- */
-function resultSnapshot(
-  state: AppState,
-  ranked: RankedInfluencer[],
-): TestResultPayload | null {
-  const priority = state.matchPriority;
-  const styleDna = state.styleDna;
-  if (!priority || !styleDna || ranked.length === 0) return null;
-
-  const ai = {
-    priorityOptions: state.priorityOptions,
-    styleDna,
-    matchExplanations: state.matchExplanations,
-  };
-  // 인플루언서 프로필 전체가 아니라 식별자와 점수만 남긴다.
-  // 개인은 체형·핏 25점의 내역을 함께 담는다. 그룹은 체형을 점수에 쓰지 않아 없다.
-  const rankedInfluencers = ranked.map(
-    ({ rank, influencer, baseBreakdown, breakdown }) => ({
-      rank,
-      influencerId: influencer.id,
-      influencerName: influencer.name,
-      baseBreakdown,
-      breakdown,
-      fitDetail:
-        state.mode === "personal"
-          ? personalFitDetail(
-              {
-                bodyType: state.personal.bodyType,
-                fitConcerns: state.personal.fitConcerns,
-              },
-              influencer,
-            )
-          : undefined,
-    }),
-  );
-
-  if (state.mode === "personal") {
-    return {
-      mode: "personal",
-      priority,
-      tpo: state.personal.tpo,
-      anonUserKey: anonUserKey(),
-      input: { members: [{ memberId: "self", form: state.personal }] },
-      ai,
-      score: {
-        styleScores: [
-          {
-            memberId: "self",
-            scores: scoresFor(state.personal),
-            breakdowns: breakdownsFor(state.personal),
-          },
-        ],
-        rankedInfluencers,
-      },
-    };
-  }
-
-  const groupA = scoresFor(state.group.members.A);
-  const groupB = scoresFor(state.group.members.B);
-  return {
-    mode: "group",
-    priority,
-    tpo: state.group.tpo,
-    anonUserKey: anonUserKey(),
-    input: {
-      members: [
-        { memberId: "A", form: state.group.members.A },
-        { memberId: "B", form: state.group.members.B },
-      ],
-      group: {
-        relationship: state.group.relationship,
-        relationshipOther: state.group.relationshipOther,
-      },
-    },
-    ai,
-    score: {
-      styleScores: [
-        { memberId: "A", scores: groupA, breakdowns: breakdownsFor(state.group.members.A) },
-        { memberId: "B", scores: groupB, breakdowns: breakdownsFor(state.group.members.B) },
-      ],
-      groupCompatibility: calculateGroupCompatibility(
-        {
-          scores: groupA,
-          avoidedStyle: state.group.members.A.avoidedStyle,
-          budgetCode: state.group.members.A.budgetCode,
-        },
-        {
-          scores: groupB,
-          avoidedStyle: state.group.members.B.avoidedStyle,
-          budgetCode: state.group.members.B.budgetCode,
-        },
-      ),
-      rankedInfluencers,
-    },
   };
 }
 
@@ -574,6 +448,12 @@ export function DnaScreen() {
   );
 }
 
+/**
+ * 가장 최근에 시작한 추천 근거 요청. 화면이 사라져도 남아야 해서 모듈 수준에 둔다.
+ * 늦게 도착한 응답이 아직 유효한지는 **오직 이 값으로만** 판단한다.
+ */
+let latestExplanationRequest: object | null = null;
+
 function explanationRequest(
   mode: AppState["mode"],
   priority: MatchPriority,
@@ -635,22 +515,43 @@ export function Top3Screen() {
   const rankedKey = JSON.stringify(ranked);
   useEffect(() => {
     if (!input || ranked.length === 0) return;
-    const controller = new AbortController();
+
+    // ⚠️ 이 요청은 화면을 떠나도 **취소하지 않는다.**
+    // 취소하면 근거가 영영 도착하지 않고, 근거 뒤에 이어 붙인 저장까지 함께 사라진다.
+    // 그래서 사용자는 다섯 단계 뒤 부탁해요 카드에서야 막혔다
+    // (MEMO/진단결과_저장_실패_사건_스터디.md).
+    // 대신 더 새 진단이 시작되면 옛 응답을 버려서 화면이 뒤바뀌지 않게 한다.
+    const token = {};
+    latestExplanationRequest = token;
     dispatch({ type: "setMatchExplanationsLoading" });
-    void getMatchExplanations(
-      explanationRequest(state.mode, input.priority, ranked),
-      controller.signal,
-    )
-      .then(({ explanations }) =>
-        dispatch({ type: "setMatchExplanations", explanations }),
-      )
+    void getMatchExplanations(explanationRequest(state.mode, input.priority, ranked))
+      .then(({ explanations }) => {
+        if (latestExplanationRequest !== token) return;
+        dispatch({ type: "setMatchExplanations", explanations });
+        // 저장을 같은 약속(promise)에 이어 붙인다. 화면 수명과 무관하게 끝까지 간다.
+        persistResult(explanations);
+      })
       .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
+        if (latestExplanationRequest !== token) return;
         console.log("[BiasFit AI4] 추천 근거 호출 실패", error);
         dispatch({ type: "setMatchExplanationsError" });
+        // 근거 없이는 저장하지 않는다. 이때는 부탁해요 카드를 보내는 시점에 저장한다.
       });
-    return () => controller.abort();
   }, [rankedKey, reasonRetry]);
+
+  /**
+   * 화면에 쓴 값을 그대로 저장한다.
+   * 실패해도 흐름을 막지 않는다 — 부탁해요 카드를 보낼 때 한 번 더 시도하고, 그때는 사용자에게 알린다.
+   */
+  function persistResult(explanations: MatchExplanation[]) {
+    const snapshot = buildResultSnapshot({ ...state, matchExplanations: explanations }, ranked);
+    if (!snapshot) return;
+    void saveDiagnosisOnce(snapshot)
+      .then(({ id }) => dispatch({ type: "setSavedResultId", id }))
+      .catch((error: unknown) => {
+        console.log("[BiasFit 저장] 진단 결과 저장 실패", error);
+      });
+  }
 
   // 카드 표시용 스타일메이트 목록. 한 번만 받아 appState에 둔다.
   // 우선순위를 고르기 전에는 어떤 API도 부르지 않는다 (PLAN.MD 1부 규칙).
@@ -668,22 +569,6 @@ export function Top3Screen() {
       });
     return () => controller.abort();
   }, [directoryLoaded]);
-
-  // 흐름이 끝난 시점에 화면에 쓴 값을 그대로 한 번만 저장한다.
-  // 같은 입력으로 다시 렌더링돼도 중복 행이 생기지 않게 저장한 inputKey를 기억한다.
-  const [savedKey, setSavedKey] = useState<string | null>(null);
-  useEffect(() => {
-    if (reasonStatus !== "success" || savedKey === inputKey) return;
-    const snapshot = resultSnapshot(state, ranked);
-    if (!snapshot) return;
-    setSavedKey(inputKey);
-    void saveTestResult(snapshot)
-      .then(({ id }) => dispatch({ type: "setSavedResultId", id }))
-      .catch((error: unknown) => {
-        // 저장 실패는 화면 흐름을 막지 않는다. 사용자는 그대로 다음 단계로 간다.
-        console.log("[BiasFit 저장] 진단 결과 저장 실패", error);
-      });
-  }, [inputKey, rankedKey, reasonStatus, savedKey]);
 
   if (!input || !priority || !weights) {
     return (

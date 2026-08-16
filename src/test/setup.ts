@@ -43,4 +43,8 @@ class ResizeObserverMock implements ResizeObserver {
 
 globalThis.ResizeObserver = ResizeObserverMock;
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  // 진단 상태가 sessionStorage에 남는다. 안 지우면 다음 테스트가 앞 테스트의 진단을 이어받는다.
+  sessionStorage.clear();
+});

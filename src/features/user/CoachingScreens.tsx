@@ -9,6 +9,7 @@ import {
   sendRequestCard,
   type OutfitCardView,
 } from "../../lib/biasfitApi.js";
+import { buildResultSnapshot, saveDiagnosisOnce } from "./diagnosisSnapshot.js";
 import { influencerPhotoStyle } from "../../shared/influencerPhoto.js";
 import { Pill, PrimaryCta, TopBar } from "../../shared/AppShell.js";
 import iconAvatar from "../../assets/mypage/icon-avatar.svg";
@@ -176,7 +177,30 @@ export function RequestScreen() {
   const [error, setError] = useState(false);
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState("");
+  // 진단 자체가 비어 안내만으로는 빠져나갈 수 없는 상태인지. 이때는 돌아가는 버튼을 함께 준다.
+  const [needsDiagnosis, setNeedsDiagnosis] = useState(false);
   const tpo = tpoLabel(state.mode === "personal" ? state.personal.tpo : state.group.tpo);
+
+  /**
+   * 저장된 진단 결과 id를 확보한다.
+   *
+   * 정상 경로에서는 TOP 3에서 이미 저장이 끝나 있다. 다만 저장은 추천 근거(AI) 뒤에 이어지므로
+   * 사용자가 그보다 빨리 여기까지 오면 아직 비어 있을 수 있다.
+   * 그때 막아 세우지 않고 **이 자리에서 저장하고 이어서 보낸다**
+   * (MEMO/진단결과_저장_실패_사건_스터디.md).
+   */
+  const ensureSavedResultId = async () => {
+    if (state.savedResultId) return state.savedResultId;
+    const snapshot = buildResultSnapshot(state, state.rankedInfluencers);
+    if (!snapshot) {
+      setNeedsDiagnosis(true);
+      throw new Error("진단 결과가 없어요. 진단을 다시 확인해 주세요.");
+    }
+    const { id } = await saveDiagnosisOnce(snapshot);
+    dispatch({ type: "setSavedResultId", id });
+    return id;
+  };
+
   const send = () => {
     if (!value.trim()) {
       setError(true);
@@ -184,18 +208,21 @@ export function RequestScreen() {
     }
     setError(false);
     setSendError("");
+    setNeedsDiagnosis(false);
 
-    if (!state.savedResultId || !state.selectedInfluencerId) {
-      setSendError("진단 결과를 먼저 저장해야 요청을 보낼 수 있어요.");
+    const influencerId = state.selectedInfluencerId;
+    if (!influencerId) {
+      setSendError("스타일메이트를 먼저 선택해 주세요.");
+      setNeedsDiagnosis(true);
       return;
     }
 
     setSending(true);
-    void sendRequestCard({
-      matchResultId: state.savedResultId,
-      influencerId: state.selectedInfluencerId,
-      messageText: value,
-    })
+    // 저장이 아직 안 끝났으면 여기서 저장까지 마치고 보낸다. 1~2초 더 걸릴 뿐 막히지 않는다.
+    void ensureSavedResultId()
+      .then((matchResultId) =>
+        sendRequestCard({ matchResultId, influencerId, messageText: value }),
+      )
       .then(() => {
         dispatch({ type: "submitRequest" });
         navigate("/user/wait");
@@ -203,6 +230,7 @@ export function RequestScreen() {
       .catch((error: unknown) => {
         // 수신 한도에 걸리면 409와 함께 안내 문구가 온다.
         // 남은 자리 수는 사용자에게 보여주지 않는다 (SCREEN_SPEC.md).
+        // 저장 실패도 여기로 온다 — 조용히 넘기지 않고 반드시 화면에 남긴다.
         setSendError(
           error instanceof Error ? error.message : "부탁해요 카드를 보내지 못했어요.",
         );
@@ -273,6 +301,16 @@ export function RequestScreen() {
           <p className="mt-2 text-[13px] font-semibold text-[#0a0a0a]" aria-live="polite">
             {sendError}
           </p>
+        ) : null}
+        {needsDiagnosis ? (
+          // 새로고침 등으로 진단이 사라진 경우다. 문구만 두면 막다른 골목이라 돌아갈 길을 준다.
+          <button
+            type="button"
+            onClick={() => navigate("/user/top3")}
+            className="mt-3 self-start rounded-full border border-[#e8e8ec] bg-white px-4 py-2 text-[13px] font-semibold text-[#3c3c43]"
+          >
+            TOP 3 다시 보기
+          </button>
         ) : null}
 
         <div className="mt-[26px] rounded-[18px] bg-[#f5f5f7] p-[18px]">
