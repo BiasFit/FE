@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { AppState } from "../../app/appState.js";
-import type { DiagnosisForm, MatchPriority } from "../../app/types.js";
+import type { AiRequestStatus, DiagnosisForm, MatchPriority } from "../../app/types.js";
 import { useAppState } from "../../app/AppStateProvider.js";
 import { budgetRangeLabel, tpoLabel } from "../../data/options.js";
 import type {
@@ -125,10 +125,11 @@ export function LoadingDnaScreen() {
   const [fading, setFading] = useState(false);
 
   useEffect(() => {
+    let fadeTimer: number | undefined;
     const navigateTimer = window.setTimeout(() => navigate("/user/dna"), 2400);
     const cycleTimer = window.setInterval(() => {
       setFading(true);
-      window.setTimeout(() => {
+      fadeTimer = window.setTimeout(() => {
         setStepIndex((current) => (current + 1) % LOADING_STEPS.length);
         setFading(false);
       }, 350);
@@ -136,6 +137,7 @@ export function LoadingDnaScreen() {
     return () => {
       window.clearTimeout(navigateTimer);
       window.clearInterval(cycleTimer);
+      if (fadeTimer !== undefined) window.clearTimeout(fadeTimer);
     };
   }, [navigate]);
 
@@ -302,6 +304,7 @@ export function DnaScreen() {
 
   const result = state.styleDna;
   const status = state.styleDnaStatus;
+  const canOpenTop3 = status === "success" && result !== null;
   const summary =
     result?.mode === "personal"
       ? result.personalStyleDnaSummary
@@ -443,7 +446,15 @@ export function DnaScreen() {
           입력 수정하기
         </button>
       </div>
-      <PrimaryCta onClick={() => navigate("/user/top3")}>TOP 3 보기</PrimaryCta>
+      <PrimaryCta
+        disabled={!canOpenTop3}
+        onClick={() => {
+          if (!canOpenTop3) return;
+          navigate("/user/top3");
+        }}
+      >
+        {status === "loading" || status === "idle" ? "Style DNA 준비 중" : "TOP 3 보기"}
+      </PrimaryCta>
     </section>
   );
 }
@@ -487,6 +498,10 @@ export function Top3Screen() {
   const [rankRetry, setRankRetry] = useState(0);
   const [reasonRetry, setReasonRetry] = useState(0);
   const [reasonsOpen, setReasonsOpen] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<AiRequestStatus>(
+    state.savedResultId ? "success" : "idle",
+  );
+  const canSelectInfluencer = Boolean(state.savedResultId);
   const reasons = useMemo(
     () =>
       Object.fromEntries(
@@ -545,11 +560,24 @@ export function Top3Screen() {
    */
   function persistResult(explanations: MatchExplanation[]) {
     const snapshot = buildResultSnapshot({ ...state, matchExplanations: explanations }, ranked);
-    if (!snapshot) return;
+    if (!snapshot) {
+      setSaveStatus("error");
+      console.log("[BiasFit 저장] 진단 스냅샷 준비 안 됨", {
+        hasPriority: Boolean(state.matchPriority),
+        hasStyleDna: Boolean(state.styleDna),
+        rankedCount: ranked.length,
+      });
+      return;
+    }
+    setSaveStatus("loading");
     void saveDiagnosisOnce(snapshot)
-      .then(({ id }) => dispatch({ type: "setSavedResultId", id }))
+      .then(({ id }) => {
+        dispatch({ type: "setSavedResultId", id });
+        setSaveStatus("success");
+      })
       .catch((error: unknown) => {
         console.log("[BiasFit 저장] 진단 결과 저장 실패", error);
+        setSaveStatus("error");
       });
   }
 
@@ -640,6 +668,24 @@ export function Top3Screen() {
               추천 근거 다시 시도
             </button>
           ) : null}
+          {ranked.length > 0 && !canSelectInfluencer && reasonStatus !== "error" ? (
+            <div className="rounded-[18px] bg-[#f5f5f7] p-4" aria-live="polite">
+              {saveStatus === "error" ? (
+                <>
+                  <p className="text-[13px] text-[#3c3c43]">진단 결과 저장에 실패했어요.</p>
+                  <button
+                    type="button"
+                    onClick={() => persistResult(state.matchExplanations)}
+                    className="mt-2 rounded-full border border-[#e8e8ec] bg-white px-4 py-2 text-[13px] font-semibold text-[#3c3c43]"
+                  >
+                    저장 다시 시도
+                  </button>
+                </>
+              ) : (
+                <p className="text-[13px] text-[#8e8e93]">진단 결과를 안전하게 저장하고 있어요.</p>
+              )}
+            </div>
+          ) : null}
 
           {ranked.map(({ influencer, breakdown }, index) => {
             const view = state.influencerDirectory.find((profile) => profile.id === influencer.id);
@@ -711,13 +757,15 @@ export function Top3Screen() {
                   ) : null}
                   <button
                     type="button"
+                    disabled={!canSelectInfluencer}
                     onClick={() => {
+                      if (!canSelectInfluencer) return;
                       select();
                       navigate("/user/match");
                     }}
-                    className="flex min-h-[56px] w-full items-center justify-center rounded-[14px] bg-[#0a0a0a] text-[17px] font-bold text-white"
+                    className="flex min-h-[56px] w-full items-center justify-center rounded-[14px] bg-[#0a0a0a] text-[17px] font-bold text-white disabled:opacity-40"
                   >
-                    선택하기
+                    {canSelectInfluencer ? "선택하기" : "진단 결과 저장 중"}
                   </button>
                 </div>
               );
