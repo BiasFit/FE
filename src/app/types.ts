@@ -23,6 +23,9 @@ export interface SignupForm {
   password: string;
   passwordConfirm: string;
   birthDate: string;
+  /** 인플루언서 전용 선택 입력. 피그마 A4에는 있지만, 서버 가입 API는 아직 이 값을 받지 않는다
+   * (생년월일과 같은 처리 — 화면에 남기되 signUp() 호출에는 넣지 않는다). */
+  snsAccount: string;
 }
 
 export interface DiagnosisForm {

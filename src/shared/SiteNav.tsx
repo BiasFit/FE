@@ -24,7 +24,7 @@ export function SiteNav() {
           className="brand"
           type="button"
           onClick={() => navigate("/")}
-          aria-label="BiasFit 홈"
+          aria-label="Fitto 홈"
         >
           BiasFit
         </button>

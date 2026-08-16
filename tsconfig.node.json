@@ -17,5 +17,17 @@
     "moduleDetection": "force",
     "noEmit": true
   },
-  "include": ["vite.config.ts", "dev/localApiPlugin.ts", "tailwind.config.ts"]
+  "include": [
+    "vite.config.ts",
+    "dev/localApiPlugin.ts",
+    "dev/localDb.ts",
+    "tailwind.config.ts",
+    "src/domain/scoring.ts",
+    "src/domain/resultSnapshot.ts",
+    "src/domain/aiContracts.ts",
+    "src/domain/matchPriority.ts",
+    "src/data/influencers.ts",
+    "src/data/options.ts",
+    "src/app/types.ts"
+  ]
 }

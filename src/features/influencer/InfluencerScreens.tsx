@@ -6,7 +6,9 @@ import { useAppState } from "../../app/AppStateProvider.js";
 import { useAuth } from "../../app/AuthProvider.js";
 import {
   TPO_CODES,
+  bodyTypes,
   budgetApproaches,
+  budgetRangeLabel,
   fitConcerns,
   styleOptions,
   tpoLabel,
@@ -29,9 +31,13 @@ import {
   saveDraft,
   type OutfitDraft,
 } from "../../storage/drafts.js";
-import { ChipChoices, FlowShell } from "../../shared/FlowShell.js";
 import { BudgetRangeSlider } from "../../shared/BudgetRangeSlider.js";
 import { OutfitReviewPanel } from "./OutfitReviewPanel.js";
+import { Pill, PrimaryCta, SelectChip, StepHeader, TopBar } from "../../shared/AppShell.js";
+import iconAvatar from "../../assets/mypage/icon-avatar.svg";
+import iconCheck from "../../assets/mypage/icon-check.svg";
+import iconChevronDown from "../../assets/mypage/icon-chevron-down.svg";
+import iconItemPlaceholder from "../../assets/mypage/icon-item-placeholder.svg";
 
 /**
  * 빈 초안으로 시작한다.
@@ -55,6 +61,7 @@ const groupDefault: GroupOutfitDraft = {
   message: "",
 };
 
+/** I1 · 인플루언서 로그인. */
 export function InfluencerLoginScreen() {
   const navigate = useNavigate();
   const { signIn } = useAuth();
@@ -79,62 +86,74 @@ export function InfluencerLoginScreen() {
   };
 
   return (
-    <FlowShell
-      flow="influencer"
-      step={1}
-      eyebrow="INFLUENCER WORKSPACE"
-      title={
-        <>
-          사전에 안내된 개인 테스트 계정으로
+    <section className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col bg-white">
+      <div className="flex flex-1 flex-col px-5 pb-6 pt-[76px]">
+        <div>
+          <Pill tone="dark">인플루언서</Pill>
+        </div>
+        <div className="h-[26px]" />
+        <h1 className="m-0 text-[30px] font-bold leading-[1.28] tracking-[-0.9px] text-[#0a0a0a]">
+          배정된 요청을 확인하고
           <br />
-          로그인해 주세요.
-        </>
-      }
-      description="팀이 만든 인플루언서 테스트 계정으로만 이용합니다."
-    >
-      <div className="login-card">
-        <label className="field">
-          <span className="field-label">테스트 아이디</span>
-          <input
-            className="text-input"
-            type="text"
-            autoComplete="username"
-            value={loginId}
-            onChange={(event) => setLoginId(event.target.value)}
-          />
-        </label>
-        <label className="field">
-          <span className="field-label">테스트 코드</span>
-          <input
-            className="text-input"
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
-        </label>
+          코디 카드를 전달하세요.
+        </h1>
+        <div className="h-3" />
+        <p className="text-[15px] text-[#3c3c43]">사전에 안내된 개인 테스트 계정으로 로그인해 주세요.</p>
+        <div className="h-[44px]" />
+        <div className="flex flex-col gap-4">
+          <label className="flex flex-col gap-2">
+            <span className="text-[12px] text-[#8e8e93]">테스트 아이디</span>
+            <input
+              type="text"
+              autoComplete="username"
+              value={loginId}
+              onChange={(event) => setLoginId(event.target.value)}
+              className="flex min-h-[56px] w-full items-center rounded-[14px] bg-[#f5f5f7] px-[18px] text-[16px] font-semibold text-[#0a0a0a] outline-none"
+            />
+          </label>
+          <label className="flex flex-col gap-2">
+            <span className="text-[12px] text-[#8e8e93]">테스트 코드</span>
+            <input
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              className="flex min-h-[56px] w-full items-center rounded-[14px] bg-[#f5f5f7] px-[18px] text-[16px] font-semibold text-[#0a0a0a] outline-none"
+            />
+          </label>
+        </div>
+        <div className="h-[18px]" />
+        <p className="text-[12px] leading-[1.4] text-[#8e8e93]">
+          실제 개인정보와 신체 사진은 입력하지 않아요.
+          <br />
+          로그인하면 계정의 역할을 자동으로 확인해요.
+        </p>
         {loginError ? (
-          <p className="error-copy" style={{ display: "block" }} aria-live="polite">
+          <p className="mt-3 text-[13px] font-semibold text-[#0a0a0a]" aria-live="polite">
             {loginError}
           </p>
         ) : null}
+      </div>
+      <PrimaryCta onClick={login} disabled={loggingIn || !loginId.trim() || !password}>
+        {loggingIn ? "로그인하는 중이에요." : "로그인"}
+      </PrimaryCta>
+      <div className="flex flex-col items-center gap-2 pb-[22px]">
         <button
-          className="btn-primary"
-          type="button"
-          disabled={loggingIn || !loginId.trim() || !password}
-          onClick={login}
-        >
-          {loggingIn ? "로그인하는 중이에요." : "로그인"}
-        </button>
-        <button
-          className="btn-ghost signup-login-link"
           type="button"
           onClick={() => navigate("/signup")}
+          className="text-[13px] font-medium text-[#8e8e93] underline underline-offset-2"
         >
           처음이신가요? 회원가입
         </button>
+        <button
+          type="button"
+          onClick={() => navigate("/user/login")}
+          className="text-[13px] font-medium text-[#8e8e93] underline underline-offset-2"
+        >
+          사용자로 로그인
+        </button>
       </div>
-    </FlowShell>
+    </section>
   );
 }
 
@@ -147,190 +166,374 @@ const COACHING_TYPE_LABEL: Record<CoachingSupport, string> = {
   both: "개인·2인 그룹 모두",
 };
 
+/**
+ * I2~I4 세 화면(프로필 1/3·2/3·3/3)에 걸쳐 쓰는 초안.
+ * 서버에 저장해야 의미가 생기는 임시값이라 AppState까지 들고 가지 않고
+ * 모듈 스코프에만 둔다 — 화면을 오가는 동안만 살아있으면 된다.
+ */
+const influencerProfileDraft = {
+  primaryStyle: "로맨틱",
+  secondaryStyle: "캐주얼",
+  bodyType: "웨이브",
+  fitConcerns: ["밑위·하의 길이", "전체 기장·비율"] as string[],
+  budgetMinCode: 2,
+  budgetMaxCode: 3,
+  budgetApproach: budgetApproaches[0] as string,
+  tpos: ["new_semester", "daily", "travel"] as string[],
+  coachingType: "both" as CoachingSupport,
+};
+
+/** I2 · 프로필 1/3 대표 스타일. */
 export function InfluencerProfileScreen() {
   const navigate = useNavigate();
-  const [primaryStyle, setPrimaryStyle] = useState("로맨틱");
-  const [secondaryStyle, setSecondaryStyle] = useState("캐주얼");
-  const [bodyType, setBodyType] = useState("웨이브");
-  const [concerns, setConcerns] = useState([
-    "밑위·하의 길이",
-    "전체 기장·비율",
-  ]);
-  const [budgetMinCode, setBudgetMinCode] = useState(2);
-  const [budgetMaxCode, setBudgetMaxCode] = useState(3);
-  // 어휘는 반드시 사용자 쪽과 같은 목록에서 가져온다. 직접 문자열을 쓰면 매칭이 조용히 0점이 된다.
-  const [budgetApproach, setBudgetApproach] = useState<string>(budgetApproaches[0]);
-  // TPO는 내부 코드로 들고 화면에만 tpoLabel()로 바꿔 보여준다.
-  const [occasions, setOccasions] = useState<string[]>([
-    "new_semester",
-    "daily",
-    "travel",
-  ]);
-  const [coachingType, setCoachingType] = useState<CoachingSupport>("both");
+  const [primaryStyle, setPrimaryStyle] = useState(influencerProfileDraft.primaryStyle);
+  const [secondaryStyle, setSecondaryStyle] = useState(influencerProfileDraft.secondaryStyle);
+
+  return (
+    <section className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col bg-white">
+      <StepHeader
+        stepLabel="1 / 3"
+        progress={1 / 3}
+        onBack={() => navigate("/influencer/login")}
+        title={
+          <>
+            사용자와의 매칭에 활용될
+            <br />
+            스타일링 정보를 입력해 주세요.
+          </>
+        }
+        description={
+          <>
+            프로필은 첫 로그인에 1회만 작성해요.
+            <br />
+            완료 후에는 수정할 수 없으니 신중히 입력해 주세요.
+          </>
+        }
+      />
+      <div className="flex flex-1 flex-col px-5 pb-6 pt-[34px]">
+        <div className="flex items-center justify-between">
+          <p className="text-[19px] font-bold tracking-[-0.38px] text-[#0a0a0a]">대표 스타일 1순위</p>
+          <p className="text-[12px] text-[#8e8e93]">1개 선택</p>
+        </div>
+        <div className="mt-[14px] flex gap-[11px] overflow-x-auto pb-1" role="radiogroup" aria-label="대표 스타일 1순위">
+          {styleOptions.map((style) => {
+            const selected = primaryStyle === style.name;
+            return (
+              <button
+                key={style.name}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                onClick={() => {
+                  if (style.name !== secondaryStyle) setPrimaryStyle(style.name);
+                }}
+                className="flex w-[122px] shrink-0 flex-col items-start gap-[9px]"
+              >
+                <span
+                  className={
+                    selected
+                      ? "relative flex h-[153px] w-[122px] items-center justify-center rounded-[14px] border-2 border-[#0a0a0a] bg-[#f2f2f5]"
+                      : "relative flex h-[153px] w-[122px] items-center justify-center rounded-[14px] bg-[#f2f2f5]"
+                  }
+                >
+                  <img src={iconAvatar} alt="" className="size-6" />
+                  {selected ? <img src={iconCheck} alt="" className="absolute right-1.5 top-1.5 size-6" /> : null}
+                </span>
+                <span
+                  className={selected ? "text-[12px] font-bold text-[#0a0a0a]" : "text-[12px] font-medium text-[#3c3c43]"}
+                >
+                  {style.name}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mt-[34px] flex items-center justify-between">
+          <p className="text-[19px] font-bold tracking-[-0.38px] text-[#0a0a0a]">대표 스타일 2순위</p>
+          <p className="text-[12px] text-[#8e8e93]">1순위와 중복 불가</p>
+        </div>
+        <div className="mt-[14px] flex flex-wrap gap-2">
+          {styleOptions.map((style) => (
+            <SelectChip
+              key={style.name}
+              selected={secondaryStyle === style.name}
+              disabled={primaryStyle === style.name}
+              onClick={() => setSecondaryStyle(style.name)}
+            >
+              {style.name}
+            </SelectChip>
+          ))}
+        </div>
+        <p className="mt-5 text-[12px] text-[#8e8e93]">1순위와 2순위는 매칭 점수의 스타일 항목에 함께 반영돼요.</p>
+      </div>
+      <PrimaryCta
+        onClick={() => {
+          influencerProfileDraft.primaryStyle = primaryStyle;
+          influencerProfileDraft.secondaryStyle = secondaryStyle;
+          navigate("/influencer/profile/body");
+        }}
+        disabled={primaryStyle === secondaryStyle}
+      >
+        다음
+      </PrimaryCta>
+    </section>
+  );
+}
+
+/** I3 · 프로필 2/3 담당 범위. */
+export function InfluencerProfileBodyScreen() {
+  const navigate = useNavigate();
+  const [bodyType, setBodyType] = useState(influencerProfileDraft.bodyType);
+  const [concerns, setConcerns] = useState<string[]>(influencerProfileDraft.fitConcerns);
+
+  const toggleConcern = (value: string) => {
+    if (concerns.includes(value)) {
+      setConcerns(concerns.filter((item) => item !== value));
+    } else if (concerns.length < 3) {
+      setConcerns([...concerns, value]);
+    }
+  };
+
+  return (
+    <section className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col bg-white">
+      <StepHeader
+        stepLabel="2 / 3"
+        progress={2 / 3}
+        onBack={() => navigate("/influencer/profile")}
+        title={
+          <>
+            어떤 핏 고민을
+            <br />
+            자주 다루나요?
+          </>
+        }
+        description="사용자가 입력한 핏 고민과 같은 기준으로 비교돼요."
+      />
+      <div className="flex flex-1 flex-col px-5 pb-6 pt-[34px]">
+        <div className="flex items-center justify-between">
+          <p className="text-[19px] font-bold tracking-[-0.38px] text-[#0a0a0a]">본인의 체형 유형</p>
+          <p className="text-[12px] text-[#8e8e93]">1개 선택</p>
+        </div>
+        <div className="mt-[14px] flex gap-[10px]" role="radiogroup" aria-label="본인의 체형 유형">
+          {bodyTypes.map((type) => {
+            const selected = bodyType === type.name;
+            return (
+              <button
+                key={type.name}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                onClick={() => setBodyType(type.name)}
+                className="flex w-[111px] flex-col items-start gap-[9px]"
+              >
+                <span
+                  className={
+                    selected
+                      ? "relative flex h-[139px] w-[111px] items-center justify-center rounded-[14px] border-2 border-[#0a0a0a] bg-[#f2f2f5]"
+                      : "relative flex h-[139px] w-[111px] items-center justify-center rounded-[14px] bg-[#f2f2f5]"
+                  }
+                >
+                  <img src={iconAvatar} alt="" className="size-6" />
+                  {selected ? <img src={iconCheck} alt="" className="absolute right-1.5 top-1.5 size-6" /> : null}
+                </span>
+                <span
+                  className={selected ? "text-[12px] font-bold text-[#0a0a0a]" : "text-[12px] font-medium text-[#3c3c43]"}
+                >
+                  {type.name}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mt-[34px] flex items-center justify-between">
+          <p className="text-[19px] font-bold tracking-[-0.38px] text-[#0a0a0a]">자주 다루는 핏 고민</p>
+          <p className="text-[12px] text-[#8e8e93]">{concerns.length} / 3</p>
+        </div>
+        <div className="mt-[14px] flex flex-wrap gap-2">
+          {fitConcerns.map((concern) => (
+            <SelectChip
+              key={concern}
+              selected={concerns.includes(concern)}
+              disabled={!concerns.includes(concern) && concerns.length >= 3}
+              onClick={() => toggleConcern(concern)}
+            >
+              {concern}
+            </SelectChip>
+          ))}
+        </div>
+        <p className="mt-5 text-[12px] text-[#8e8e93]">1~3개까지 고를 수 있어요.</p>
+      </div>
+      <PrimaryCta
+        onClick={() => {
+          influencerProfileDraft.bodyType = bodyType;
+          influencerProfileDraft.fitConcerns = concerns;
+          navigate("/influencer/profile/budget");
+        }}
+        disabled={concerns.length === 0}
+      >
+        다음
+      </PrimaryCta>
+    </section>
+  );
+}
+
+/** I4 · 프로필 3/3 가격과 TPO. */
+export function InfluencerProfileBudgetScreen() {
+  const navigate = useNavigate();
+  const [budgetMinCode, setBudgetMinCode] = useState(influencerProfileDraft.budgetMinCode);
+  const [budgetMaxCode, setBudgetMaxCode] = useState(influencerProfileDraft.budgetMaxCode);
+  const [budgetApproach, setBudgetApproach] = useState(influencerProfileDraft.budgetApproach);
+  const [occasions, setOccasions] = useState<string[]>(influencerProfileDraft.tpos);
+  const [coachingType, setCoachingType] = useState<CoachingSupport>(influencerProfileDraft.coachingType);
   const [showError, setShowError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
-  // 강점 TPO는 사용자 TPO 후보와 같은 8개에서 고른다 (STYLE_SCORING_DRAFT.md 2.4).
-  const valid =
-    primaryStyle !== secondaryStyle &&
-    concerns.length > 0 &&
-    occasions.length === REQUIRED_PROFILE_TPO_COUNT;
+
+  const toggleOccasion = (value: string) => {
+    if (occasions.includes(value)) {
+      setOccasions(occasions.filter((item) => item !== value));
+    } else if (occasions.length < REQUIRED_PROFILE_TPO_COUNT) {
+      setOccasions([...occasions, value]);
+    }
+  };
+
+  // 강점 TPO는 사용자 TPO 후보와 같은 8개에서 정확히 고른다 (STYLE_SCORING_DRAFT.md 2.4).
+  const valid = occasions.length === REQUIRED_PROFILE_TPO_COUNT;
+
+  const submit = () => {
+    if (!valid) {
+      setShowError(true);
+      return;
+    }
+    setSaving(true);
+    setSaveError("");
+    // 서버에 저장해야 매칭 후보가 된다. localStorage에만 두면 아무도 찾지 못한다.
+    void saveInfluencerProfile({
+      primaryStyle: influencerProfileDraft.primaryStyle,
+      secondaryStyle: influencerProfileDraft.secondaryStyle,
+      bodyType: influencerProfileDraft.bodyType,
+      fitConcerns: influencerProfileDraft.fitConcerns,
+      budgetMinCode,
+      budgetMaxCode,
+      budgetApproach,
+      tpos: occasions,
+      coachingType,
+    })
+      .then(() => navigate("/influencer/requests"))
+      .catch((error: unknown) => {
+        setSaveError(error instanceof Error ? error.message : "프로필을 저장하지 못했어요.");
+        setSaving(false);
+      });
+  };
+
   return (
-    <FlowShell
-      flow="influencer"
-      step={1}
-      eyebrow="FIRST PROFILE"
-      title={
-        <>
-          사용자와의 매칭에 활용될
-          <br />
-          스타일링 정보를 입력해 주세요.
-        </>
-      }
-      description="프로필은 테스트 계정별 첫 로그인 시 한 번만 생성합니다."
-      actions={
-        <>
-          <button className="btn-ghost" type="button" onClick={() => navigate("/influencer/login")}>
-            이전
-          </button>
-          <button
-            className="btn-primary"
-            type="button"
-            disabled={saving}
-            onClick={() => {
-              if (!valid) {
-                setShowError(true);
-                return;
-              }
-              setSaving(true);
-              setSaveError("");
-              // 서버에 저장해야 매칭 후보가 된다. localStorage에만 두면 아무도 찾지 못한다.
-              void saveInfluencerProfile({
-                primaryStyle,
-                secondaryStyle,
-                bodyType,
-                fitConcerns: concerns,
-                budgetMinCode,
-                budgetMaxCode,
-                budgetApproach,
-                tpos: occasions,
-                coachingType,
-              })
-                .then(() => navigate("/influencer/requests"))
-                .catch((error: unknown) => {
-                  setSaveError(
-                    error instanceof Error ? error.message : "프로필을 저장하지 못했어요.",
-                  );
-                  setSaving(false);
-                });
+    <section className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col bg-white">
+      <StepHeader
+        stepLabel="3 / 3"
+        progress={1}
+        onBack={() => navigate("/influencer/profile/body")}
+        title={
+          <>
+            담당 가능한 가격대와
+            <br />
+            강점 상황을 알려주세요.
+          </>
+        }
+        description="코디 세트 1개(상의 1개 + 하의 1개) 총액 기준이에요."
+      />
+      <div className="flex flex-1 flex-col px-5 pb-6 pt-[34px]">
+        <p className="text-[30px] font-bold leading-[1.28] tracking-[-0.9px] text-[#0a0a0a]">
+          {budgetRangeLabel(budgetMinCode, budgetMaxCode)}
+        </p>
+        <div className="mt-[18px]">
+          <BudgetRangeSlider
+            minCode={budgetMinCode}
+            maxCode={budgetMaxCode}
+            onChange={({ minCode, maxCode }) => {
+              setBudgetMinCode(minCode);
+              setBudgetMaxCode(maxCode);
             }}
-          >
-            프로필 완성하기 <span aria-hidden="true">✓</span>
-          </button>
-        </>
-      }
-    >
-      <div className="field">
-        <div className="field-label">대표 스타일 1순위 <span className="required">1개</span></div>
-        <SingleChoice values={styleOptions.map((option) => option.name)} selected={primaryStyle} onChange={setPrimaryStyle} disabled={secondaryStyle} />
+          />
+        </div>
+
+        <div className="mt-9 flex items-center justify-between">
+          <p className="text-[19px] font-bold tracking-[-0.38px] text-[#0a0a0a]">예산 접근 방식</p>
+          <p className="text-[12px] text-[#8e8e93]">1개 선택</p>
+        </div>
+        <div className="mt-[14px] flex flex-wrap gap-2">
+          {budgetApproaches.map((approach) => (
+            <SelectChip key={approach} selected={budgetApproach === approach} onClick={() => setBudgetApproach(approach)}>
+              {approach}
+            </SelectChip>
+          ))}
+        </div>
+
+        <div className="mt-9 flex items-center justify-between">
+          <p className="text-[19px] font-bold tracking-[-0.38px] text-[#0a0a0a]">강점 상황 (TPO)</p>
+          <p className="text-[12px] text-[#8e8e93]">{occasions.length} / {REQUIRED_PROFILE_TPO_COUNT}</p>
+        </div>
+        <div className="mt-[14px] flex flex-wrap gap-2">
+          {TPO_CODES.map((code) => (
+            <SelectChip
+              key={code}
+              selected={occasions.includes(code)}
+              disabled={!occasions.includes(code) && occasions.length >= REQUIRED_PROFILE_TPO_COUNT}
+              onClick={() => toggleOccasion(code)}
+            >
+              {tpoLabel(code)}
+            </SelectChip>
+          ))}
+        </div>
+
+        <div className="mt-9 flex items-center justify-between">
+          <p className="text-[19px] font-bold tracking-[-0.38px] text-[#0a0a0a]">지원 스타일링 유형</p>
+          <p className="text-[12px] text-[#8e8e93]">1개 선택</p>
+        </div>
+        <div className="mt-[14px] flex flex-wrap gap-2">
+          {(Object.keys(COACHING_TYPE_LABEL) as CoachingSupport[]).map((value) => (
+            <SelectChip key={value} selected={coachingType === value} onClick={() => setCoachingType(value)}>
+              {COACHING_TYPE_LABEL[value]}
+            </SelectChip>
+          ))}
+        </div>
+        <p className="mt-5 text-[12px] text-[#8e8e93]">지원 유형은 후보 자격만 판단하고 매칭 점수에는 들어가지 않아요.</p>
+
+        {showError && !valid ? (
+          <p className="mt-3 text-[13px] font-semibold text-[#0a0a0a]">강점 상황(TPO)을 정확히 {REQUIRED_PROFILE_TPO_COUNT}개 골라주세요.</p>
+        ) : null}
+        {saveError ? (
+          <p className="mt-3 text-[13px] font-semibold text-[#0a0a0a]" aria-live="polite">
+            {saveError}
+          </p>
+        ) : null}
       </div>
-      <div className="field">
-        <div className="field-label">대표 스타일 2순위 <span className="required">1순위와 다르게</span></div>
-        <SingleChoice values={styleOptions.map((option) => option.name)} selected={secondaryStyle} onChange={setSecondaryStyle} disabled={primaryStyle} />
-      </div>
-      <div className="field">
-        <div className="field-label">본인의 체형 유형 <span className="required">1개</span></div>
-        <SingleChoice values={["스트레이트", "웨이브", "내추럴"]} selected={bodyType} onChange={setBodyType} />
-      </div>
-      <div className="field">
-        <div className="field-label choice-title">자주 다루는 핏 고민 <span className="choice-count">최대 2개</span></div>
-        <ChipChoices values={fitConcerns} selected={concerns} max={2} onChange={setConcerns} />
-      </div>
-      <div className="field">
-        <div className="field-label choice-title">제안 가능한 가격대</div>
-        <BudgetRangeSlider
-          minCode={budgetMinCode}
-          maxCode={budgetMaxCode}
-          onChange={({ minCode, maxCode }) => {
-            setBudgetMinCode(minCode);
-            setBudgetMaxCode(maxCode);
-          }}
-        />
-      </div>
-      <div className="field">
-        <div className="field-label">예산 접근 방식 <span className="required">1개</span></div>
-        <SingleChoice values={budgetApproaches} selected={budgetApproach} onChange={setBudgetApproach} />
-      </div>
-      <div className="field">
-        <div className="field-label">코칭 강점 TPO <span className="required">정확히 {REQUIRED_PROFILE_TPO_COUNT}개</span></div>
-        <ChipChoices
-          values={TPO_CODES}
-          selected={occasions}
-          max={REQUIRED_PROFILE_TPO_COUNT}
-          onChange={setOccasions}
-          labelFor={tpoLabel}
-        />
-      </div>
-      <div className="field">
-        <div className="field-label">지원 스타일링 유형 <span className="required">1개</span></div>
-        <SingleChoice
-          values={Object.keys(COACHING_TYPE_LABEL)}
-          selected={coachingType}
-          onChange={(value) => setCoachingType(value as CoachingSupport)}
-          labelFor={(value) => COACHING_TYPE_LABEL[value as CoachingSupport]}
-        />
-      </div>
-      {showError && !valid ? <p className="error-copy" style={{ display: "block" }}>필수 항목을 모두 선택해 주세요.</p> : null}
-      {saveError ? <p className="error-copy" style={{ display: "block" }} aria-live="polite">{saveError}</p> : null}
-    </FlowShell>
+      <PrimaryCta onClick={submit} disabled={saving}>
+        {saving ? "저장하는 중이에요." : "프로필 완성하기"}
+      </PrimaryCta>
+    </section>
   );
 }
 
-function SingleChoice({
-  values,
-  selected,
-  onChange,
-  disabled,
-  labelFor,
-}: {
-  values: readonly string[];
-  selected: string;
-  onChange: (value: string) => void;
-  disabled?: string;
-  /** 내부 코드를 값으로 쓰면서 화면에는 한글 라벨을 보여줄 때 넘긴다. */
-  labelFor?: (value: string) => string;
-}) {
-  return (
-    <div className="chip-wrap" role="radiogroup">
-      {values.map((value) => (
-        <button
-          className={`chip ${selected === value ? "selected" : ""}`}
-          type="button"
-          role="radio"
-          aria-checked={selected === value}
-          disabled={disabled === value}
-          key={value}
-          onClick={() => onChange(value)}
-        >
-          {labelFor ? labelFor(value) : value}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function sentAtLabel(sentAt: string | null) {
+function requestSentAtLabel(sentAt: string | null) {
   if (!sentAt) return "전송 시각 없음";
   const date = new Date(sentAt);
-  return `부탁해요 카드 · ${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}.`;
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  const hh = String(date.getHours()).padStart(2, "0");
+  const min = String(date.getMinutes()).padStart(2, "0");
+  return `${mm}.${dd} ${hh}:${min} 요청`;
 }
 
+/** I5 · 스타일링 요청 목록. */
 export function InfluencerRequestsScreen() {
   const navigate = useNavigate();
   const { dispatch } = useAppState();
-  const { account } = useAuth();
+  const { account, signOut } = useAuth();
   const [requests, setRequests] = useState<AssignedRequestView[]>([]);
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
+  const [filter, setFilter] = useState<"all" | "needed" | "delivered">("all");
 
   // 내게 배정된 요청만 받는다. 수신자 판별은 서버가 토큰으로 한다.
   useEffect(() => {
@@ -349,62 +552,122 @@ export function InfluencerRequestsScreen() {
     return () => controller.abort();
   }, [account?.accountId]);
 
+  const visibleRequests = requests.filter((request) => {
+    if (filter === "needed") return !request.delivered;
+    if (filter === "delivered") return request.delivered;
+    return true;
+  });
+
   return (
-    <FlowShell
-      flow="influencer"
-      step={2}
-      eyebrow="MY REQUESTS"
-      title="스타일링 요청 목록"
-      description={`${account?.displayName ?? "내"} 계정에 배정된 요청만 표시합니다.`}
-      actions={
-        <>
-          <span className="draft-state">◇ 다른 스타일메이트의 요청은 표시하지 않아요.</span>
-          <button className="btn-secondary" type="button" onClick={() => navigate("/")}>로그아웃</button>
-        </>
-      }
-    >
-      {status === "loading" ? (
-        <div className="soft-card" aria-live="polite">배정된 요청을 불러오는 중이에요.</div>
-      ) : null}
-      {status === "error" ? (
-        <div className="soft-card" aria-live="polite">
-          <p className="error-copy" style={{ display: "block" }}>배정 요청을 불러오지 못했어요.</p>
-        </div>
-      ) : null}
-      {status === "success" && requests.length === 0 ? (
-        <div className="soft-card" aria-live="polite">
-          <p>아직 배정된 요청이 없어요.</p>
-          <p className="helper">사용자가 부탁해요 카드를 보내면 여기에 표시돼요.</p>
-        </div>
-      ) : null}
-      <div className="influencer-list">
-        {requests.map((request) => (
-          <button
-            className="request-row"
-            type="button"
-            aria-label={`요청 ${request.delivered ? "전달 완료" : "작성 필요"}`}
-            key={request.requestCardId}
-            onClick={() => {
-              // 상세 화면이 이 매칭 id로 사용자 진단 결과를 조회한다.
-              dispatch({ type: "selectRequest", requestId: request.matchResultId });
-              navigate(request.delivered ? "/influencer/delivered" : "/influencer/detail");
-            }}
-          >
-            <span>
-              <span className="request-meta">
-                <span className="badge">{request.coachingType === "group" ? "2인 그룹" : "개인"}</span>
-                <span className="badge blue">{request.tpoLabel}</span>
-              </span>
-              <h3>{request.coachingType === "group" ? "2인 그룹 스타일링" : "개인 스타일링"}</h3>
-              <p>{sentAtLabel(request.sentAt)}</p>
-            </span>
-            <span className={request.delivered ? "state-done" : "state-needed"}>
-              {request.delivered ? "전달 완료" : "작성 필요"} <span aria-hidden="true">›</span>
-            </span>
-          </button>
-        ))}
+    <section className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col bg-white">
+      <div className="flex min-h-[56px] items-center gap-[9px] px-5">
+        <p className="text-[16px] font-semibold tracking-[-0.32px] text-[#0a0a0a]">Fitto</p>
+        <Pill>인플루언서</Pill>
+        <div className="flex-1" />
+        <button
+          type="button"
+          onClick={() => void signOut().then(() => navigate("/"))}
+          className="text-[12px] font-medium text-[#8e8e93]"
+        >
+          로그아웃
+        </button>
       </div>
-    </FlowShell>
+      <div className="flex flex-1 flex-col px-5 pb-6 pt-2">
+        <h1 className="m-0 text-[24px] font-bold leading-[1.34] tracking-[-0.6px] text-[#0a0a0a]">
+          스타일링 요청 목록
+        </h1>
+        <p className="mt-[10px] text-[15px] leading-[1.52] text-[#8e8e93]">
+          나에게 배정된 요청만 보여요.
+          <br />
+          코디 카드는 요청당 1회 전달할 수 있어요.
+        </p>
+        {/*
+          탭 라벨이 상태 배지("작성 필요"/"전달 완료")와 같은 글자를 써서, 일반 button
+          role로 두면 테스트/스크린리더가 요청 카드 버튼과 헷갈린다. role="tab"으로
+          분리해 둔다.
+        */}
+        <div className="mt-[26px] flex gap-2" role="tablist" aria-label="요청 상태 필터">
+          {(
+            [
+              ["all", "전체"],
+              ["needed", "작성 필요"],
+              ["delivered", "전달 완료"],
+            ] as const
+          ).map(([value, label]) => {
+            const selected = filter === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                onClick={() => setFilter(value)}
+                className={
+                  selected
+                    ? "inline-flex min-h-[40px] shrink-0 items-center whitespace-nowrap rounded-full border border-[#0a0a0a] bg-[#0a0a0a] px-[15px] text-[14px] font-medium tracking-[-0.21px] text-white"
+                    : "inline-flex min-h-[40px] shrink-0 items-center whitespace-nowrap rounded-full border border-[#e8e8ec] bg-white px-[15px] text-[14px] font-medium tracking-[-0.21px] text-[#3c3c43]"
+                }
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+        <div className="mt-[22px] flex flex-col gap-3">
+          {status === "loading" ? <p className="text-[13px] text-[#8e8e93]">배정된 요청을 불러오는 중이에요.</p> : null}
+          {status === "error" ? <p className="text-[13px] text-[#8e8e93]">배정 요청을 불러오지 못했어요.</p> : null}
+          {status === "success" && visibleRequests.length === 0 ? (
+            <div className="rounded-[18px] bg-[#f5f5f7] p-5 text-center">
+              <p className="text-[14px] text-[#0a0a0a]">아직 배정된 요청이 없어요.</p>
+              <p className="mt-1 text-[13px] text-[#8e8e93]">사용자가 부탁해요 카드를 보내면 여기에 표시돼요.</p>
+            </div>
+          ) : null}
+          {visibleRequests.map((request) => (
+            <button
+              key={request.requestCardId}
+              type="button"
+              aria-label={`요청 ${request.delivered ? "전달 완료" : "작성 필요"}`}
+              onClick={() => {
+                // 상세 화면이 이 매칭 id로 사용자 진단 결과를 조회한다.
+                dispatch({ type: "selectRequest", requestId: request.matchResultId });
+                navigate(request.delivered ? "/influencer/delivered" : "/influencer/detail");
+              }}
+              className={
+                request.delivered
+                  ? "flex flex-col items-start rounded-[20px] bg-[#f5f5f7] px-5 pb-[18px] pt-5 text-left"
+                  : "flex flex-col items-start rounded-[20px] border-[1.6px] border-[#0a0a0a] bg-white px-5 pb-[18px] pt-5 text-left shadow-[0_6px_18px_rgba(0,0,0,0.06)]"
+              }
+            >
+              <div className="flex w-full items-center gap-[10px]">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#ededf0]">
+                  <img src={iconAvatar} alt="" className="size-[22px]" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[16px] font-semibold tracking-[-0.32px] text-[#0a0a0a]">
+                    {request.coachingType === "group" ? "2인 그룹 스타일링" : "개인 스타일링"}
+                  </p>
+                  <p className="truncate text-[11px] text-[#8e8e93]">{requestSentAtLabel(request.sentAt)}</p>
+                </div>
+                <Pill tone={request.delivered ? "light" : "dark"}>{request.delivered ? "전달 완료" : "작성 필요"}</Pill>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-[6px]">
+                <Pill>{request.coachingType === "group" ? "2인 그룹" : "개인"}</Pill>
+                <Pill>{request.tpoLabel}</Pill>
+              </div>
+              <div className="mt-[14px] flex w-full items-center gap-[6px] border-t border-[#e8e8ec] pt-[14px]">
+                <span className="text-[12px] text-[#0a0a0a]">
+                  {request.delivered ? "전달한 카드 보기" : "요청 내용 보기"}
+                </span>
+                <div className="flex-1" />
+                <span aria-hidden="true" className="text-[#8e8e93]">
+                  ›
+                </span>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -453,6 +716,7 @@ export function InfluencerDetailScreen() {
   const [reviewStatus, setReviewStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [reviewResult, setReviewResult] = useState<OutfitReviewResponse | null>(null);
   const [deliverError, setDeliverError] = useState("");
+  const [openSection, setOpenSection] = useState<"dna" | "request" | null>("dna");
   const draftValid = isValidOutfitDraft(draft);
 
   useEffect(() => {
@@ -529,186 +793,229 @@ export function InfluencerDetailScreen() {
 
   return (
     <>
-      <FlowShell
-        flow="influencer"
-        step={3}
-        eyebrow="REQUEST DETAIL"
-        title="코디 카드 작성"
-        description={
-          diagnosis
-            ? `${diagnosis.coachingType === "group" ? "2인 그룹 스타일링" : "개인 스타일링"} · ${diagnosis.tpoLabel}`
-            : "요청 내용을 불러오는 중이에요."
-        }
-        actions={
-          <>
-            <span className="draft-state">{draftState}</span>
+      <section className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col bg-white">
+        <TopBar onBack={() => navigate("/influencer/requests")} />
+        <div className="flex items-center gap-2 border-y border-[#e8e8ec] px-5 py-[10px]">
+          <p className="text-[12px] text-[#3c3c43]">
+            {/* 피그마엔 "bf.user01 · 개인 · 개강 행사"처럼 요청자 이름이 있지만,
+                진단 결과 응답에 사용자 로그인 아이디가 없어서 뺐다 (요청자 표시 항목 참고). */}
+            {diagnosis
+              ? `${diagnosis.coachingType === "group" ? "2인 그룹" : "개인"} · ${diagnosis.tpoLabel}`
+              : "요청 내용을 불러오는 중이에요."}
+          </p>
+          <div className="flex-1" />
+          <Pill tone="dark">작성 필요</Pill>
+        </div>
+        <div className="flex flex-1 flex-col px-5 pb-6 pt-5">
+          <h1 className="m-0 text-[24px] font-bold tracking-[-0.6px] text-[#0a0a0a]">코디 카드 작성</h1>
+          <div className="h-5" />
+
+          {(
+            <div className="flex flex-col gap-[11px] rounded-[18px] bg-[#f5f5f7] px-[18px] pb-[14px] pt-[6px]">
+              <div className="flex gap-[14px] py-[11px]">
+                <p className="w-[92px] shrink-0 text-[12px] text-[#8e8e93]">필요한 상황</p>
+                <p className="flex-1 text-[15px] text-[#0a0a0a]">{diagnosis?.tpoLabel ?? "—"}</p>
+              </div>
+              <div className="flex gap-[14px] py-[11px]">
+                <p className="w-[92px] shrink-0 text-[12px] text-[#8e8e93]">공통 조건</p>
+                <p className="flex-1 text-[15px] text-[#0a0a0a]">
+                  {diagnosis
+                    ? `${diagnosis.coachingType === "group" ? "2인 그룹 스타일링" : "개인 스타일링"}${
+                        diagnosis.groupCombination?.score != null ? ` · 그룹 스타일 조합도 ${diagnosis.groupCombination.score}` : ""
+                      }`
+                    : "—"}
+                </p>
+              </div>
+              <div className="flex gap-[14px] py-[11px]">
+                <p className="w-[92px] shrink-0 text-[12px] text-[#8e8e93]">요청 예산</p>
+                <p className="flex-1 text-[15px] text-[#0a0a0a]">
+                  {/* 예산은 요청 정보라서 인플루언서가 수정하지 않는다 (INFLUENCER_SCREEN_SPEC.md 3.4). */}
+                  {diagnosis?.members
+                    .map((member) => (member.memberLabel === "self" ? member.budgetLabel : `${member.memberLabel} ${member.budgetLabel}`))
+                    .join(" · ") || "—"}
+                </p>
+              </div>
+              <p className="text-[11px] font-semibold text-[#8e8e93]">요청 정보는 수정할 수 없어요.</p>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setOpenSection((s) => (s === "dna" ? null : "dna"))}
+            className="mt-[26px] flex w-full items-center gap-[10px] border-t border-[#e8e8ec] py-[18px]"
+          >
+            <span className="text-[19px] font-bold tracking-[-0.38px] text-[#0a0a0a]">스타일 진단 결과</span>
+            <div className="flex-1" />
+            <img src={iconChevronDown} alt="" className={`size-[22px] transition-transform ${openSection === "dna" ? "rotate-180" : ""}`} />
+          </button>
+          {openSection === "dna" ? (
+            <>
+              {diagnosisStatus === "loading" ? <p className="text-[13px] text-[#8e8e93]">진단 결과를 불러오는 중이에요.</p> : null}
+              {diagnosisStatus === "error" ? <p className="text-[13px] text-[#8e8e93]">진단 결과를 불러오지 못했어요.</p> : null}
+              {diagnosis ? (
+                <>
+                  <p className="text-[15px] leading-[1.52] text-[#0a0a0a]">{diagnosis.styleDnaSummary}</p>
+                  {diagnosis.members[0]?.keywords.length ? (
+                    <div className="mt-3 flex flex-wrap gap-[6px]">
+                      {diagnosis.members[0].keywords.map((keyword) => (
+                        <Pill key={keyword}>#{keyword}</Pill>
+                      ))}
+                    </div>
+                  ) : null}
+                  <div className="mt-2 flex flex-col">
+                    {diagnosis.members.map((member) => (
+                      <div key={member.memberLabel} className="flex gap-[14px] py-[11px]">
+                        <p className="w-[92px] shrink-0 text-[12px] text-[#8e8e93]">
+                          {member.memberLabel === "self" ? "핏 고민" : `${member.memberLabel} 핏 고민`}
+                        </p>
+                        <p className="flex-1 text-[15px] text-[#0a0a0a]">{member.fitConcerns.join(" / ") || "—"}</p>
+                      </div>
+                    ))}
+                    {diagnosis.members.map((member) => (
+                      <div key={`${member.memberLabel}-pref`} className="flex gap-[14px] py-[11px]">
+                        <p className="w-[92px] shrink-0 text-[12px] text-[#8e8e93]">
+                          {member.memberLabel === "self" ? "선호 / 비선호" : `${member.memberLabel} 선호/비선호`}
+                        </p>
+                        <p className="flex-1 text-[15px] text-[#0a0a0a]">
+                          {member.preferredStyle} / {member.avoidedStyle}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                  {diagnosis.members[0]?.preferredItems.length ? (
+                    <>
+                      <p className="mt-1 text-[11px] font-semibold text-[#8e8e93]">선호 아이템</p>
+                      <div className="mt-[10px] flex gap-[10px]">
+                        {diagnosis.members[0].preferredItems.map((item) => (
+                          <div key={item} className="flex flex-col items-center gap-[7px]">
+                            <span className="flex size-14 items-center justify-center rounded-[12px] bg-[#f2f2f5]">
+                              <img src={iconItemPlaceholder} alt="" className="size-[22px]" />
+                            </span>
+                            <p className="max-w-[70px] text-center text-[11px] font-semibold text-[#3c3c43]">{item}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : null}
+                </>
+              ) : null}
+            </>
+          ) : null}
+
+          <button
+            type="button"
+            onClick={() => setOpenSection((s) => (s === "request" ? null : "request"))}
+            className="flex w-full items-center gap-[10px] border-t border-[#e8e8ec] py-[18px]"
+          >
+            <span className="text-[19px] font-bold tracking-[-0.38px] text-[#0a0a0a]">부탁해요 카드</span>
+            <div className="flex-1" />
+            <img
+              src={iconChevronDown}
+              alt=""
+              className={`size-[22px] transition-transform ${openSection === "request" ? "rotate-180" : ""}`}
+            />
+          </button>
+          {openSection === "request" ? (
+            <div className="border-b border-[#e8e8ec] pb-5">
+              <Pill>읽기 전용</Pill>
+              <p className="mt-3 whitespace-pre-wrap text-[15px] leading-[1.52] text-[#0a0a0a]">
+                {/* 사용자가 보낸 원문이다. 브라우저 로컬 값을 읽으면 다른 기기에서 빈 화면이 된다. */}
+                {diagnosis?.requestCard?.messageText ||
+                  (diagnosisStatus === "loading" ? "요청 내용을 불러오는 중이에요." : "전달된 요청 내용이 없어요.")}
+              </p>
+              {diagnosis?.requestCard?.sentAt ? (
+                <p className="mt-[10px] text-[11px] font-semibold text-[#8e8e93]">
+                  {new Date(diagnosis.requestCard.sentAt).toLocaleDateString("ko-KR", {
+                    month: "2-digit",
+                    day: "2-digit",
+                  })}{" "}
+                  {new Date(diagnosis.requestCard.sentAt).toLocaleTimeString("ko-KR", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: false,
+                  })}{" "}
+                  작성
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
+          <div className="mt-[18px] flex items-center gap-2 rounded-[14px] bg-[#f5f5f7] px-4 py-3">
+            <p className="text-[12px] text-[#3c3c43]">{draftState}</p>
+            <div className="flex-1" />
             <button
-              className="btn-secondary"
               type="button"
               onClick={() => {
                 saveDraft(draftOwner, state.activeRequestId, draft);
                 setDraftState("임시저장 완료");
               }}
+              className="text-[12px] font-semibold text-[#0a0a0a]"
             >
               임시저장
             </button>
-            <button className="btn-primary" type="button" disabled={!draftValid} onClick={() => {
-              setReviewStatus("idle");
-              setReviewResult(null);
-              setModal(true);
-            }}>
-              전달하기 <span aria-hidden="true">→</span>
-            </button>
-          </>
-        }
-      >
-        <button className="btn-ghost compose-back" type="button" onClick={() => navigate("/influencer/requests")}>
-          ← 배정 요청 목록
-        </button>
-        <section className="compose-section">
-          <h2 className="section-title">스타일 진단 결과</h2>
-          {diagnosisStatus === "loading" ? (
-            <div className="soft-card" aria-live="polite">진단 결과를 불러오는 중이에요.</div>
-          ) : null}
-          {diagnosisStatus === "error" ? (
-            <div className="soft-card" aria-live="polite">
-              <p className="error-copy" style={{ display: "block" }}>진단 결과를 불러오지 못했어요.</p>
-            </div>
-          ) : null}
-          {diagnosis ? (
-            <>
-              <div className="dark-card">
-                <span className="badge">Style DNA</span>
-                {/* AI2가 만든 한 줄 결과를 그대로 쓴다. */}
-                <h3>{diagnosis.styleDnaSummary}</h3>
-                {diagnosis.matchingPoints.length ? (
-                  <ul>
-                    {diagnosis.matchingPoints.map((point) => (
-                      <li key={point.text}>{point.text}</li>
-                    ))}
-                  </ul>
-                ) : null}
-              </div>
-              <div className="soft-card input-summary-card">
-                <dl className="summary-list">
-                  <div className="summary-row">
-                    <dt>공통 조건</dt>
-                    <dd>
-                      {diagnosis.coachingType === "group" ? "2인 그룹 스타일링" : "개인 스타일링"}
-                      {" · "}
-                      {/* TPO는 내부 코드로 저장되고 화면에서만 라벨로 바꾼다. */}
-                      {diagnosis.tpoLabel}
-                      {diagnosis.groupCombination?.score != null
-                        ? ` · 그룹 스타일 조합도 ${diagnosis.groupCombination.score}`
-                        : ""}
-                    </dd>
-                  </div>
-                  {diagnosis.members.map((member) => (
-                    <div className="summary-row" key={member.memberLabel}>
-                      <dt>
-                        {member.memberLabel === "self"
-                          ? "입력"
-                          : `구성원 ${member.memberLabel}`}
-                      </dt>
-                      <dd>
-                        {[
-                          member.heightCm ? `${member.heightCm}cm` : null,
-                          member.bodyType,
-                          `${member.preferredStyle} / ${member.avoidedStyle}`,
-                          member.fitConcerns.join(", "),
-                          `${member.budgetLabel} · ${member.budgetApproach}`,
-                        ]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </dd>
-                    </div>
-                  ))}
-                  {diagnosis.members.map((member) =>
-                    member.keywords.length ? (
-                      <div className="summary-row" key={`${member.memberLabel}-keywords`}>
-                        <dt>
-                          {member.memberLabel === "self"
-                            ? "키워드"
-                            : `${member.memberLabel} 키워드`}
-                        </dt>
-                        <dd>{member.keywords.join(" · ")}</dd>
-                      </div>
-                    ) : null,
-                  )}
-                </dl>
-              </div>
-            </>
-          ) : null}
-        </section>
-        <section className="compose-section">
-          <h2 className="section-title">부탁해요 카드</h2>
-          <div className="request-letter">
-            {/* 사용자가 보낸 원문이다. 브라우저 로컬 값을 읽으면 다른 기기에서 빈 화면이 된다. */}
-            <p>
-              {diagnosis?.requestCard?.messageText ||
-                (diagnosisStatus === "loading"
-                  ? "요청 내용을 불러오는 중이에요."
-                  : "전달된 요청 내용이 없어요.")}
-            </p>
-            <div className="request-budget-line">
-              <strong>요청 예산</strong>
-              {/* 예산은 요청 정보라서 인플루언서가 수정하지 않는다 (INFLUENCER_SCREEN_SPEC.md 3.4). */}
-              <span>
-                {diagnosis?.members
-                  .map((member) =>
-                    member.memberLabel === "self"
-                      ? member.budgetLabel
-                      : `${member.memberLabel} ${member.budgetLabel}`,
-                  )
-                  .join(" · ") || "—"}
-              </span>
-            </div>
           </div>
-        </section>
-        <section className="compose-section">
-          <h2 className="section-title">코디 카드 내용</h2>
-          <label className="field">
-            <span className="field-label">코디 카드 제목 <span className="required">필수</span></span>
-            <input
-              className="text-input"
-              aria-label="코디 카드 제목"
-              placeholder="예: 부드러운 캠퍼스 레이어드"
-              value={draft.title}
-              onChange={(event) => setDraft({ ...draft, title: event.target.value })}
-            />
-          </label>
-          {!isGroupDraft(draft) ? (
-            <OutfitFields
-              values={draft}
-              onChange={(key, field, value) => setPersonal(key, field, value)}
-            />
-          ) : (
-            <div className="group-result-grid">
-              <div className="soft-card">
-                <h3>구성원 A · P4</h3>
-                <OutfitFields values={draft.memberA} onChange={(key, field, value) => setGroup("memberA", key, field, value)} />
+
+          <p className="mt-[26px] text-[19px] font-bold tracking-[-0.38px] text-[#0a0a0a]">추천 코디</p>
+          <div className="mt-4 flex flex-col gap-3">
+            <label className="flex flex-col gap-2">
+              <span className="text-[12px] text-[#8e8e93]">코디 카드 제목 (필수)</span>
+              <input
+                aria-label="코디 카드 제목"
+                placeholder="예: 부드러운 캠퍼스 레이어드"
+                value={draft.title}
+                onChange={(event) => setDraft({ ...draft, title: event.target.value })}
+                className="flex min-h-[54px] w-full items-center rounded-[14px] border border-[#e8e8ec] bg-white px-4 text-[15px] text-[#0a0a0a] outline-none"
+              />
+            </label>
+            {!isGroupDraft(draft) ? (
+              <OutfitFields values={draft} onChange={(key, field, value) => setPersonal(key, field, value)} />
+            ) : (
+              <div className="flex flex-col gap-4">
+                <div>
+                  <p className="mb-2 text-[13px] font-bold text-[#0a0a0a]">구성원 A</p>
+                  <OutfitFields values={draft.memberA} onChange={(key, field, value) => setGroup("memberA", key, field, value)} />
+                </div>
+                <div>
+                  <p className="mb-2 text-[13px] font-bold text-[#0a0a0a]">구성원 B</p>
+                  <OutfitFields values={draft.memberB} onChange={(key, field, value) => setGroup("memberB", key, field, value)} />
+                </div>
               </div>
-              <div className="soft-card">
-                <h3>구성원 B · P5</h3>
-                <OutfitFields values={draft.memberB} onChange={(key, field, value) => setGroup("memberB", key, field, value)} />
-              </div>
-            </div>
-          )}
-          <label className="field">
-            <span className="field-label">스타일메이트의 한마디</span>
-            <textarea
-              className="textarea"
-              value={draft.message}
-              onChange={(event) => setDraft({ ...draft, message: event.target.value })}
-            />
-          </label>
+            )}
+          </div>
+
+          {/*
+            피그마엔 "bf.user01님께 전하는 말"처럼 요청한 사용자 이름이 들어가는데,
+            진단 결과 응답(DiagnosisResultView)에 사용자 로그인 아이디/이름 필드가 없어서
+            지어낼 수 없다 — draftOwner는 이 화면을 보는 인플루언서 자신의 계정이라
+            여기 쓰면 오히려 틀린 이름이 된다. 데이터가 추가되면 그 필드로 바꾸면 된다.
+          */}
+          <p className="mt-9 text-[19px] font-bold tracking-[-0.38px] text-[#0a0a0a]">
+            요청하신 분께 전하는 말
+          </p>
+          <textarea
+            aria-label="스타일메이트의 한마디"
+            value={draft.message}
+            onChange={(event) => setDraft({ ...draft, message: event.target.value })}
+            className="mt-[14px] min-h-[160px] w-full rounded-[18px] border-[1.6px] border-[#0a0a0a] p-[18px] text-[15px] leading-[1.52] text-[#0a0a0a] outline-none"
+          />
           {!draftValid ? (
-            <p className="error-copy outfit-error" style={{ display: "block" }}>
+            <p className="mt-3 text-[13px] font-semibold text-[#0a0a0a]">
               코디 카드 제목, 전하는 말, 상의·하의의 제품명과 http:// 또는 https://로 시작하는 상품 링크를 모두 입력해 주세요.
             </p>
           ) : null}
-        </section>
-      </FlowShell>
+          <p className="mt-5 text-[12px] text-[#8e8e93]">전달 확정 후에는 수정·삭제·재전송을 할 수 없어요.</p>
+        </div>
+        <PrimaryCta
+          disabled={!draftValid}
+          onClick={() => {
+            setReviewStatus("idle");
+            setReviewResult(null);
+            setModal(true);
+          }}
+        >
+          코디 카드 전달하기
+        </PrimaryCta>
+      </section>
       {modal ? (
         <div className="modal-backdrop open" role="presentation">
           <div className="modal" role="dialog" aria-modal="true" aria-labelledby="deliver-title">
@@ -774,28 +1081,32 @@ function OutfitFields({
         ["top", "상의"],
         ["bottom", "하의"],
       ] as const).map(([key, label]) => (
-        <div className="product-fields" key={key}>
-          <label className="field">
-            <span className="field-label">{label} 제품명</span>
+        <div className="flex flex-col gap-3" key={key}>
+          <label className="flex flex-col gap-2">
+            <span className="text-[12px] text-[#8e8e93]">{label} · 제품명</span>
             <input
-              className="text-input"
               aria-label={`${label} 제품명`}
               value={values[key].name}
               onChange={(event) => onChange(key, "name", event.target.value)}
+              className="flex min-h-[54px] w-full items-center rounded-[14px] border border-[#e8e8ec] bg-white px-4 text-[15px] text-[#0a0a0a] outline-none"
             />
           </label>
-          <label className={`field ${values[key].url && !isValidProductUrl(values[key].url) ? "is-error" : ""}`}>
-            <span className="field-label">{label} 상품 링크</span>
+          <label className="flex flex-col gap-2">
+            <span className="text-[12px] text-[#8e8e93]">{label} · 제품 링크</span>
             <input
-              className="text-input"
               aria-label={`${label} 상품 링크`}
               type="url"
               placeholder="https://example.com/product"
               value={values[key].url}
               onChange={(event) => onChange(key, "url", event.target.value)}
+              className={
+                values[key].url && !isValidProductUrl(values[key].url)
+                  ? "flex min-h-[54px] w-full items-center rounded-[14px] border border-[#0a0a0a] bg-white px-4 text-[15px] text-[#0a0a0a] outline-none"
+                  : "flex min-h-[54px] w-full items-center rounded-[14px] border border-[#e8e8ec] bg-white px-4 text-[15px] text-[#0a0a0a] outline-none"
+              }
             />
             {values[key].url && !isValidProductUrl(values[key].url) ? (
-              <span className="error-copy" style={{ display: "block" }}>유효한 http/https 링크를 입력해 주세요.</span>
+              <span className="text-[12px] font-semibold text-[#0a0a0a]">유효한 http/https 링크를 입력해 주세요.</span>
             ) : null}
           </label>
         </div>
@@ -833,89 +1144,99 @@ export function DeliveredScreen() {
   }, [state.activeRequestId]);
 
   return (
-    <FlowShell
-      flow="influencer"
-      step={4}
-      eyebrow="DELIVERED · READ ONLY"
-      title="전달 완료 코디 카드"
-      description="전달된 내용은 수정·삭제·재전송할 수 없습니다."
-      actions={
-        <button className="btn-primary" type="button" onClick={() => navigate("/influencer/requests")}>
-          내 배정 요청으로 돌아가기
+    <section className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col bg-white">
+      <div className="flex min-h-[56px] items-center gap-[9px] px-5">
+        <p className="text-[16px] font-semibold tracking-[-0.32px] text-[#0a0a0a]">Fitto</p>
+        <div className="flex-1" />
+        <button type="button" onClick={() => navigate("/")} className="text-[12px] font-medium text-[#8e8e93]">
+          로그아웃
         </button>
-      }
-    >
-      <button className="btn-ghost compose-back" type="button" onClick={() => navigate("/influencer/requests")}>← 배정 요청 목록</button>
-      <div className="readonly-banner">◇ 읽기 전용으로 열람 중</div>
-      {status === "loading" ? (
-        <div className="soft-card" aria-live="polite">전달한 코디 카드를 불러오는 중이에요.</div>
-      ) : null}
-      {status === "error" ? (
-        <div className="soft-card" aria-live="polite">
-          <p className="error-copy" style={{ display: "block" }}>전달된 코디 카드 정보를 불러오지 못했어요.</p>
+      </div>
+      <div className="flex flex-1 flex-col px-5 py-6">
+        <div>
+          <Pill tone="dark">전달 완료</Pill>
         </div>
-      ) : null}
-      {status === "success" && !card ? (
-        <div className="soft-card" aria-live="polite">
-          <p>아직 전달된 코디 카드가 없어요.</p>
-        </div>
-      ) : null}
-      {card ? <DeliveredOutfitCard card={card} /> : null}
-      <p className="helper" style={{ marginTop: 12 }}>
-        코디 카드는 전달 후 수정할 수 없어요. 이 요청의 임시저장은 삭제됐어요.
-      </p>
-    </FlowShell>
+        <div className="h-[18px]" />
+        <h1 className="m-0 text-[30px] font-bold leading-[1.28] tracking-[-0.9px] text-[#0a0a0a]">
+          코디 카드가
+          <br />
+          전달됐어요.
+        </h1>
+        <div className="h-3" />
+        <p className="text-[15px] text-[#3c3c43]">읽기 전용으로 열람 중이에요. 배정 요청 목록에서 다시 찾을 수 있어요.</p>
+        <div className="h-9" />
+
+        {status === "loading" ? <p className="text-[13px] text-[#8e8e93]">전달한 코디 카드를 불러오는 중이에요.</p> : null}
+        {status === "error" ? <p className="text-[13px] text-[#8e8e93]">전달된 코디 카드 정보를 불러오지 못했어요.</p> : null}
+        {status === "success" && !card ? <p className="text-[13px] text-[#8e8e93]">아직 전달된 코디 카드가 없어요.</p> : null}
+        {card ? <DeliveredOutfitCard card={card} /> : null}
+
+        <p className="mt-5 text-[12px] leading-[1.5] text-[#8e8e93]">
+          코디 카드는 전달 후 수정할 수 없어요.
+          <br />
+          이 요청의 임시저장은 삭제됐어요.
+        </p>
+      </div>
+      <PrimaryCta onClick={() => navigate("/influencer/requests")}>요청 목록으로 돌아가기</PrimaryCta>
+    </section>
   );
 }
 
-/** 전달된 카드를 읽기 전용으로 그린다. 인플루언서와 사용자가 같은 내용을 본다. */
+/** 전달된 카드를 읽기 전용으로 그린다. 인플루언서와 사용자가 같은 내용을 본다 (I7 / U7과 같은 몸통). */
 export function DeliveredOutfitCard({ card }: { card: OutfitCardView }) {
-  const members: Array<"self" | "A" | "B"> =
-    card.coachingType === "group" ? ["A", "B"] : ["self"];
+  const members: Array<"self" | "A" | "B"> = card.coachingType === "group" ? ["A", "B"] : ["self"];
 
   return (
-    <>
-      <div className={card.coachingType === "group" ? "group-result-grid" : ""}>
-        {members.map((memberLabel) => {
-          const items = card.items.filter((item) => item.memberLabel === memberLabel);
-          const top = items.find((item) => item.itemType === "top");
-          const bottom = items.find((item) => item.itemType === "bottom");
-          return (
-            <article className="outfit-card readonly-outfit-card" key={memberLabel}>
-              <div className="outfit-cover" role="img" aria-label={`${card.title} 코디 이미지`} />
-              <div className="outfit-content">
-                <div className="outfit-head">
-                  <div>
-                    <span className="badge">{card.tpoLabel}</span>
-                    <h2>{card.title}</h2>
-                    <p className="helper">
-                      {card.influencerName} · {card.budgetLabel} · {card.budgetApproach}
-                    </p>
-                  </div>
-                  <span className="badge dark">
-                    {memberLabel === "self" ? "개인 스타일링" : `구성원 ${memberLabel}`}
+    <div className="flex w-full flex-col gap-4">
+      {members.map((memberLabel) => {
+        const items = card.items.filter((item) => item.memberLabel === memberLabel);
+        const top = items.find((item) => item.itemType === "top");
+        const bottom = items.find((item) => item.itemType === "bottom");
+        return (
+          <div key={memberLabel} className="w-full rounded-[22px] bg-[#f5f5f7] px-5 pb-5 pt-[22px]">
+            <div className="flex w-full items-center gap-2">
+              <h2 className="text-[20px] font-bold tracking-[-0.4px] text-[#0a0a0a]">{card.title}</h2>
+              <div className="flex-1" />
+              <Pill>{card.coachingType === "group" ? `구성원 ${memberLabel}` : "읽기 전용"}</Pill>
+            </div>
+            <p className="mt-1 text-[13px] text-[#8e8e93]">
+              {card.influencerName} · {card.budgetLabel} · {card.budgetApproach}
+            </p>
+            <div className="h-5" />
+            <p className="text-[11px] font-semibold text-[#8e8e93]">추천 코디</p>
+            <div className="h-[10px]" />
+            <div className="flex flex-col gap-[10px]">
+              {([["상의", top], ["하의", bottom]] as const).map(([label, item]) => (
+                <div key={label} className="flex w-full items-center gap-[14px] rounded-[16px] bg-white p-[14px]">
+                  <span className="relative flex h-[76px] w-[60px] shrink-0 items-center justify-center rounded-[12px] bg-[#f2f2f5]">
+                    <img src={iconItemPlaceholder} alt="" className="size-[22px]" />
                   </span>
+                  <div className="flex min-w-0 flex-1 flex-col gap-[7px]">
+                    <p className="text-[11px] font-semibold text-[#8e8e93]">{label}</p>
+                    <p className="text-[15px] font-medium text-[#0a0a0a]">{item?.name ?? "—"}</p>
+                    {item ? (
+                      <a
+                        href={item.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="truncate text-[11px] font-semibold text-[#3c3c43] underline decoration-[#e8e8ec] underline-offset-2"
+                      >
+                        {item.url}
+                      </a>
+                    ) : null}
+                  </div>
                 </div>
-                <div className="item-list">
-                  {([["상의", top], ["하의", bottom]] as const).map(([label, item]) => (
-                    <div className="item" key={label}>
-                      <small>{label}</small>
-                      <strong>{item?.name ?? "—"}</strong>
-                      {item ? (
-                        <a href={item.url} target="_blank" rel="noreferrer">상품 링크 보기</a>
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </article>
-          );
-        })}
-      </div>
-      <div className="coach-message" style={{ marginTop: 14 }}>
-        <h3>전한 말</h3>
-        <p>{card.message}</p>
-      </div>
-    </>
+              ))}
+            </div>
+            <div className="h-[22px]" />
+            <p className="text-[11px] font-semibold text-[#8e8e93]">전하는 말</p>
+            <div className="h-[10px]" />
+            <div className="w-full rounded-[16px] bg-white p-4">
+              <p className="whitespace-pre-wrap text-[15px] leading-[1.52] text-[#0a0a0a]">{card.message}</p>
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 }
