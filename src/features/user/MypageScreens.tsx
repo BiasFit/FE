@@ -26,6 +26,7 @@ import iconChevronRight from "../../assets/mypage/icon-chevron-right.svg";
 import iconCaretDown from "../../assets/mypage/icon-caret-down.svg";
 import iconImagePlaceholder from "../../assets/mypage/icon-image-placeholder.svg";
 import iconItemPlaceholder from "../../assets/mypage/icon-item-placeholder.svg";
+import { captureOutfitCard } from "../../shared/outfitCardCapture.js";
 import { productUrlLabel } from "../../shared/productUrl.js";
 import iconChevronDown from "../../assets/mypage/icon-chevron-down.svg";
 
@@ -612,8 +613,7 @@ export function MypageOutfitDetailScreen() {
     setSaving(true);
     setSaveError("");
     try {
-      const { default: html2canvas } = await import("html2canvas");
-      const canvas = await html2canvas(cardRef.current, { backgroundColor: "#ffffff", scale: 2 });
+      const canvas = await captureOutfitCard(cardRef.current);
       const link = document.createElement("a");
       link.download = "Fitto-outfit-card.png";
       link.href = canvas.toDataURL("image/png");

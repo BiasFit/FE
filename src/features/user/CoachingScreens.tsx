@@ -14,6 +14,7 @@ import { buildResultSnapshot, completedForms, saveDiagnosisOnce } from "./diagno
 import { influencerPhotoStyle } from "../../shared/influencerPhoto.js";
 import { Pill, PrimaryCta, TopBar } from "../../shared/AppShell.js";
 import iconAvatar from "../../assets/mypage/icon-avatar.svg";
+import { captureOutfitCard } from "../../shared/outfitCardCapture.js";
 import { productUrlLabel } from "../../shared/productUrl.js";
 import bgAurora from "../../assets/mypage/bg-aurora.svg";
 import iconStepDone from "../../assets/mypage/icon-step-done.svg";
@@ -517,11 +518,7 @@ export function OutfitScreen() {
     setSaving(true);
     setSaveError("");
     try {
-      const { default: html2canvas } = await import("html2canvas");
-      const canvas = await html2canvas(cardRef.current, {
-        backgroundColor: "#ffffff",
-        scale: 2,
-      });
+      const canvas = await captureOutfitCard(cardRef.current);
       const link = document.createElement("a");
       link.download = "Fitto-outfit-card.png";
       link.href = canvas.toDataURL("image/png");
