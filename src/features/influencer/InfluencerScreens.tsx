@@ -38,6 +38,7 @@ import iconAvatar from "../../assets/mypage/icon-avatar.svg";
 import iconCheck from "../../assets/mypage/icon-check.svg";
 import iconChevronDown from "../../assets/mypage/icon-chevron-down.svg";
 import iconItemPlaceholder from "../../assets/mypage/icon-item-placeholder.svg";
+import { bodyTypeImageByName, styleLookImage } from "../../shared/optionImages.js";
 
 /**
  * 빈 초안으로 시작한다.
@@ -237,11 +238,17 @@ export function InfluencerProfileScreen() {
                 <span
                   className={
                     selected
-                      ? "relative flex h-[153px] w-[122px] items-center justify-center rounded-[14px] border-2 border-[#0a0a0a] bg-[#f2f2f5]"
-                      : "relative flex h-[153px] w-[122px] items-center justify-center rounded-[14px] bg-[#f2f2f5]"
+                      ? "relative flex h-[153px] w-[122px] items-center justify-center overflow-hidden rounded-[14px] border-2 border-[#0a0a0a] bg-[#f2f2f5]"
+                      : "relative flex h-[153px] w-[122px] items-center justify-center overflow-hidden rounded-[14px] bg-[#f2f2f5]"
                   }
                 >
-                  <img src={iconAvatar} alt="" className="size-6" />
+                  {/* 사용자 진단 화면(U3-3)과 같은 사진을 쓴다. 같은 항목을 서로 다르게 보면
+                      인플루언서가 고른 스타일과 사용자가 고른 스타일이 다른 뜻이 된다. */}
+                  {styleLookImage(style.name) ? (
+                    <img src={styleLookImage(style.name)} alt="" className="size-full object-cover" />
+                  ) : (
+                    <img src={iconAvatar} alt="" className="size-6" />
+                  )}
                   {selected ? <img src={iconCheck} alt="" className="absolute right-1.5 top-1.5 size-6" /> : null}
                 </span>
                 <span
@@ -335,11 +342,16 @@ export function InfluencerProfileBodyScreen() {
                 <span
                   className={
                     selected
-                      ? "relative flex h-[139px] w-[111px] items-center justify-center rounded-[14px] border-2 border-[#0a0a0a] bg-[#f2f2f5]"
-                      : "relative flex h-[139px] w-[111px] items-center justify-center rounded-[14px] bg-[#f2f2f5]"
+                      ? "relative flex h-[139px] w-[111px] items-center justify-center overflow-hidden rounded-[14px] border-2 border-[#0a0a0a] bg-[#f2f2f5]"
+                      : "relative flex h-[139px] w-[111px] items-center justify-center overflow-hidden rounded-[14px] bg-[#f2f2f5]"
                   }
                 >
-                  <img src={iconAvatar} alt="" className="size-6" />
+                  {/* 사용자 진단 화면(U3-1)과 같은 체형 사진이다. */}
+                  {bodyTypeImageByName[type.name] ? (
+                    <img src={bodyTypeImageByName[type.name]} alt="" className="size-full object-cover" />
+                  ) : (
+                    <img src={iconAvatar} alt="" className="size-6" />
+                  )}
                   {selected ? <img src={iconCheck} alt="" className="absolute right-1.5 top-1.5 size-6" /> : null}
                 </span>
                 <span
