@@ -1,7 +1,7 @@
 import type {
   AiRequestStatus,
   BudgetRange,
-  DiagnosisForm,
+  DiagnosisDraft,
   MatchPriority,
   MemberId,
   PriorityOption,
@@ -13,7 +13,6 @@ import type {
 } from "../domain/aiContracts.js";
 import type { RankedInfluencer } from "../domain/scoring.js";
 import type { StylemateView } from "../data/influencers.js";
-import { personaForms } from "../data/personas.js";
 
 export interface AppState {
   mode: "personal" | "group";
@@ -37,20 +36,22 @@ export interface AppState {
    * 하드코딩 배열을 대체한다.
    */
   influencerDirectory: StylemateView[];
-  personal: DiagnosisForm;
+  personal: DiagnosisDraft;
   group: {
     relationship: "friend" | "family" | "other";
     relationshipOther: string;
-    tpo: TpoCode;
-    members: Record<MemberId, DiagnosisForm>;
+    /** 그룹은 TPO가 구성원별이 아니라 약속 하나다. 고르기 전에는 값이 없다. */
+    tpo?: TpoCode;
+    members: Record<MemberId, DiagnosisDraft>;
   };
   selectedInfluencerId: string;
   selectedInfluencerScore: number;
   activeRequestId: string;
   requestText: Record<"personal" | "group", string>;
+  /** 부탁해요 카드를 보낸 시점의 예산. 아직 안 보냈으면 없다. */
   requestBudget: {
-    personal: BudgetRange;
-    group: Record<MemberId, BudgetRange>;
+    personal: BudgetRange | null;
+    group: Record<MemberId, BudgetRange | null>;
   };
 }
 
@@ -72,11 +73,11 @@ export type AppAction =
   | { type: "setSavedResultId"; id: string }
   | { type: "setInfluencerDirectory"; influencers: StylemateView[] }
   | { type: "selectMatchPriority"; priority: MatchPriority }
-  | { type: "updatePersonal"; patch: Partial<DiagnosisForm> }
+  | { type: "updatePersonal"; patch: Partial<DiagnosisDraft> }
   | {
       type: "updateGroupMember";
       member: MemberId;
-      patch: Partial<DiagnosisForm>;
+      patch: Partial<DiagnosisDraft>;
     }
   | {
       type: "updateGroup";
@@ -91,14 +92,27 @@ export type AppAction =
     }
   | { type: "submitRequest" };
 
-const copyForm = (form: DiagnosisForm): DiagnosisForm => ({
-  ...form,
-  fitConcerns: [...form.fitConcerns],
-  keywords: [...form.keywords],
-  designElements: [...form.designElements],
-  preferredItems: [...form.preferredItems],
-  avoidedElements: [...form.avoidedElements],
+/**
+ * 아무것도 고르지 않은 진단 입력.
+ *
+ * 예전에는 P1·P4·P5 페르소나 값을 복사해 넣었다. 화면이 처음부터 다 채워져 보여
+ * 사용자가 한 번도 만지지 않은 항목이 그 사람의 답으로 저장됐다.
+ * 배열만 빈 배열로 두고, 단일 선택 항목은 값 자체를 두지 않는다.
+ */
+const emptyDraft = (): DiagnosisDraft => ({
+  fitConcerns: [],
+  fitNote: "",
+  keywords: [],
+  designElements: [],
+  preferredItems: [],
+  avoidedElements: [],
 });
+
+/** 예산을 아직 안 고른 진단은 범위를 만들지 않는다. 0으로 채우면 고른 것처럼 보인다. */
+const budgetRangeOf = (draft: DiagnosisDraft): BudgetRange | null =>
+  draft.budgetMinCode === undefined || draft.budgetMaxCode === undefined
+    ? null
+    : { minCode: draft.budgetMinCode, maxCode: draft.budgetMaxCode };
 
 export function createInitialState(): AppState {
   return {
@@ -115,36 +129,20 @@ export function createInitialState(): AppState {
     matchExplanationStatus: "idle",
     savedResultId: "",
     influencerDirectory: [],
-    personal: copyForm(personaForms.P1),
+    personal: emptyDraft(),
     group: {
       relationship: "friend",
       relationshipOther: "",
-      tpo: "travel",
       members: {
-        A: copyForm(personaForms.P4),
-        B: copyForm(personaForms.P5),
+        A: emptyDraft(),
+        B: emptyDraft(),
       },
     },
     selectedInfluencerId: "",
     selectedInfluencerScore: 0,
     activeRequestId: "",
     requestText: { personal: "", group: "" },
-    requestBudget: {
-      personal: {
-        minCode: personaForms.P1.budgetMinCode,
-        maxCode: personaForms.P1.budgetMaxCode,
-      },
-      group: {
-        A: {
-          minCode: personaForms.P4.budgetMinCode,
-          maxCode: personaForms.P4.budgetMaxCode,
-        },
-        B: {
-          minCode: personaForms.P5.budgetMinCode,
-          maxCode: personaForms.P5.budgetMaxCode,
-        },
-      },
-    },
+    requestBudget: { personal: null, group: { A: null, B: null } },
   };
 }
 
@@ -296,19 +294,10 @@ export function appReducer(state: AppState, action: AppAction): AppState {
             ? "LOCAL-GROUP-REQUEST"
             : "LOCAL-PERSONAL-REQUEST",
         requestBudget: {
-          personal: {
-            minCode: state.personal.budgetMinCode,
-            maxCode: state.personal.budgetMaxCode,
-          },
+          personal: budgetRangeOf(state.personal),
           group: {
-            A: {
-              minCode: state.group.members.A.budgetMinCode,
-              maxCode: state.group.members.A.budgetMaxCode,
-            },
-            B: {
-              minCode: state.group.members.B.budgetMinCode,
-              maxCode: state.group.members.B.budgetMaxCode,
-            },
+            A: budgetRangeOf(state.group.members.A),
+            B: budgetRangeOf(state.group.members.B),
           },
         },
       };

@@ -10,7 +10,7 @@ import {
   trackEvent,
   type OutfitCardView,
 } from "../../lib/biasfitApi.js";
-import { buildResultSnapshot, saveDiagnosisOnce } from "./diagnosisSnapshot.js";
+import { buildResultSnapshot, completedForms, saveDiagnosisOnce } from "./diagnosisSnapshot.js";
 import { influencerPhotoStyle } from "../../shared/influencerPhoto.js";
 import { Pill, PrimaryCta, TopBar } from "../../shared/AppShell.js";
 import iconAvatar from "../../assets/mypage/icon-avatar.svg";
@@ -57,11 +57,13 @@ function useSelectedMate() {
  * 두 사람 값을 " · "로 합쳐 보여준다 — 값을 지어내지 않고 있는 값만 합친다.
  */
 function matchInfoRows(state: AppState) {
-  const isGroup = state.mode === "group";
-  const tpo = tpoLabel(isGroup ? state.group.tpo : state.personal.tpo);
+  const forms = completedForms(state);
+  // 진단이 덜 찼으면 지어내지 않고 빈 목록을 준다. 화면이 값을 만들어 낼 자리가 아니다.
+  if (!forms) return [];
+  const tpo = tpoLabel(forms.tpo);
 
-  if (!isGroup) {
-    const form = state.personal;
+  if (forms.mode === "personal") {
+    const form = forms.personal;
     return [
       { label: "스타일링 유형", value: "개인 스타일링" },
       { label: "필요한 상황", value: tpo },
@@ -72,7 +74,7 @@ function matchInfoRows(state: AppState) {
     ];
   }
 
-  const { A, B } = state.group.members;
+  const { A, B } = forms.members;
   return [
     { label: "스타일링 유형", value: "2인 그룹 스타일링" },
     { label: "필요한 상황", value: tpo },
@@ -122,7 +124,7 @@ export function MatchScreen() {
           <div className="min-w-0 flex-1">
             <p className="truncate text-[19px] font-bold tracking-[-0.38px] text-[#0a0a0a]">{mate.name}</p>
             <p className="mt-[6px] truncate text-[11px] font-semibold text-[#8e8e93]">
-              {mate.tagline} · {tpoLabel(state.mode === "group" ? state.group.tpo : state.personal.tpo)}
+              {mate.tagline} · {tpoLabel(completedForms(state)?.tpo ?? "")}
             </p>
           </div>
           <p className="shrink-0 text-[28px] font-bold tracking-[-0.84px] text-[#0a0a0a]">
@@ -186,7 +188,7 @@ export function RequestScreen() {
   const [sendError, setSendError] = useState("");
   // 진단 자체가 비어 안내만으로는 빠져나갈 수 없는 상태인지. 이때는 돌아가는 버튼을 함께 준다.
   const [needsDiagnosis, setNeedsDiagnosis] = useState(false);
-  const tpo = tpoLabel(state.mode === "personal" ? state.personal.tpo : state.group.tpo);
+  const tpo = tpoLabel(completedForms(state)?.tpo ?? "");
 
   /**
    * 저장된 진단 결과 id를 확보한다.
@@ -395,7 +397,7 @@ export function WaitScreen() {
                 <p className="truncate text-[16px] font-semibold tracking-[-0.32px] text-[#0a0a0a]">{mate.name}</p>
                 <p className="mt-[6px] truncate text-[11px] font-semibold text-[#8e8e93]">
                   {state.mode === "group" ? "그룹" : "개인"} ·{" "}
-                  {tpoLabel(state.mode === "group" ? state.group.tpo : state.personal.tpo)} · {sentOn} 요청
+                  {tpoLabel(completedForms(state)?.tpo ?? "")} · {sentOn} 요청
                 </p>
               </div>
               <Pill>작성 중</Pill>

@@ -1,6 +1,16 @@
 import { useNavigate } from "react-router-dom";
-import type { DiagnosisForm } from "../../app/types.js";
+import type { DiagnosisDraft } from "../../app/types.js";
 import { useAppState } from "../../app/AppStateProvider.js";
+import {
+  HEIGHT_MAX,
+  HEIGHT_MIN,
+  bodyStepReady,
+  budgetStepReady,
+  designStepReady,
+  fitStepReady,
+  itemStepReady,
+  styleStepReady,
+} from "../../domain/diagnosisComplete.js";
 import {
   avoidedElements,
   bodyTypes,
@@ -69,7 +79,7 @@ function useCurrentDiagnosis() {
     state.mode === "personal"
       ? state.personal
       : state.group.members[state.activeMember];
-  const update = (patch: Partial<DiagnosisForm>) => {
+  const update = (patch: Partial<DiagnosisDraft>) => {
     if (state.mode === "personal") {
       dispatch({ type: "updatePersonal", patch });
     } else {
@@ -145,10 +155,13 @@ export function BodyScreen() {
           <input
             aria-label="키"
             type="number"
-            min={130}
-            max={200}
-            value={form.height}
-            onChange={(event) => update({ height: Number(event.target.value) })}
+            min={HEIGHT_MIN}
+            max={HEIGHT_MAX}
+            // 비우면 값 자체를 지운다. Number("")는 0이라 그대로 두면 "0cm를 골랐다"가 된다.
+            value={form.height ?? ""}
+            onChange={(event) =>
+              update({ height: event.target.value === "" ? undefined : Number(event.target.value) })
+            }
             className="w-full bg-transparent text-[16px] font-semibold tracking-[-0.32px] text-[#0a0a0a] outline-none"
           />
           <span className="shrink-0 text-[13px] text-[#8e8e93]">cm</span>
@@ -226,9 +239,10 @@ export function BodyScreen() {
       <PrimaryCta
         onClick={() => navigate("/user/fit")}
         disabled={
-          state.mode === "group" &&
-          state.group.relationship === "other" &&
-          !state.group.relationshipOther.trim()
+          !bodyStepReady(form) ||
+          (state.mode === "group" &&
+            state.group.relationship === "other" &&
+            !state.group.relationshipOther.trim())
         }
       >
         다음
@@ -295,7 +309,9 @@ export function FitScreen() {
           placeholder="체형이나 핏과 관련해 평소 고민하는 부분을 자세히 적어주세요."
         />
       </div>
-      <PrimaryCta onClick={() => navigate("/user/style")}>다음</PrimaryCta>
+      <PrimaryCta onClick={() => navigate("/user/style")} disabled={!fitStepReady(form)}>
+        다음
+      </PrimaryCta>
     </section>
   );
 }
@@ -424,7 +440,7 @@ export function StyleScreen() {
           ))}
         </div>
       </div>
-      <PrimaryCta onClick={() => navigate("/user/design")} disabled={form.keywords.length !== 3}>
+      <PrimaryCta onClick={() => navigate("/user/design")} disabled={!styleStepReady(form)}>
         다음
       </PrimaryCta>
     </section>
@@ -539,7 +555,7 @@ export function DesignScreen() {
             <p className="text-[13px] text-[#8e8e93]">아직 고른 항목이 없어요.</p>
           )}
         </div>
-        <PrimaryCta onClick={() => navigate("/user/item")} disabled={form.designElements.length !== 3}>
+        <PrimaryCta onClick={() => navigate("/user/item")} disabled={!designStepReady(form)}>
           다음
         </PrimaryCta>
       </div>
@@ -679,7 +695,7 @@ export function ItemScreen() {
             <p className="text-[13px] text-[#8e8e93]">아직 고른 아이템이 없어요.</p>
           )}
         </div>
-        <PrimaryCta onClick={() => navigate("/user/budget")} disabled={form.preferredItems.length !== 3}>
+        <PrimaryCta onClick={() => navigate("/user/budget")} disabled={!itemStepReady(form)}>
           다음
         </PrimaryCta>
       </div>
@@ -692,6 +708,10 @@ export function ItemScreen() {
  * 그룹 모드에서는 TPO가 구성원별이 아니라 약속 하나라, `state.group.tpo`를 그대로 쓴다
  * (기존 TpoScreen의 분기 로직을 그대로 옮겼다).
  */
+/** 아직 예산을 고르지 않았을 때 슬라이더 손잡이가 서 있을 자리. 저장되는 값이 아니다. */
+const BUDGET_DISPLAY_MIN = 3;
+const BUDGET_DISPLAY_MAX = 4;
+
 export function BudgetScreen() {
   const navigate = useNavigate();
   const { state, dispatch, form, update } = useCurrentDiagnosis();
@@ -727,9 +747,11 @@ export function BudgetScreen() {
       />
       <div className="flex flex-1 flex-col px-5 pb-6 pt-[34px]">
         <MemberSwitch />
+        {/* 슬라이더는 손잡이 두 개가 항상 어딘가에 있어야 해서 표시 위치만 가운데로 둔다.
+            고르기 전에는 값을 저장하지 않고, 아래 안내와 다음 버튼으로 선택을 요구한다. */}
         <BudgetRangeSlider
-          minCode={form.budgetMinCode}
-          maxCode={form.budgetMaxCode}
+          minCode={form.budgetMinCode ?? BUDGET_DISPLAY_MIN}
+          maxCode={form.budgetMaxCode ?? BUDGET_DISPLAY_MAX}
           onChange={({ minCode, maxCode }) =>
             update({
               budgetMinCode: minCode,
@@ -738,6 +760,9 @@ export function BudgetScreen() {
             })
           }
         />
+        {form.budgetMinCode === undefined ? (
+          <p className="mt-3 text-[13px] text-[#8e8e93]">예산 범위를 움직여 선택해 주세요.</p>
+        ) : null}
 
         <div className="mt-9 flex items-center justify-between">
           <p className="text-[19px] font-bold tracking-[-0.38px] text-[#0a0a0a]">평소 구매 기준</p>
@@ -767,7 +792,12 @@ export function BudgetScreen() {
           ))}
         </div>
       </div>
-      <PrimaryCta onClick={() => navigate("/user/priority")}>다음</PrimaryCta>
+      <PrimaryCta
+        onClick={() => navigate("/user/priority")}
+        disabled={!budgetStepReady(form, tpoValue)}
+      >
+        다음
+      </PrimaryCta>
     </section>
   );
 }

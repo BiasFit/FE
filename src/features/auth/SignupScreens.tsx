@@ -139,8 +139,6 @@ export function SignupRoleScreen() {
             );
           })}
         </div>
-        <div className="h-5" />
-        <p className="text-[12px] text-[#8e8e93]">MVP 테스트에서는 사전에 안내된 테스트 계정만 사용해요.</p>
       </div>
       <PrimaryCta onClick={next} disabled={!role}>
         다음
@@ -194,7 +192,7 @@ function SignupFormScreen({ role }: { role: AccountRole }) {
     const nextErrors: SignupErrors = {};
 
     if (!form.loginId.trim()) {
-      nextErrors.loginId = "테스트 이메일을 입력해 주세요.";
+      nextErrors.loginId = "아이디를 입력해 주세요.";
     }
     if (!form.displayName.trim()) {
       nextErrors.displayName = `${displayNameLabel}을 입력해 주세요.`;
@@ -285,14 +283,14 @@ function SignupFormScreen({ role }: { role: AccountRole }) {
 
           <label className="flex flex-col gap-2">
             <span className="flex items-center gap-[5px] text-[12px] text-[#8e8e93]">
-              테스트 이메일 <span className="text-[11px] font-semibold text-[#0a0a0a]">필수</span>
+              아이디 <span className="text-[11px] font-semibold text-[#0a0a0a]">필수</span>
             </span>
             <input
               ref={loginIdRef}
               className="min-h-[56px] w-full rounded-[14px] bg-[#f5f5f7] px-[18px] text-[16px] font-semibold tracking-[-0.32px] text-[#0a0a0a] outline-none"
               type="text"
               autoComplete="username"
-              placeholder="예) bf.user01@biasfit.test"
+              placeholder="예) minji01"
               value={form.loginId}
               onChange={update("loginId")}
               aria-invalid={Boolean(errors.loginId)}

@@ -1,8 +1,31 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../App.js";
+import { createInitialState } from "../app/appState.js";
 import { influencers } from "../data/influencers.js";
+import { personaForms } from "../data/personas.js";
 import { rankInfluencers } from "../domain/scoring.js";
+import { saveAppState } from "../storage/diagnosisSession.js";
+
+/**
+ * 진단을 다 채운 상태에서 시작한다.
+ *
+ * 화면은 이제 빈 값으로 시작하고 단계마다 입력을 요구한다. 흐름 중간(우선순위·TOP 3 등)을
+ * 검사하는 테스트까지 매번 스무 번 클릭할 이유는 없어서, 페르소나 픽스처를 세션 상태에
+ * 그대로 넣어 둔다. 빈 상태의 게이팅 자체는 아래 "입력 전에는 다음으로 못 넘어간다"에서 본다.
+ */
+function seedCompletedDiagnosis() {
+  const initial = createInitialState();
+  saveAppState({
+    ...initial,
+    personal: { ...personaForms.P1 },
+    group: {
+      ...initial.group,
+      tpo: personaForms.P4.tpo,
+      members: { A: { ...personaForms.P4 }, B: { ...personaForms.P5 } },
+    },
+  });
+}
 
 // 이미지 저장은 캔버스를 쓴다. jsdom에는 캔버스가 없으므로 그림 만드는 부분만 대신한다.
 // KPI 이벤트는 그림을 만들기 **전에** 나가므로 이 대역이 검증 대상을 가리지 않는다.
@@ -82,6 +105,7 @@ function passingReview(cards: any[]) {
 beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
+  seedCompletedDiagnosis();
   savedPayloads.length = 0;
   sentCards.length = 0;
   trackedEvents.length = 0;
@@ -244,14 +268,30 @@ describe("user feature screens", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("renders the body input with the P1 defaults", async () => {
+  /**
+   * 실제 참가자가 처음 여는 화면이다. 예전에는 P1 페르소나 값이 미리 채워져 있어서
+   * 아무것도 고르지 않아도 다음으로 넘어갔고, 그 값이 그 사람의 진단 결과로 저장됐다.
+   */
+  it("체형 화면은 빈 값으로 시작하고, 다 채우기 전에는 다음으로 못 넘어간다", async () => {
+    sessionStorage.clear();
     window.location.hash = "#/user/body";
     render(<App />);
 
     expect(
       await screen.findByRole("heading", { name: /본인의 체형 정보를 알려주세요/ }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("spinbutton", { name: "키" })).toHaveValue(158);
+    const height = screen.getByRole("spinbutton", { name: "키" });
+    expect(height).toHaveValue(null);
+    const next = screen.getByRole("button", { name: "다음" });
+    expect(next).toBeDisabled();
+
+    fireEvent.change(height, { target: { value: "163" } });
+    fireEvent.click(screen.getAllByRole("button", { name: "66 (M)" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "66 (M)" })[1]);
+    expect(next).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("radio", { name: /내추럴/ }));
+    expect(next).toBeEnabled();
   });
 
   it("renders the fit screen as its own step, separate from body (2026-08-15 split)", async () => {

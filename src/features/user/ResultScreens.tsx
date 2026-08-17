@@ -29,6 +29,7 @@ import {
 import {
   breakdownsFor,
   buildResultSnapshot,
+  completedForms,
   saveDiagnosisOnce,
   scoresFor,
 } from "./diagnosisSnapshot.js";
@@ -56,38 +57,41 @@ function personalInput(
   };
 }
 
-function rankInput(state: AppState): RankMatchInput {
+/** 우선순위를 고르지 않았거나 진단이 덜 찼으면 계산을 시작하지 않는다. */
+function rankInput(state: AppState): RankMatchInput | null {
   const priority = state.matchPriority;
-  if (!priority) throw new Error("매칭 우선순위 선택이 필요합니다.");
-  if (state.mode === "personal") return personalInput(state.personal, priority);
-  const members = (["A", "B"] as const).map((member) => {
+  const forms = completedForms(state);
+  if (!priority || !forms) return null;
+  if (forms.mode === "personal") return personalInput(forms.personal, priority);
+  const members = ([forms.members.A, forms.members.B] as const).map((form) => {
     const { mode: _mode, priority: _priority, tpo: _tpo, ...input } =
-      personalInput(state.group.members[member], priority);
+      personalInput(form, priority);
     return input;
   });
   return {
     mode: "group",
     priority,
     members: [members[0], members[1]],
-    tpo: state.group.tpo,
+    tpo: forms.tpo,
   };
 }
 
 function styleDnaRequest(
   state: AppState,
-  compatibility: ReturnType<typeof calculateGroupCompatibility>,
-): StyleDnaExplanationRequest {
+  compatibility: ReturnType<typeof calculateGroupCompatibility> | undefined,
+): StyleDnaExplanationRequest | null {
   const priority = state.matchPriority;
-  if (!priority) throw new Error("매칭 우선순위 선택이 필요합니다.");
-  if (state.mode === "personal") {
+  const forms = completedForms(state);
+  if (!priority || !forms) return null;
+  if (forms.mode === "personal") {
     return {
       mode: "personal",
       priority,
       members: [
         {
           memberId: "self",
-          form: state.personal,
-          styleScores: scoresFor(state.personal),
+          form: forms.personal,
+          styleScores: scoresFor(forms.personal),
         },
       ],
     };
@@ -97,8 +101,8 @@ function styleDnaRequest(
     priority,
     members: (["A", "B"] as const).map((memberId) => ({
       memberId,
-      form: state.group.members[memberId],
-      styleScores: scoresFor(state.group.members[memberId]),
+      form: forms.members[memberId],
+      styleScores: scoresFor(forms.members[memberId]),
     })),
     groupCompatibility: compatibility,
   };
@@ -264,14 +268,24 @@ export function DnaScreen() {
   const { state, dispatch } = useAppState();
   const [retry, setRetry] = useState(0);
 
-  const personalScores = scoresFor(state.personal);
-  const groupA = scoresFor(state.group.members.A);
-  const groupB = scoresFor(state.group.members.B);
-  const compatibility = calculateGroupCompatibility(
-    { scores: groupA, avoidedStyle: state.group.members.A.avoidedStyle, budgetCode: state.group.members.A.budgetCode },
-    { scores: groupB, avoidedStyle: state.group.members.B.avoidedStyle, budgetCode: state.group.members.B.budgetCode },
-  );
-  const explanationRequest = state.matchPriority ? styleDnaRequest(state, compatibility) : null;
+  // 덜 채운 진단으로는 점수를 만들지 않는다. 아래에서 진단을 마치라는 화면으로 보낸다.
+  const forms = completedForms(state);
+  const compatibility =
+    forms?.mode === "group"
+      ? calculateGroupCompatibility(
+          {
+            scores: scoresFor(forms.members.A),
+            avoidedStyle: forms.members.A.avoidedStyle,
+            budgetCode: forms.members.A.budgetCode,
+          },
+          {
+            scores: scoresFor(forms.members.B),
+            avoidedStyle: forms.members.B.avoidedStyle,
+            budgetCode: forms.members.B.budgetCode,
+          },
+        )
+      : undefined;
+  const explanationRequest = styleDnaRequest(state, compatibility);
   const requestKey = JSON.stringify(explanationRequest);
 
   useEffect(() => {
@@ -316,6 +330,23 @@ export function DnaScreen() {
     );
   }
 
+  // 새로고침으로 세션이 비었을 때처럼 입력이 남아 있지 않은 경우다.
+  // 예전에는 여기서 P1 기본값이 그대로 계산돼 남의 진단 결과가 나왔다.
+  if (!forms) {
+    return (
+      <section className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col items-center justify-center gap-4 bg-white px-6 text-center">
+        <p className="text-[15px] text-[#8e8e93]">진단 입력이 남아 있지 않아요. 처음부터 다시 입력해 주세요.</p>
+        <button
+          type="button"
+          onClick={() => navigate("/user/body")}
+          className="rounded-full bg-[#0a0a0a] px-5 py-3 text-[14px] font-semibold text-white"
+        >
+          진단 다시 하기
+        </button>
+      </section>
+    );
+  }
+
   const result = state.styleDna;
   const status = state.styleDnaStatus;
   const canOpenTop3 = status === "success" && result !== null;
@@ -332,9 +363,9 @@ export function DnaScreen() {
         ? result.groupMatchingPoints
         : [];
   const hashtags =
-    state.mode === "personal"
-      ? [state.personal.preferredStyle, ...state.personal.keywords]
-      : [state.group.members.A.preferredStyle, state.group.members.B.preferredStyle];
+    forms.mode === "personal"
+      ? [forms.personal.preferredStyle, ...forms.personal.keywords]
+      : [forms.members.A.preferredStyle, forms.members.B.preferredStyle];
 
   return (
     <section className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col bg-white">
@@ -342,7 +373,7 @@ export function DnaScreen() {
       <div className="flex flex-1 flex-col px-5 pb-6 pt-[10px]">
         <div className="flex flex-wrap gap-[6px]">
           <Pill tone="dark">{state.mode === "group" ? "2인 그룹 스타일링" : "개인 스타일링"}</Pill>
-          <Pill>{tpoLabel(state.mode === "group" ? state.group.tpo : state.personal.tpo)}</Pill>
+          <Pill>{tpoLabel(forms.tpo)}</Pill>
         </div>
         <div className="h-[18px]" />
         {status === "loading" || status === "idle" ? (
@@ -368,13 +399,13 @@ export function DnaScreen() {
           ))}
         </div>
 
-        {state.mode === "personal" ? (
+        {forms.mode === "personal" ? (
           <>
             <div className="mt-9 flex items-center justify-between">
               <p className="text-[19px] font-bold tracking-[-0.38px] text-[#0a0a0a]">추구하는 스타일</p>
             </div>
             <div className="h-[16px]" />
-            <ScoreBoard scores={personalScores} />
+            <ScoreBoard scores={scoresFor(forms.personal)} />
             <div className="h-3" />
             <p className="text-[13px] text-[#8e8e93]">입력한 내용이 어떤 스타일에 가까운지를 보여주는 값이에요.</p>
 
@@ -393,23 +424,23 @@ export function DnaScreen() {
             <div className="mt-9 flex flex-col divide-y divide-[#e8e8ec]">
               <div className="flex items-center justify-between py-[14px]">
                 <p className="text-[13px] w-24 shrink-0 text-[#8e8e93]">체형 유형</p>
-                <p className="flex-1 text-[15px] text-[#0a0a0a]">{state.personal.bodyType}</p>
+                <p className="flex-1 text-[15px] text-[#0a0a0a]">{forms.personal.bodyType}</p>
               </div>
               <div className="flex items-center justify-between py-[14px]">
                 <p className="text-[13px] w-24 shrink-0 text-[#8e8e93]">핏 고민</p>
-                <p className="flex-1 text-[15px] text-[#0a0a0a]">{state.personal.fitConcerns.join(" / ")}</p>
+                <p className="flex-1 text-[15px] text-[#0a0a0a]">{forms.personal.fitConcerns.join(" / ")}</p>
               </div>
               <div className="flex items-center justify-between py-[14px]">
                 <p className="text-[13px] w-24 shrink-0 text-[#8e8e93]">취향</p>
                 <p className="flex-1 text-[15px] text-[#0a0a0a]">
-                  {state.personal.preferredStyle} / {state.personal.avoidedStyle}
+                  {forms.personal.preferredStyle} / {forms.personal.avoidedStyle}
                 </p>
               </div>
               <div className="flex items-center justify-between py-[14px]">
                 <p className="text-[13px] w-24 shrink-0 text-[#8e8e93]">예산과 상황</p>
                 <p className="flex-1 text-[15px] text-[#0a0a0a]">
-                  {budgetRangeLabel(state.personal.budgetMinCode, state.personal.budgetMaxCode)} ·{" "}
-                  {state.personal.budgetApproach}
+                  {budgetRangeLabel(forms.personal.budgetMinCode, forms.personal.budgetMaxCode)} ·{" "}
+                  {forms.personal.budgetApproach}
                 </p>
               </div>
             </div>
@@ -420,23 +451,25 @@ export function DnaScreen() {
               <div className="rounded-[18px] bg-[#f5f5f7] p-4">
                 <p className="text-[15px] font-bold text-[#0a0a0a]">구성원 A</p>
                 <div className="h-2" />
-                <ScoreBoard scores={groupA} />
+                <ScoreBoard scores={scoresFor(forms.members.A)} />
               </div>
               <div className="rounded-[18px] bg-[#f5f5f7] p-4">
                 <p className="text-[15px] font-bold text-[#0a0a0a]">구성원 B</p>
                 <div className="h-2" />
-                <ScoreBoard scores={groupB} />
+                <ScoreBoard scores={scoresFor(forms.members.B)} />
               </div>
             </div>
-            <div className="mt-6 flex items-center gap-4 rounded-[18px] bg-[#f5f5f7] p-5">
-              <p className="text-[34px] font-bold tracking-[-1.02px] text-[#0a0a0a]">{compatibility.total}</p>
-              <div>
-                <p className="text-[15px] font-bold text-[#0a0a0a]">그룹 스타일 조합도</p>
-                <p className="text-[13px] text-[#8e8e93]">
-                  스타일 방향 {compatibility.styleSimilarity}/70 · 예산 조율 {compatibility.budgetCompatibility}/30
-                </p>
+            {compatibility ? (
+              <div className="mt-6 flex items-center gap-4 rounded-[18px] bg-[#f5f5f7] p-5">
+                <p className="text-[34px] font-bold tracking-[-1.02px] text-[#0a0a0a]">{compatibility.total}</p>
+                <div>
+                  <p className="text-[15px] font-bold text-[#0a0a0a]">그룹 스타일 조합도</p>
+                  <p className="text-[13px] text-[#8e8e93]">
+                    스타일 방향 {compatibility.styleSimilarity}/70 · 예산 조율 {compatibility.budgetCompatibility}/30
+                  </p>
+                </div>
               </div>
-            </div>
+            ) : null}
             <div className="mt-9 rounded-[18px] bg-[#f5f5f7] p-5">
               <p className="text-[19px] font-bold tracking-[-0.38px] text-[#0a0a0a]">스타일링 기준</p>
               <div className="h-[14px]" />
@@ -688,7 +721,7 @@ export function Top3Screen() {
     );
   }
 
-  const currentTpo = tpoLabel(state.mode === "group" ? state.group.tpo : state.personal.tpo);
+  const currentTpo = tpoLabel(completedForms(state)?.tpo ?? "");
   // 사용자가 직접 고르기 전에는 1위 후보를 큰 카드로 미리 보여준다.
   const bigId = state.selectedInfluencerId || ranked[0]?.influencer.id;
 

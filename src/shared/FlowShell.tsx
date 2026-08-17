@@ -120,7 +120,7 @@ export function MemberSwitch() {
           aria-selected={state.activeMember === member}
           onClick={() => dispatch({ type: "setActiveMember", member })}
         >
-          구성원 {member} · {state.group.members[member].personaId}
+          구성원 {member}
         </button>
       ))}
     </div>

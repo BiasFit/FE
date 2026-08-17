@@ -1,5 +1,7 @@
 import type { AppState } from "../../app/appState.js";
-import type { DiagnosisForm } from "../../app/types.js";
+import type { DiagnosisForm, MemberId } from "../../app/types.js";
+import type { TpoCode } from "../../data/options.js";
+import { completeForm } from "../../domain/diagnosisComplete.js";
 import type { TestResultPayload } from "../../domain/resultSnapshot.js";
 import {
   STYLE_NAMES,
@@ -20,6 +22,29 @@ import { anonUserKey } from "../../storage/anonUser.js";
  * 다섯 단계 뒤 부탁해요 카드에서야 막혔다 — `MEMO/진단결과_저장_실패_사건_스터디.md`.
  * 그래서 화면 밖으로 꺼내 두 화면(TOP 3·부탁해요 카드)이 같은 저장을 공유하게 한다.
  */
+
+/**
+ * 다 채운 진단 입력. 그룹은 TPO가 약속 하나라 구성원 폼이 아니라 여기에 둔다.
+ */
+export type CompletedDiagnosis =
+  | { mode: "personal"; personal: DiagnosisForm; tpo: TpoCode }
+  | { mode: "group"; members: Record<MemberId, DiagnosisForm>; tpo: TpoCode };
+
+/**
+ * 지금 모드의 진단이 다 찼는지 한 번에 확인한다.
+ * 점수·AI 요청·저장은 모두 이 결과로만 만든다 — 덜 채운 값이 계산에 섞이면
+ * 사용자가 고르지도 않은 조건으로 추천이 나간다.
+ */
+export function completedForms(state: AppState): CompletedDiagnosis | null {
+  if (state.mode === "personal") {
+    const personal = completeForm(state.personal);
+    return personal ? { mode: "personal", personal, tpo: personal.tpo } : null;
+  }
+  const memberA = completeForm(state.group.members.A, state.group.tpo);
+  const memberB = completeForm(state.group.members.B, state.group.tpo);
+  if (!memberA || !memberB || !state.group.tpo) return null;
+  return { mode: "group", members: { A: memberA, B: memberB }, tpo: state.group.tpo };
+}
 
 export function styleSignalOf(form: DiagnosisForm) {
   return {
@@ -57,7 +82,8 @@ export function buildResultSnapshot(
 ): TestResultPayload | null {
   const priority = state.matchPriority;
   const styleDna = state.styleDna;
-  if (!priority || !styleDna || ranked.length === 0) return null;
+  const forms = completedForms(state);
+  if (!priority || !styleDna || !forms || ranked.length === 0) return null;
 
   const ai = {
     priorityOptions: state.priorityOptions,
@@ -74,11 +100,11 @@ export function buildResultSnapshot(
       baseBreakdown,
       breakdown,
       fitDetail:
-        state.mode === "personal"
+        forms.mode === "personal"
           ? personalFitDetail(
               {
-                bodyType: state.personal.bodyType,
-                fitConcerns: state.personal.fitConcerns,
+                bodyType: forms.personal.bodyType,
+                fitConcerns: forms.personal.fitConcerns,
               },
               influencer,
             )
@@ -86,20 +112,20 @@ export function buildResultSnapshot(
     }),
   );
 
-  if (state.mode === "personal") {
+  if (forms.mode === "personal") {
     return {
       mode: "personal",
       priority,
-      tpo: state.personal.tpo,
+      tpo: forms.tpo,
       anonUserKey: anonUserKey(),
-      input: { members: [{ memberId: "self", form: state.personal }] },
+      input: { members: [{ memberId: "self", form: forms.personal }] },
       ai,
       score: {
         styleScores: [
           {
             memberId: "self",
-            scores: scoresFor(state.personal),
-            breakdowns: breakdownsFor(state.personal),
+            scores: scoresFor(forms.personal),
+            breakdowns: breakdownsFor(forms.personal),
           },
         ],
         rankedInfluencers,
@@ -107,17 +133,17 @@ export function buildResultSnapshot(
     };
   }
 
-  const groupA = scoresFor(state.group.members.A);
-  const groupB = scoresFor(state.group.members.B);
+  const groupA = scoresFor(forms.members.A);
+  const groupB = scoresFor(forms.members.B);
   return {
     mode: "group",
     priority,
-    tpo: state.group.tpo,
+    tpo: forms.tpo,
     anonUserKey: anonUserKey(),
     input: {
       members: [
-        { memberId: "A", form: state.group.members.A },
-        { memberId: "B", form: state.group.members.B },
+        { memberId: "A", form: forms.members.A },
+        { memberId: "B", form: forms.members.B },
       ],
       group: {
         relationship: state.group.relationship,
@@ -127,19 +153,19 @@ export function buildResultSnapshot(
     ai,
     score: {
       styleScores: [
-        { memberId: "A", scores: groupA, breakdowns: breakdownsFor(state.group.members.A) },
-        { memberId: "B", scores: groupB, breakdowns: breakdownsFor(state.group.members.B) },
+        { memberId: "A", scores: groupA, breakdowns: breakdownsFor(forms.members.A) },
+        { memberId: "B", scores: groupB, breakdowns: breakdownsFor(forms.members.B) },
       ],
       groupCompatibility: calculateGroupCompatibility(
         {
           scores: groupA,
-          avoidedStyle: state.group.members.A.avoidedStyle,
-          budgetCode: state.group.members.A.budgetCode,
+          avoidedStyle: forms.members.A.avoidedStyle,
+          budgetCode: forms.members.A.budgetCode,
         },
         {
           scores: groupB,
-          avoidedStyle: state.group.members.B.avoidedStyle,
-          budgetCode: state.group.members.B.budgetCode,
+          avoidedStyle: forms.members.B.avoidedStyle,
+          budgetCode: forms.members.B.budgetCode,
         },
       ),
       rankedInfluencers,

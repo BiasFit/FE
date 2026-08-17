@@ -9,7 +9,9 @@ import { createInitialState, type AppState } from "../app/appState.js";
  * `sessionStorage`를 쓴다. 탭을 닫으면 사라지므로 브라우저에 오래 남지 않는다.
  * 비밀번호·토큰은 이 상태에 들어 있지 않다 (로그인 세션은 Supabase 클라이언트가 따로 관리한다).
  */
-const APP_STATE_KEY = "biasfit:app-state:v1";
+// v2: 진단 입력이 페르소나 기본값에서 빈 값으로 바뀌었다. v1 값을 그대로 복원하면
+// 오늘 화면을 열어 둔 브라우저에 P1 기본값이 되살아나므로 키를 올려 버린다.
+const APP_STATE_KEY = "biasfit:app-state:v2";
 
 /**
  * 저장된 상태를 읽는다. 조금이라도 이상하면 **조용히 버리고 초기 상태**를 쓴다.

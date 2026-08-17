@@ -33,10 +33,9 @@ describe("appReducer", () => {
     });
 
     expect(updated.group.members.A.height).toBe(160);
-    expect(updated.group.members.B.height).toBe(165);
-    expect(updated.group.members.B.preferredStyle).toBe(
-      "오피스 & 비즈니스캐주얼",
-    );
+    // B는 아직 아무것도 고르지 않았다. 초기 상태에 값이 있으면 그게 곧 더미 입력이다.
+    expect(updated.group.members.B.height).toBeUndefined();
+    expect(updated.group.members.B.preferredStyle).toBeUndefined();
   });
 
   it("updates the selected stylemate without mutating diagnosis inputs", () => {
@@ -47,7 +46,7 @@ describe("appReducer", () => {
     });
 
     expect(updated.selectedInfluencerId).toBe("stylemate-02");
-    expect(updated.personal.height).toBe(158);
+    expect(updated.personal).toEqual(initial.personal);
     expect(initial.selectedInfluencerId).toBe("");
   });
 
