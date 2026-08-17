@@ -15,6 +15,7 @@ import { influencerPhotoStyle } from "../../shared/influencerPhoto.js";
 import { Pill, PrimaryCta, TopBar } from "../../shared/AppShell.js";
 import iconAvatar from "../../assets/mypage/icon-avatar.svg";
 import { captureOutfitCard } from "../../shared/outfitCardCapture.js";
+import { ProductQr } from "../../shared/ProductQr.js";
 import { productUrlLabel } from "../../shared/productUrl.js";
 import bgAurora from "../../assets/mypage/bg-aurora.svg";
 import iconStepDone from "../../assets/mypage/icon-step-done.svg";
@@ -571,7 +572,7 @@ export function OutfitScreen() {
               <div className="h-[10px]" />
               <div className="flex flex-col gap-[10px]">
                 {card.items.map((item, index) => (
-                  <div key={`${item.itemType}-${index}`} className="flex w-full items-center rounded-[16px] bg-white p-[14px]">
+                  <div key={`${item.itemType}-${index}`} className="flex w-full items-center gap-[12px] rounded-[16px] bg-white p-[14px]">
                     {/* 이미지 자리는 두지 않는다. outfit_card_items에 이미지가 없어 영원히 회색이고,
                         사용자에게는 "사진을 못 불러왔다"로 보인다. 글자가 카드 폭을 다 쓴다. */}
                     <div className="flex min-w-0 flex-1 flex-col space-y-[7px]">
@@ -581,6 +582,8 @@ export function OutfitScreen() {
                         {productUrlLabel(item.url)}
                       </a>
                     </div>
+                    {/* 저장한 그림에서 상품으로 가는 유일한 길이다 (shared/ProductQr.tsx). */}
+                    <ProductQr url={item.url} />
                   </div>
                 ))}
               </div>

@@ -27,6 +27,7 @@ import iconCaretDown from "../../assets/mypage/icon-caret-down.svg";
 import iconImagePlaceholder from "../../assets/mypage/icon-image-placeholder.svg";
 import iconItemPlaceholder from "../../assets/mypage/icon-item-placeholder.svg";
 import { captureOutfitCard } from "../../shared/outfitCardCapture.js";
+import { ProductQr } from "../../shared/ProductQr.js";
 import { productUrlLabel } from "../../shared/productUrl.js";
 import iconChevronDown from "../../assets/mypage/icon-chevron-down.svg";
 
@@ -689,7 +690,7 @@ export function MypageOutfitDetailScreen() {
                     {group.items.map((item, index) => (
                       <div
                         key={`${item.itemType}-${index}`}
-                        className="flex w-full items-center rounded-[16px] bg-white p-[14px]"
+                        className="flex w-full items-center gap-[12px] rounded-[16px] bg-white p-[14px]"
                       >
                         {/* U7과 같은 이유로 이미지 자리를 두지 않는다 (shared/productUrl.ts 주석). */}
                         <div className="flex min-w-0 flex-1 flex-col space-y-[7px]">
@@ -708,6 +709,7 @@ export function MypageOutfitDetailScreen() {
                             {productUrlLabel(item.url)}
                           </a>
                         </div>
+                        <ProductQr url={item.url} />
                       </div>
                     ))}
                   </div>

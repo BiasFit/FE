@@ -39,6 +39,7 @@ import iconCheck from "../../assets/mypage/icon-check.svg";
 import iconChevronDown from "../../assets/mypage/icon-chevron-down.svg";
 import iconItemPlaceholder from "../../assets/mypage/icon-item-placeholder.svg";
 import { bodyTypeImageByName, styleLookImage } from "../../shared/optionImages.js";
+import { ProductQr } from "../../shared/ProductQr.js";
 import { productUrlLabel } from "../../shared/productUrl.js";
 
 /**
@@ -1254,8 +1255,9 @@ export function DeliveredOutfitCard({ card }: { card: OutfitCardView }) {
             <div className="h-[10px]" />
             <div className="flex flex-col gap-[10px]">
               {([["상의", top], ["하의", bottom]] as const).map(([label, item]) => (
-                <div key={label} className="flex w-full items-center rounded-[16px] bg-white p-[14px]">
-                  {/* 사용자가 받는 카드(U7)와 같은 모양이어야 한다. 이미지 자리는 양쪽 모두 없앴다. */}
+                <div key={label} className="flex w-full items-center gap-[12px] rounded-[16px] bg-white p-[14px]">
+                  {/* 사용자가 받는 카드(U7)와 같은 모양이어야 한다. 이미지 자리는 양쪽 모두 없앴고,
+                      사용자 카드에 들어가는 QR도 여기서 미리 보인다. */}
                   <div className="flex min-w-0 flex-1 flex-col space-y-[7px]">
                     <p className="text-[11px] font-semibold text-[#8e8e93]">{label}</p>
                     <p className="text-[15px] font-medium text-[#0a0a0a]">{item?.name ?? "—"}</p>
@@ -1270,6 +1272,7 @@ export function DeliveredOutfitCard({ card }: { card: OutfitCardView }) {
                       </a>
                     ) : null}
                   </div>
+                  {item ? <ProductQr url={item.url} /> : null}
                 </div>
               ))}
             </div>
