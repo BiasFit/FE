@@ -785,24 +785,15 @@ export function MypageOutfitDetailScreen() {
             </p>
             <div className="h-6" />
 
-            <div className="flex w-full gap-[10px]">
-              <button
-                type="button"
-                disabled={saving}
-                onClick={download}
-                className="flex min-h-[56px] flex-1 items-center justify-center rounded-[14px] bg-[#0a0a0a] text-[17px] font-bold text-white disabled:opacity-60"
-              >
-                {saving ? "이미지 만드는 중…" : "이미지 저장"}
-              </button>
-              <button
-                type="button"
-                disabled={saving}
-                onClick={download}
-                className="flex min-h-[56px] flex-1 items-center justify-center rounded-[14px] border border-[#e8e8ec] bg-white text-[15px] font-bold text-[#3c3c43] disabled:opacity-60"
-              >
-                다운로드
-              </button>
-            </div>
+            {/* U7과 같은 이유로 버튼을 하나만 둔다. 두 버튼이 같은 동작을 하고 있었다. */}
+            <button
+              type="button"
+              disabled={saving}
+              onClick={download}
+              className="flex min-h-[56px] w-full items-center justify-center rounded-[14px] bg-[#0a0a0a] text-[17px] font-bold text-white disabled:opacity-60"
+            >
+              {saving ? "이미지 만드는 중…" : "이미지 저장"}
+            </button>
             {saveError ? (
               <p className="mt-3 text-[13px] font-semibold text-[#0a0a0a]" aria-live="polite">
                 {saveError}

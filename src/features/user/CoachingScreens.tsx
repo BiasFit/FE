@@ -609,24 +609,16 @@ export function OutfitScreen() {
       </div>
       {card ? (
         <div className="flex flex-col items-start overflow-clip px-5 pb-[26px] pt-[10px]">
-          <div className="flex w-full gap-[10px]">
-            <button
-              type="button"
-              disabled={saving}
-              onClick={download}
-              className="flex min-h-[56px] flex-1 items-center justify-center rounded-[14px] bg-[#0a0a0a] text-[17px] font-bold text-white disabled:opacity-60"
-            >
-              {saving ? "이미지 만드는 중…" : "이미지 저장"}
-            </button>
-            <button
-              type="button"
-              disabled={saving}
-              onClick={download}
-              className="flex min-h-[56px] flex-1 items-center justify-center rounded-[14px] border border-[#e8e8ec] bg-white text-[15px] font-bold text-[#3c3c43] disabled:opacity-60"
-            >
-              다운로드
-            </button>
-          </div>
+          {/* "이미지 저장"과 "다운로드" 두 버튼이 같은 함수를 부르고 있었다.
+              사용자에게는 서로 다른 기능처럼 보여 무엇을 눌러야 할지 멈칫하게 만든다. */}
+          <button
+            type="button"
+            disabled={saving}
+            onClick={download}
+            className="flex min-h-[56px] w-full items-center justify-center rounded-[14px] bg-[#0a0a0a] text-[17px] font-bold text-white disabled:opacity-60"
+          >
+            {saving ? "이미지 만드는 중…" : "이미지 저장"}
+          </button>
           {saveError ? (
             <p className="mt-3 text-[13px] font-semibold text-[#0a0a0a]" aria-live="polite">
               {saveError}
