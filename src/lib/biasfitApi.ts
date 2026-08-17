@@ -78,6 +78,23 @@ export function getTopThree(input: RankMatchInput, signal?: AbortSignal) {
   );
 }
 
+/**
+ * 이 스타일메이트가 **지금** 요청을 더 받을 수 있는지. TOP 3에서 고른 직후에 부른다.
+ *
+ * 목록을 만든 뒤에도 다른 사용자가 마지막 자리를 채울 수 있어, 화면을 넘기기 전에 한 번 더 묻는다.
+ * 남은 자리 수는 서버가 주지 않는다 — 사용자에게 보여주지 않는 값이다.
+ */
+export function getInfluencerAvailability(
+  influencerId: string,
+  signal?: AbortSignal,
+) {
+  return postJson<{ available: boolean }>(
+    "/api/matches/availability",
+    { influencerId },
+    signal,
+  );
+}
+
 export function getMatchExplanations(
   input: MatchExplanationsRequest,
   signal?: AbortSignal,

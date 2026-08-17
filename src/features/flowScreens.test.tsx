@@ -38,6 +38,13 @@ let openStyleDnaGate: (() => void) | null = null;
 let diagnosisSaveGate: Promise<void> | null = null;
 let openDiagnosisSaveGate: (() => void) | null = null;
 let failDiagnosisSave = false;
+/**
+ * 선택 직전에 서버가 돌려주는 수신 가능 여부. TOP 3를 본 뒤 다른 사용자가 마지막 자리를
+ * 채우는 상황을 흉내낸다 (`/api/matches/availability`).
+ */
+let availableForSelect = true;
+/** 수신 가능 여부 확인 자체가 실패하는 상황. 이때는 막지 않고 통과해야 한다. */
+let failAvailability = false;
 
 function holdExplanations() {
   explanationGate = new Promise<void>((resolve) => {
@@ -88,6 +95,8 @@ beforeEach(() => {
   diagnosisSaveGate = null;
   openDiagnosisSaveGate = null;
   failDiagnosisSave = false;
+  availableForSelect = true;
+  failAvailability = false;
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -135,6 +144,15 @@ beforeEach(() => {
       }
       if (url.endsWith("/api/matches/top-three")) {
         return jsonResponse({ rankedInfluencers: rankInfluencers(body, influencers) });
+      }
+      if (url.endsWith("/api/matches/availability")) {
+        if (failAvailability) {
+          return new Response(JSON.stringify({ error: "확인하지 못했습니다." }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+        return jsonResponse({ available: availableForSelect });
       }
       if (url.endsWith("/api/ai/match-explanations")) {
         // 문이 걸려 있으면 열어줄 때까지 기다린다 — 실제 배포에서 4.5초 걸리는 구간이다.
@@ -453,8 +471,51 @@ describe("user feature screens", () => {
     await waitFor(() => expect(selectButton).toBeEnabled());
 
     fireEvent.click(selectButton);
-    expect(window.location.hash).toBe("#/user/match");
+    // 넘어가기 전에 수신 가능 여부를 서버에 한 번 더 묻는다.
+    await waitFor(() => expect(window.location.hash).toBe("#/user/match"));
   });
+
+  it("한도가 찬 스타일메이트를 고르면 넘어가지 않고 그 자리에서 알려준다", async () => {
+    await walkToTopThree();
+    const selectButton = await screen.findByRole("button", { name: "선택하기" });
+
+    // TOP 3를 본 뒤 마지막 자리가 채워진 상황.
+    availableForSelect = false;
+    fireEvent.click(selectButton);
+
+    expect(
+      await screen.findByText(
+        "이 스타일메이트는 지금 더 많은 요청을 받을 수 없어요. 다른 스타일메이트를 선택해 주세요.",
+      ),
+    ).toBeVisible();
+    expect(window.location.hash).toBe("#/user/top3");
+  }, 10_000);
+
+  it("수신 가능 여부 확인이 실패하면 흐름을 막지 않는다", async () => {
+    await walkToTopThree();
+    const selectButton = await screen.findByRole("button", { name: "선택하기" });
+
+    failAvailability = true;
+    fireEvent.click(selectButton);
+
+    // 네트워크 문제로 정상 사용자를 가두지 않는다. 진짜 한도 검사는 전송 시점에 다시 한다.
+    await waitFor(() => expect(window.location.hash).toBe("#/user/match"));
+  }, 10_000);
+
+  it("조건 수정은 확인을 받은 뒤에만 설문 첫 화면으로 돌아간다", async () => {
+    await walkToTopThree();
+    const restart = await screen.findByRole("button", { name: "조건 수정 후 다시 추천" });
+
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+    fireEvent.click(restart);
+    expect(confirmSpy).toHaveBeenCalled();
+    expect(window.location.hash).toBe("#/user/top3");
+
+    confirmSpy.mockReturnValue(true);
+    fireEvent.click(restart);
+    expect(window.location.hash).toBe("#/user/body");
+    confirmSpy.mockRestore();
+  }, 10_000);
 
   it("진단 저장 실패 시 다음 단계로 가지 않고 같은 화면에서 재시도한다", async () => {
     failDiagnosisSave = true;

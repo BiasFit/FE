@@ -98,6 +98,9 @@ export const LOCAL_DB_STUBS: Record<string, (body: unknown) => unknown> = {
 
   "/api/influencers/list": () => ({ influencers }),
 
+  // 더미 5명에는 수신 기록이 없으니 언제나 받을 수 있다. 화면이 404를 받지 않게만 한다.
+  "/api/matches/availability": () => ({ available: true }),
+
   "/api/matches/top-three": (body) => {
     const input = body as RankMatchInput;
     return {

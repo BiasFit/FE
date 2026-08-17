@@ -21,7 +21,13 @@ if (!isAuthConfigured && import.meta.env.DEV) {
   );
 }
 
-export const supabase = createClient(url ?? "http://localhost", anonKey ?? "anon", {
+/**
+ * 값이 **빈 문자열**일 때도 대체값을 써야 한다. `??`는 `""`를 통과시키는데,
+ * `createClient("")`은 그 자리에서 던지고 이건 모듈 로드 중이라 ErrorBoundary도 못 잡는다.
+ * 화면이 통째로 하얗게 되고 원인이 콘솔에만 남는다.
+ * 인증이 설정되지 않은 환경에서도 앱은 떠야 한다 — 로그인만 동작하지 않으면 된다.
+ */
+export const supabase = createClient(url || "http://localhost", anonKey || "anon", {
   auth: { persistSession: true, autoRefreshToken: true },
 });
 
