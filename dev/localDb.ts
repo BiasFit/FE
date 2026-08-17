@@ -92,6 +92,10 @@ function outfitCardView(matchResultId: string) {
  * `localApiPlugin.ts`가 두 맵을 같은 방식으로 끼워 넣을 수 있게 하기 위해서다.
  */
 export const LOCAL_DB_STUBS: Record<string, (body: unknown) => unknown> = {
+  // KPI 이벤트는 로컬에서 어디에도 쌓지 않는다. 화면이 500을 받지 않게만 한다 —
+  // 여기서 세어 봐야 dev 서버를 끄면 사라지고, 실제 숫자는 Supabase에서만 의미가 있다.
+  "/api/events/track": () => ({ ok: true }),
+
   "/api/influencers/list": () => ({ influencers }),
 
   "/api/matches/top-three": (body) => {

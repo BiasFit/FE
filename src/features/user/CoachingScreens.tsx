@@ -7,6 +7,7 @@ import { budgetRangeLabel, tpoLabel } from "../../data/options.js";
 import {
   getOutfitCard,
   sendRequestCard,
+  trackEvent,
   type OutfitCardView,
 } from "../../lib/biasfitApi.js";
 import { buildResultSnapshot, saveDiagnosisOnce } from "./diagnosisSnapshot.js";
@@ -151,7 +152,13 @@ export function MatchScreen() {
       <div className="flex flex-col gap-[10px] px-5 pb-[26px] pt-[10px]">
         <button
           type="button"
-          onClick={() => navigate("/user/request")}
+          onClick={() => {
+            // KPI: 최종 인플루언서 선택 (MEMO/KPI_측정_계획.md).
+            // 되돌릴 수 없는 지점이라 여기서 센다. 이 숫자와 부탁해요 전송 수의 차이가
+            // "고르고 나서 요청을 안 쓰고 나간 사람"이다.
+            trackEvent("influencer_selected");
+            navigate("/user/request");
+          }}
           className="flex min-h-[56px] w-full items-center justify-center rounded-[14px] bg-[#0a0a0a] text-[17px] font-bold text-white"
         >
           확정하기
@@ -500,6 +507,10 @@ export function OutfitScreen() {
 
   const download = async () => {
     if (!cardRef.current) return;
+    // KPI: 이미지 저장 시도 (MEMO/KPI_측정_계획.md).
+    // 성공이 아니라 **시도**를 센다. 그림으로 바꾸는 데 몇 초 걸리고 그 사이 이탈할 수 있는데,
+    // 그때도 "가져가려 했다"는 사실은 그대로다.
+    trackEvent("outfit_image_save", "outfit");
     setSaving(true);
     try {
       const { default: html2canvas } = await import("html2canvas");

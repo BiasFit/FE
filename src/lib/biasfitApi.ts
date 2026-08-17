@@ -14,6 +14,7 @@ import type {
 } from "../domain/resultSnapshot.js";
 import type { StylemateView } from "../data/influencers.js";
 import type { RankedInfluencer, RankMatchInput } from "../domain/scoring.js";
+import { anonUserKey } from "../storage/anonUser.js";
 import { isAuthConfigured, supabase } from "./supabaseClient.js";
 
 /**
@@ -324,6 +325,30 @@ export interface RequestCardView {
   ownedItemsText: string | null;
   avoidText: string | null;
   sentAt: string | null;
+}
+
+/**
+ * MVP 테스트 KPI용 화면 이벤트 (`MEMO/KPI_측정_계획.md`).
+ * `api/_routes/events/track.ts`의 `KPI_EVENT_NAMES`와 **같은 목록이어야 한다.**
+ */
+export type KpiEventName =
+  | "style_dna_viewed"
+  | "influencer_selected"
+  | "outfit_image_save";
+
+/**
+ * 지표 하나를 남긴다. **결과를 기다리지 않고, 실패해도 삼킨다.**
+ *
+ * KPI 기록이 사용자 흐름을 막으면 안 된다 — 서버가 죽어 있어도 이미지 저장은 그대로 동작해야 한다.
+ * 그래서 부르는 쪽은 `await`하지 않고, 여기서 오류를 밖으로 내보내지 않는다.
+ * 실패 사실은 서버 로그(`[BiasFit 지표]`)에 남는다.
+ */
+export function trackEvent(eventName: KpiEventName, screen?: string) {
+  void postJson("/api/events/track", {
+    eventName,
+    anonUserKey: anonUserKey(),
+    screen,
+  }).catch(() => {});
 }
 
 export interface DiagnosisResultView {

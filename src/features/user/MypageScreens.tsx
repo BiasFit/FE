@@ -6,6 +6,7 @@ import {
   getMyAccount,
   getMypageOverview,
   getOutfitCard,
+  trackEvent,
   type DiagnosisResultView,
   type MypageDiagnosis,
   type MypageOverview,
@@ -604,6 +605,8 @@ export function MypageOutfitDetailScreen() {
 
   const download = async () => {
     if (!cardRef.current) return;
+    // KPI: 이미지 저장 시도 (MEMO/KPI_측정_계획.md). U7과 같은 이벤트를 화면 이름으로 구분한다.
+    trackEvent("outfit_image_save", "mypage_outfit");
     setSaving(true);
     try {
       const { default: html2canvas } = await import("html2canvas");

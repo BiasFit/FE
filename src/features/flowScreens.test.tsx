@@ -4,6 +4,12 @@ import App from "../App.js";
 import { influencers } from "../data/influencers.js";
 import { rankInfluencers } from "../domain/scoring.js";
 
+// 이미지 저장은 캔버스를 쓴다. jsdom에는 캔버스가 없으므로 그림 만드는 부분만 대신한다.
+// KPI 이벤트는 그림을 만들기 **전에** 나가므로 이 대역이 검증 대상을 가리지 않는다.
+vi.mock("html2canvas", () => ({
+  default: async () => ({ toDataURL: () => "data:image/png;base64,AAAA" }),
+}));
+
 function jsonResponse(value: unknown) {
   return new Response(JSON.stringify(value), {
     status: 200,
@@ -15,6 +21,8 @@ function jsonResponse(value: unknown) {
 const savedPayloads: any[] = [];
 /** /api/requests/send로 전송된 부탁해요 카드. */
 const sentCards: any[] = [];
+/** /api/events/track으로 나간 KPI 이벤트 (MEMO/KPI_측정_계획.md). */
+const trackedEvents: any[] = [];
 /**
  * 추천 근거 응답을 붙잡아 두는 문. 배포 환경 실측(카드 1.5초 · 근거 4.5초)을 흉내내
  * "근거가 오기 전에 사용자가 넘어가는" 상황을 재현할 때 쓴다.
@@ -69,6 +77,7 @@ beforeEach(() => {
   sessionStorage.clear();
   savedPayloads.length = 0;
   sentCards.length = 0;
+  trackedEvents.length = 0;
   deliveredPayloads.length = 0;
   deliveredCard = null;
   explanationGate = null;
@@ -193,6 +202,10 @@ beforeEach(() => {
       if (url.endsWith("/api/requests/send")) {
         sentCards.push(body);
         return jsonResponse({ id: `request-${sentCards.length}` });
+      }
+      if (url.endsWith("/api/events/track")) {
+        trackedEvents.push(body);
+        return jsonResponse({ ok: true });
       }
       if (url.endsWith("/api/influencers/list")) {
         return jsonResponse({ influencers });
@@ -551,6 +564,82 @@ describe("user feature screens", () => {
     expect(
       screen.queryByRole("button", { name: /이미지로 저장하기/ }),
     ).not.toBeInTheDocument();
+  });
+
+  // ── KPI 이벤트 (MEMO/KPI_측정_계획.md) ───────────────────────────────────
+  // 화면 안에서 끝나 DB에 흔적이 남지 않던 세 가지를 서버로 보낸다.
+  // 이 이벤트들이 조용히 빠지면 테스트 기간의 숫자를 되살릴 방법이 없다.
+
+  it("Style DNA 화면에 도달하면 KPI 이벤트를 한 번만 보낸다", async () => {
+    await walkToDna();
+
+    await waitFor(() =>
+      expect(trackedEvents.filter((event) => event.eventName === "style_dna_viewed")).toHaveLength(1),
+    );
+    // 같은 화면이 다시 그려져도 도달 1회는 1회다.
+    expect(trackedEvents[0].anonUserKey).toEqual(expect.any(String));
+  });
+
+  it("스타일메이트를 확정하면 전송과 별개로 선택 이벤트가 남는다", async () => {
+    await walkToTopThree();
+
+    const selectButton = await screen.findByRole("button", {
+      name: /진단 결과 저장 중|선택하기/,
+    });
+    await waitFor(() => expect(selectButton).toBeEnabled());
+    fireEvent.click(selectButton);
+
+    fireEvent.click(await screen.findByRole("button", { name: "확정하기" }));
+
+    // 부탁해요 카드를 아직 보내지 않았는데도 "선택했다"는 사실이 남아야 한다.
+    // 이 차이가 매칭 이후 요청 단계 이탈률이다.
+    await waitFor(() =>
+      expect(trackedEvents.filter((event) => event.eventName === "influencer_selected")).toHaveLength(1),
+    );
+    expect(sentCards).toHaveLength(0);
+    expect(window.location.hash).toBe("#/user/request");
+  });
+
+  it("코디 카드 이미지 저장을 누르면 시도가 기록되고, 기록이 실패해도 저장은 그대로 된다", async () => {
+    deliveredCard = {
+      outfitCardId: "card-1",
+      matchResultId: "saved-1",
+      coachingType: "personal",
+      title: "부드러운 캠퍼스 레이어드",
+      message: "개강 첫 주에 어울리는 조합이에요.",
+      tpoCode: "new_semester",
+      tpoLabel: "개강 행사",
+      budgetLabel: "3~6만 원",
+      budgetApproach: "총액 절약형",
+      influencerName: "STYLEMATE 01",
+      deliveredAt: "2026-08-17T10:00:00.000Z",
+      items: [
+        { memberLabel: "self", itemType: "top", name: "소프트 핑크 가디건", url: "https://shop.test/top/1" },
+        { memberLabel: "self", itemType: "bottom", name: "연청 와이드 데님", url: "https://shop.test/bottom/1" },
+      ],
+    };
+
+    // jsdom은 내려받기를 흉내내지 못한다. 눌렸는지만 본다.
+    const downloadClick = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => {});
+
+    window.location.hash = "#/user/outfit";
+    render(<App />);
+
+    const saveButton = await screen.findByRole("button", { name: "이미지 저장" });
+    fireEvent.click(saveButton);
+
+    await waitFor(() =>
+      expect(trackedEvents.filter((event) => event.eventName === "outfit_image_save")).toHaveLength(1),
+    );
+    // 같은 이벤트가 마이페이지에도 있어 화면 이름으로 구분한다.
+    expect(trackedEvents[trackedEvents.length - 1].screen).toBe("outfit");
+    // 기록을 기다리지 않고 저장이 그대로 진행된다. KPI가 기능을 막으면 안 된다.
+    await waitFor(() => expect(downloadClick).toHaveBeenCalled());
+    await waitFor(() => expect(saveButton).toBeEnabled());
+
+    downloadClick.mockRestore();
   });
 });
 
