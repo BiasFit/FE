@@ -14,7 +14,7 @@ import { buildResultSnapshot, completedForms, saveDiagnosisOnce } from "./diagno
 import { influencerPhotoStyle } from "../../shared/influencerPhoto.js";
 import { Pill, PrimaryCta, TopBar } from "../../shared/AppShell.js";
 import iconAvatar from "../../assets/mypage/icon-avatar.svg";
-import iconItemPlaceholder from "../../assets/mypage/icon-item-placeholder.svg";
+import { productUrlLabel } from "../../shared/productUrl.js";
 import bgAurora from "../../assets/mypage/bg-aurora.svg";
 import iconStepDone from "../../assets/mypage/icon-step-done.svg";
 import iconStepActive from "../../assets/mypage/icon-step-active.svg";
@@ -482,6 +482,7 @@ export function OutfitScreen() {
   const navigate = useNavigate();
   const cardRef = useRef<HTMLDivElement>(null);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const { state } = useAppState();
   const [card, setCard] = useState<OutfitCardView | null>(null);
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
@@ -514,6 +515,7 @@ export function OutfitScreen() {
     // 그때도 "가져가려 했다"는 사실은 그대로다.
     trackEvent("outfit_image_save", "outfit");
     setSaving(true);
+    setSaveError("");
     try {
       const { default: html2canvas } = await import("html2canvas");
       const canvas = await html2canvas(cardRef.current, {
@@ -524,6 +526,11 @@ export function OutfitScreen() {
       link.download = "Fitto-outfit-card.png";
       link.href = canvas.toDataURL("image/png");
       link.click();
+    } catch (error) {
+      // 실패해도 아무 일 없는 것처럼 보이면 사용자는 저장된 줄 안다.
+      // 조용한 실패로 이미 한 번 크게 데였다 (MEMO/진단결과_저장_실패_사건_스터디.md).
+      console.log("[BiasFit 코디] 코디 카드 이미지 저장 실패", error);
+      setSaveError("이미지를 저장하지 못했어요. 잠시 후 다시 시도해 주세요.");
     } finally {
       setSaving(false);
     }
@@ -567,15 +574,14 @@ export function OutfitScreen() {
               <div className="h-[10px]" />
               <div className="flex flex-col gap-[10px]">
                 {card.items.map((item, index) => (
-                  <div key={`${item.itemType}-${index}`} className="flex w-full items-center gap-[14px] rounded-[16px] bg-white p-[14px]">
-                    <span className="relative flex h-[76px] w-[60px] shrink-0 items-center justify-center rounded-[12px] bg-[#f2f2f5]">
-                      <img src={iconItemPlaceholder} alt="" className="size-[22px]" />
-                    </span>
-                    <div className="flex min-w-0 flex-1 flex-col gap-[7px]">
+                  <div key={`${item.itemType}-${index}`} className="flex w-full items-center rounded-[16px] bg-white p-[14px]">
+                    {/* 이미지 자리는 두지 않는다. outfit_card_items에 이미지가 없어 영원히 회색이고,
+                        사용자에게는 "사진을 못 불러왔다"로 보인다. 글자가 카드 폭을 다 쓴다. */}
+                    <div className="flex min-w-0 flex-1 flex-col space-y-[7px]">
                       <p className="text-[11px] font-semibold text-[#8e8e93]">{item.itemType === "top" ? "상의" : "하의"}</p>
                       <p className="text-[15px] font-medium text-[#0a0a0a]">{item.name}</p>
-                      <a href={item.url} target="_blank" rel="noreferrer" className="truncate text-[11px] font-semibold text-[#3c3c43] underline decoration-[#e8e8ec] underline-offset-2">
-                        {item.url}
+                      <a href={item.url} target="_blank" rel="noreferrer" className="text-[11px] font-semibold text-[#3c3c43] underline decoration-[#e8e8ec] underline-offset-2">
+                        {productUrlLabel(item.url)}
                       </a>
                     </div>
                   </div>
@@ -624,6 +630,11 @@ export function OutfitScreen() {
               다운로드
             </button>
           </div>
+          {saveError ? (
+            <p className="mt-3 text-[13px] font-semibold text-[#0a0a0a]" aria-live="polite">
+              {saveError}
+            </p>
+          ) : null}
         </div>
       ) : null}
     </section>

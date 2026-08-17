@@ -39,6 +39,7 @@ import iconCheck from "../../assets/mypage/icon-check.svg";
 import iconChevronDown from "../../assets/mypage/icon-chevron-down.svg";
 import iconItemPlaceholder from "../../assets/mypage/icon-item-placeholder.svg";
 import { bodyTypeImageByName, styleLookImage } from "../../shared/optionImages.js";
+import { productUrlLabel } from "../../shared/productUrl.js";
 
 /**
  * 빈 초안으로 시작한다.
@@ -1253,11 +1254,9 @@ export function DeliveredOutfitCard({ card }: { card: OutfitCardView }) {
             <div className="h-[10px]" />
             <div className="flex flex-col gap-[10px]">
               {([["상의", top], ["하의", bottom]] as const).map(([label, item]) => (
-                <div key={label} className="flex w-full items-center gap-[14px] rounded-[16px] bg-white p-[14px]">
-                  <span className="relative flex h-[76px] w-[60px] shrink-0 items-center justify-center rounded-[12px] bg-[#f2f2f5]">
-                    <img src={iconItemPlaceholder} alt="" className="size-[22px]" />
-                  </span>
-                  <div className="flex min-w-0 flex-1 flex-col gap-[7px]">
+                <div key={label} className="flex w-full items-center rounded-[16px] bg-white p-[14px]">
+                  {/* 사용자가 받는 카드(U7)와 같은 모양이어야 한다. 이미지 자리는 양쪽 모두 없앴다. */}
+                  <div className="flex min-w-0 flex-1 flex-col space-y-[7px]">
                     <p className="text-[11px] font-semibold text-[#8e8e93]">{label}</p>
                     <p className="text-[15px] font-medium text-[#0a0a0a]">{item?.name ?? "—"}</p>
                     {item ? (
@@ -1265,9 +1264,9 @@ export function DeliveredOutfitCard({ card }: { card: OutfitCardView }) {
                         href={item.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="truncate text-[11px] font-semibold text-[#3c3c43] underline decoration-[#e8e8ec] underline-offset-2"
+                        className="text-[11px] font-semibold text-[#3c3c43] underline decoration-[#e8e8ec] underline-offset-2"
                       >
-                        {item.url}
+                        {productUrlLabel(item.url)}
                       </a>
                     ) : null}
                   </div>
