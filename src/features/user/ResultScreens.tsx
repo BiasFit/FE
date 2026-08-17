@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { AppState } from "../../app/appState.js";
 import type { AiRequestStatus, DiagnosisForm, MatchPriority } from "../../app/types.js";
@@ -23,6 +23,7 @@ import {
   getMatchExplanations,
   getStyleDnaExplanation,
   getTopThree,
+  trackEvent,
 } from "../../lib/biasfitApi.js";
 import {
   breakdownsFor,
@@ -286,6 +287,18 @@ export function DnaScreen() {
     return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch, requestKey, retry]);
+
+  // KPI: Style DNA 결과 화면 도달 (MEMO/KPI_측정_계획.md).
+  //
+  // AI 응답이 아니라 **화면에 온 사실**을 남긴다. 응답을 기다렸다가 남기면 AI가 실패했을 때
+  // 도달 자체가 세어지지 않아, 정작 문제가 있는 날의 숫자가 비어 버린다.
+  // 우선순위 없이 주소로 바로 들어온 경우는 흐름을 통과한 것이 아니므로 세지 않는다.
+  const dnaViewTracked = useRef(false);
+  useEffect(() => {
+    if (dnaViewTracked.current || !state.matchPriority) return;
+    dnaViewTracked.current = true;
+    trackEvent("style_dna_viewed");
+  }, [state.matchPriority]);
 
   if (!state.matchPriority) {
     return (

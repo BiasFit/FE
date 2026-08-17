@@ -62,6 +62,7 @@ const biasFitApiModules = {
   "/api/ai/match-explanations": "/api/ai/[action].ts",
   "/api/ai/priority-options": "/api/ai/[action].ts",
   "/api/ai/style-dna-explanation": "/api/ai/[action].ts",
+  "/api/events/track": "/api/events/[action].ts",
   "/api/influencers/list": "/api/influencers/[action].ts",
   "/api/influencers/upsert": "/api/influencers/[action].ts",
   "/api/matches/top-three": "/api/matches/[action].ts",
