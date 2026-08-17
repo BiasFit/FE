@@ -48,6 +48,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 const BODY_TYPES = bodyTypes.map((type) => type.name) as readonly string[];
 const MAX_BUDGET_CODE = budgets.length;
 
+/** 오류 문구에 넣을 값. 비어 있으면 `undefined`를 그대로 보여주지 않는다. */
+function shown(value: unknown) {
+  return value === undefined || value === null ? "" : String(value);
+}
+
 function requireStyleScores(value: unknown, context: string): StyleScores {
   if (!isRecord(value)) {
     throw new Error(`${context}의 스타일 점수가 없어요.`);
@@ -66,7 +71,7 @@ function requireStyleScores(value: unknown, context: string): StyleScores {
 
 function requireBudgetCode(value: unknown, context: string, field: string) {
   if (typeof value !== "number" || !Number.isInteger(value) || value < 1 || value > MAX_BUDGET_CODE) {
-    throw new Error(`${context}의 ${field}가 올바르지 않아요: "${String(value)}"`);
+    throw new Error(`${context}의 ${field} 값이 올바르지 않아요: "${shown(value)}"`);
   }
   return value;
 }
@@ -78,7 +83,7 @@ function requireFitConcerns(value: unknown, context: string) {
   for (const concern of value) {
     // 라벨이 한 글자만 어긋나도 핏 점수가 조용히 0점이 된다. 여기서 거절한다.
     if (typeof concern !== "string" || !FIT_CONCERNS.includes(concern)) {
-      throw new Error(`${context}의 핏 고민이 올바르지 않아요: "${String(concern)}"`);
+      throw new Error(`${context}의 핏 고민이 올바르지 않아요: "${shown(concern)}"`);
     }
   }
   return value as string[];
@@ -90,12 +95,12 @@ function validateMember(value: unknown, context: string) {
 
   const avoidedStyle = value.avoidedStyle;
   if (typeof avoidedStyle !== "string" || !(STYLE_NAMES as readonly string[]).includes(avoidedStyle)) {
-    throw new Error(`${context}의 비선호 스타일이 올바르지 않아요: "${String(avoidedStyle)}"`);
+    throw new Error(`${context}의 비선호 스타일이 올바르지 않아요: "${shown(avoidedStyle)}"`);
   }
 
   const bodyType = value.bodyType;
   if (typeof bodyType !== "string" || !BODY_TYPES.includes(bodyType)) {
-    throw new Error(`${context}의 체형 유형이 올바르지 않아요: "${String(bodyType)}"`);
+    throw new Error(`${context}의 체형 유형이 올바르지 않아요: "${shown(bodyType)}"`);
   }
 
   const budgetApproach = value.budgetApproach;
@@ -103,7 +108,7 @@ function validateMember(value: unknown, context: string) {
     typeof budgetApproach !== "string" ||
     !(budgetApproaches as readonly string[]).includes(budgetApproach)
   ) {
-    throw new Error(`${context}의 구매 기준이 올바르지 않아요: "${String(budgetApproach)}"`);
+    throw new Error(`${context}의 구매 기준이 올바르지 않아요: "${shown(budgetApproach)}"`);
   }
 
   return {
@@ -122,13 +127,13 @@ export function validateRankMatchInput(value: unknown): RankMatchInput {
 
   const { mode, priority, tpo } = value;
   if (mode !== "personal" && mode !== "group") {
-    throw new Error(`스타일링 유형이 올바르지 않아요: "${String(mode)}"`);
+    throw new Error(`스타일링 유형이 올바르지 않아요: "${shown(mode)}"`);
   }
   if (!isMatchPriority(priority)) {
-    throw new Error(`매칭 우선순위가 올바르지 않아요: "${String(priority)}"`);
+    throw new Error(`매칭 우선순위가 올바르지 않아요: "${shown(priority)}"`);
   }
   if (!isTpoCode(tpo)) {
-    throw new Error(`상황(TPO) 코드가 올바르지 않아요: "${String(tpo)}"`);
+    throw new Error(`상황(TPO) 코드가 올바르지 않아요: "${shown(tpo)}"`);
   }
 
   if (mode === "personal") {

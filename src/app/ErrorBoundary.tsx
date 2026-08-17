@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { clearAppState } from "../storage/diagnosisSession.js";
 
 /**
  * 렌더 중 오류가 나면 React는 트리를 통째로 버린다. 경계가 없으면 화면이 하얗게 되고,
@@ -44,24 +45,25 @@ export class ErrorBoundary extends Component<Props, State> {
         </p>
         <button
           type="button"
-          onClick={() => {
-            // 라우터 상태까지 초기화해야 같은 화면에서 다시 터지지 않는다.
-            window.location.hash = "#/user/top3";
-            this.setState({ message: null });
-          }}
+          // `setState`로 자식만 다시 그리면 **같은 값으로 같은 자리에서 다시 터진다.**
+          // 통째로 다시 띄워야 저장된 진단을 처음부터 읽으며 복구할 기회가 생긴다.
+          onClick={() => window.location.reload()}
           className="rounded-full bg-[#0a0a0a] px-5 py-3 text-[14px] font-semibold text-white"
         >
-          TOP 3 다시 보기
+          다시 불러오기
         </button>
         <button
           type="button"
+          // 저장된 값 자체가 망가졌으면 새로고침해도 계속 죽는다. 그 고리를 끊는 마지막 수단이다.
+          // 입력이 사라지므로 문구에 그대로 적는다.
           onClick={() => {
+            clearAppState();
             window.location.hash = "#/";
-            this.setState({ message: null });
+            window.location.reload();
           }}
           className="text-[13px] font-medium text-[#8e8e93] underline underline-offset-2"
         >
-          처음 화면으로
+          처음부터 다시 시작 (입력한 내용은 지워져요)
         </button>
       </section>
     );
