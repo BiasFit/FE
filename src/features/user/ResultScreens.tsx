@@ -19,6 +19,7 @@ import {
 } from "../../domain/scoring.js";
 import { MATCH_PRIORITY_WEIGHTS } from "../../domain/matchPriority.js";
 import {
+  getInfluencerAvailability,
   getInfluencers,
   getMatchExplanations,
   getStyleDnaExplanation,
@@ -451,9 +452,15 @@ export function DnaScreen() {
         )}
 
         <div className="h-9" />
+        {/* TOP 3 화면의 "조건 수정 후 다시 추천"과 같은 동작이다. 되돌릴 수 없으니 같이 확인을 받는다. */}
         <button
           type="button"
-          onClick={() => navigate("/user/body")}
+          onClick={() => {
+            const ok = window.confirm(
+              "입력을 다시 하면 지금 만든 Style DNA가 사라져요. 계속할까요?",
+            );
+            if (ok) navigate("/user/body");
+          }}
           className="text-left text-[13px] font-medium text-[#8e8e93] underline underline-offset-2"
         >
           입력 수정하기
@@ -514,6 +521,10 @@ export function Top3Screen() {
   const [saveStatus, setSaveStatus] = useState<AiRequestStatus>(
     state.savedResultId ? "success" : "idle",
   );
+  // 선택한 스타일메이트가 아직 요청을 받을 수 있는지 확인하는 중인지.
+  const [checking, setChecking] = useState(false);
+  // 한도가 차서 넘어가지 못했을 때 카드 자리에 남기는 문구.
+  const [selectBlocked, setSelectBlocked] = useState("");
   const canSelectInfluencer = Boolean(state.savedResultId);
   const reasons = useMemo(
     () =>
@@ -592,6 +603,57 @@ export function Top3Screen() {
         console.log("[BiasFit 저장] 진단 결과 저장 실패", error);
         setSaveStatus("error");
       });
+  }
+
+  /**
+   * 스타일메이트를 확정하고 다음 화면으로 넘어간다.
+   *
+   * 순위는 목록을 만든 시점의 한도만 반영한다. 그 뒤 선택·확정·부탁해요 카드 작성까지
+   * 화면을 여럿 거치는 동안 다른 사용자가 마지막 자리를 채울 수 있고, 예전에는 그 사실이
+   * **다섯 화면 뒤 전송 버튼에서야** 드러났다. 그래서 넘어가기 직전에 서버에 한 번 더 묻는다.
+   *
+   * 확인이 실패하면 막지 않고 통과시킨다. 네트워크 문제로 정상 사용자를 가두면 안 된다 —
+   * 진짜 한도 검사는 어차피 전송 시점의 `send_request_card`가 원자적으로 한다.
+   */
+  function chooseInfluencer(influencerId: string, matchScore: number) {
+    if (!canSelectInfluencer || checking) return;
+    setSelectBlocked("");
+    setChecking(true);
+    void getInfluencerAvailability(influencerId)
+      .then(({ available }) => {
+        if (available) {
+          dispatch({ type: "selectInfluencer", influencerId, score: matchScore });
+          navigate("/user/match");
+          return;
+        }
+        // 남은 자리 수는 보여주지 않는다 (Design_system-2.md 179행).
+        // 문구는 전송 단계의 409 안내와 같은 말을 쓴다.
+        setSelectBlocked(
+          "이 스타일메이트는 지금 더 많은 요청을 받을 수 없어요. 다른 스타일메이트를 선택해 주세요.",
+        );
+        setChecking(false);
+        // 목록에서도 사라지도록 다시 받는다.
+        setRankRetry((value) => value + 1);
+      })
+      .catch((error: unknown) => {
+        console.log("[BiasFit 매칭] 수신 가능 여부 확인 실패", error);
+        dispatch({ type: "selectInfluencer", influencerId, score: matchScore });
+        navigate("/user/match");
+      });
+  }
+
+  /**
+   * 조건을 고치러 진단 첫 화면으로 돌아간다.
+   *
+   * 우선순위·Style DNA·순위·저장된 진단 id를 전부 버리는 동작이라(appState.ts의
+   * `invalidate*`) 되돌릴 수 없다. 예전에는 선택하기 바로 아래 같은 크기·같은 폭의 버튼으로
+   * 놓여 있어 한 번 잘못 누르면 경고 없이 설문 첫 페이지로 튕겼다. 확인을 먼저 받는다.
+   */
+  function restartDiagnosis() {
+    const ok = window.confirm(
+      "조건을 다시 입력하면 지금 받은 Style DNA와 TOP 3 추천이 사라져요. 계속할까요?",
+    );
+    if (ok) navigate("/user/body");
   }
 
   // 카드 표시용 스타일메이트 목록. 한 번만 받아 appState에 둔다.
@@ -702,8 +764,11 @@ export function Top3Screen() {
 
           {ranked.map(({ influencer, breakdown }, index) => {
             const view = state.influencerDirectory.find((profile) => profile.id === influencer.id);
-            const select = () =>
+            // 카드를 눌러 크게 보는 것뿐이다. 화면을 넘기지 않으므로 한도를 묻지 않는다.
+            const select = () => {
+              setSelectBlocked("");
               dispatch({ type: "selectInfluencer", influencerId: influencer.id, score: breakdown.matchScore });
+            };
 
             if (influencer.id === bigId) {
               return (
@@ -768,17 +833,25 @@ export function Top3Screen() {
                       />
                     </div>
                   ) : null}
+                  {selectBlocked ? (
+                    <p
+                      className="mb-3 rounded-[14px] bg-[#f5f5f7] px-4 py-3 text-[13px] leading-[1.5] text-[#0a0a0a]"
+                      aria-live="polite"
+                    >
+                      {selectBlocked}
+                    </p>
+                  ) : null}
                   <button
                     type="button"
-                    disabled={!canSelectInfluencer}
-                    onClick={() => {
-                      if (!canSelectInfluencer) return;
-                      select();
-                      navigate("/user/match");
-                    }}
+                    disabled={!canSelectInfluencer || checking}
+                    onClick={() => chooseInfluencer(influencer.id, breakdown.matchScore)}
                     className="flex min-h-[56px] w-full items-center justify-center rounded-[14px] bg-[#0a0a0a] text-[17px] font-bold text-white disabled:opacity-40"
                   >
-                    {canSelectInfluencer ? "선택하기" : "진단 결과 저장 중"}
+                    {checking
+                      ? "확인하는 중이에요."
+                      : canSelectInfluencer
+                        ? "선택하기"
+                        : "진단 결과 저장 중"}
                   </button>
                 </div>
               );
@@ -823,12 +896,14 @@ export function Top3Screen() {
         <p className="mt-5 text-[13px] leading-[1.5] text-[#8e8e93]">
           점수는 나의 스타일 기준과 요청 조건이 인플루언서와 얼마나 잘 맞는지를 보여줘요.
         </p>
-      </div>
-      <div className="px-5 pb-[10px] pt-[10px]">
+
+        {/* 진단을 통째로 되돌리는 동작이라 선택하기와 같은 모양·같은 폭으로 화면 맨 아래에
+            두지 않는다. 그 배치에서는 카드를 고르다 한 칸 아래를 눌러 경고도 없이
+            설문 첫 페이지로 튕겼다. 본문 안의 작은 링크로 낮추고 확인을 받는다. */}
         <button
           type="button"
-          onClick={() => navigate("/user/body")}
-          className="flex min-h-[54px] w-full items-center justify-center rounded-[14px] border border-[#e8e8ec] bg-white text-[15px] font-bold text-[#3c3c43]"
+          onClick={restartDiagnosis}
+          className="mt-8 self-start text-[13px] font-medium text-[#8e8e93] underline underline-offset-2"
         >
           조건 수정 후 다시 추천
         </button>

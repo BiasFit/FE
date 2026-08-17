@@ -15,6 +15,27 @@ const APP_STATE_KEY = "biasfit:app-state:v1";
  * 저장된 상태를 읽는다. 조금이라도 이상하면 **조용히 버리고 초기 상태**를 쓴다.
  * 배포로 상태 구조가 바뀌었을 때 옛 값이 복원되며 화면이 깨지는 것을 막는 안전장치다.
  */
+/**
+ * 화면이 곧바로 반복해서 쓰는 필드들. 모양이 어긋나면 **첫 렌더에서 화면이 통째로 죽는다**
+ * (`ranked.map is not a function`). 키가 있는지만 보던 검사로는 그걸 잡지 못했다.
+ * 손상된 값이 sessionStorage에 남아 있으면 새로고침해도 계속 죽으므로 여기서 끊는다.
+ */
+const ARRAY_FIELDS = [
+  "rankedInfluencers",
+  "matchExplanations",
+  "priorityOptions",
+  "influencerDirectory",
+] as const;
+
+function hasUsableShape(parsed: Partial<AppState>) {
+  if (ARRAY_FIELDS.some((field) => !Array.isArray(parsed[field]))) return false;
+  if (typeof parsed.personal !== "object" || parsed.personal === null) return false;
+  const group = parsed.group as AppState["group"] | undefined;
+  if (typeof group !== "object" || group === null) return false;
+  if (typeof group.members !== "object" || group.members === null) return false;
+  return true;
+}
+
 export function loadAppState(): AppState {
   const initial = createInitialState();
   try {
@@ -25,9 +46,22 @@ export function loadAppState(): AppState {
     // 초기 상태의 키를 모두 갖춘 값만 받아들인다. 하나라도 없으면 옛 구조로 본다.
     const missing = Object.keys(initial).some((key) => !(key in parsed));
     if (missing) return initial;
+    if (!hasUsableShape(parsed)) return initial;
     return { ...initial, ...parsed };
   } catch {
     return initial;
+  }
+}
+
+/**
+ * 저장된 진단을 버린다. 화면이 되살아나지 못할 때 쓰는 마지막 수단이다
+ * (`app/ErrorBoundary.tsx`). 평소 흐름에서는 부르지 않는다.
+ */
+export function clearAppState() {
+  try {
+    sessionStorage.removeItem(APP_STATE_KEY);
+  } catch {
+    // 저장이 막힌 환경. 어차피 남아 있는 값도 없다.
   }
 }
 
