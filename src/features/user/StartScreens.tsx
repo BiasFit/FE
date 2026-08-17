@@ -268,7 +268,7 @@ export function UserLoginScreen() {
   const navigate = useNavigate();
   const { signIn } = useAuth();
   const [loggingIn, setLoggingIn] = useState(false);
-  const [loginId, setLoginId] = useState("p1");
+  const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
 
@@ -297,13 +297,13 @@ export function UserLoginScreen() {
         </h1>
         <div className="h-[10px]" />
         <p className="text-[15px] font-medium leading-[1.52] tracking-[-0.225px] text-[#8e8e93]">
-          사전에 안내드린 개인 테스트 계정으로 로그인해 주세요.
+          가입할 때 만든 아이디와 비밀번호로 로그인해 주세요.
         </p>
         <div className="h-[34px]" />
 
         <div className="flex flex-col gap-5">
           <label className="flex flex-col gap-2">
-            <span className="text-[12px] text-[#8e8e93]">테스트 아이디</span>
+            <span className="text-[12px] text-[#8e8e93]">아이디</span>
             <input
               className="min-h-[56px] w-full rounded-[14px] bg-[#f5f5f7] px-[18px] text-[16px] font-semibold tracking-[-0.32px] text-[#0a0a0a] outline-none"
               type="text"
@@ -313,7 +313,7 @@ export function UserLoginScreen() {
             />
           </label>
           <label className="flex flex-col gap-2">
-            <span className="text-[12px] text-[#8e8e93]">테스트 코드</span>
+            <span className="text-[12px] text-[#8e8e93]">비밀번호</span>
             <input
               className="min-h-[56px] w-full rounded-[14px] bg-[#f5f5f7] px-[18px] text-[16px] font-semibold tracking-[-0.32px] text-[#0a0a0a] outline-none"
               type="password"
@@ -324,7 +324,8 @@ export function UserLoginScreen() {
           </label>
         </div>
         <div className="h-[18px]" />
-        <p className="text-[12px] text-[#8e8e93]">실제 이메일이나 비밀번호는 입력하지 마세요.</p>
+        {/* 실제 인증 정보를 그대로 쓰지 않게 막는 안내다 (AGENTS.md Guardrails). */}
+        <p className="text-[12px] text-[#8e8e93]">다른 곳에서 쓰는 비밀번호는 사용하지 마세요.</p>
         {loginError ? (
           <p className="mt-3 text-[13px] font-semibold text-[#0a0a0a]" aria-live="polite">
             {loginError}
@@ -339,27 +340,6 @@ export function UserLoginScreen() {
           className="flex min-h-[56px] w-full items-center justify-center rounded-[14px] bg-[#0a0a0a] text-[17px] font-bold text-white disabled:opacity-40"
         >
           {loggingIn ? "로그인하는 중이에요." : "로그인"}
-        </button>
-        <button
-          type="button"
-          disabled={loggingIn}
-          onClick={() => {
-            // 인증 설정 전에는 네트워크 없이 통과하고, 설정 뒤에는 실제 p1 계정으로 로그인한다.
-            setLoginId("p1");
-            setLoggingIn(true);
-            setLoginError("");
-            void signIn({ loginId: "p1", password: password || "biasfit01" })
-              .then(() => navigate("/user/coaching"))
-              .catch((error: unknown) => {
-                setLoginError(
-                  error instanceof Error ? error.message : "로그인하지 못했어요.",
-                );
-                setLoggingIn(false);
-              });
-          }}
-          className="flex min-h-[54px] w-full items-center justify-center rounded-[14px] bg-[#f5f5f7] text-[15px] font-bold text-[#3c3c43] disabled:opacity-40"
-        >
-          P1 더미 계정으로 시작하기
         </button>
         <button
           type="button"

@@ -25,11 +25,14 @@ const LABEL_MIN_LENGTH = 10;
 // 그룹 선택지는 A와 B의 조건을 함께 담아야 해서 개인보다 길어진다.
 const LABEL_MAX_LENGTH = 45;
 
-/** 이번 요청에서 근거로 삼을 수 있는 입력 폼. */
+/** 이번 요청에서 근거로 삼을 수 있는 입력 폼. 해당 모드의 입력이 없으면 만들 수 없다. */
 function requestForms(input: PriorityOptionsRequest) {
-  return input.mode === "personal"
-    ? [input.personal]
-    : [input.group.members.A, input.group.members.B];
+  if (input.mode === "personal") {
+    if (!input.personal) throw new Error("진단 입력이 없습니다.");
+    return [input.personal];
+  }
+  if (!input.group) throw new Error("진단 입력이 없습니다.");
+  return [input.group.members.A, input.group.members.B];
 }
 
 /** 사용자가 실제로 고른 값만 모아 모델에 내려 준다. */
@@ -45,19 +48,25 @@ function selectedVocabulary(input: PriorityOptionsRequest) {
   }));
 }
 
-/** 모델에게는 TPO 내부 코드 대신 사람이 읽는 라벨을 보낸다. */
+/** 모델에게는 TPO 내부 코드 대신 사람이 읽는 라벨을 보낸다. 보낸 쪽만 바꾼다. */
 function withTpoLabels(input: PriorityOptionsRequest) {
+  const personal = input.personal;
+  const group = input.group;
   return {
-    ...input,
-    personal: { ...input.personal, tpo: tpoLabel(input.personal.tpo) },
-    group: {
-      ...input.group,
-      tpo: tpoLabel(input.group.tpo),
-      members: {
-        A: { ...input.group.members.A, tpo: tpoLabel(input.group.members.A.tpo) },
-        B: { ...input.group.members.B, tpo: tpoLabel(input.group.members.B.tpo) },
-      },
-    },
+    mode: input.mode,
+    ...(personal ? { personal: { ...personal, tpo: tpoLabel(personal.tpo) } } : {}),
+    ...(group
+      ? {
+          group: {
+            ...group,
+            tpo: tpoLabel(group.tpo),
+            members: {
+              A: { ...group.members.A, tpo: tpoLabel(group.members.A.tpo) },
+              B: { ...group.members.B, tpo: tpoLabel(group.members.B.tpo) },
+            },
+          },
+        }
+      : {}),
   };
 }
 

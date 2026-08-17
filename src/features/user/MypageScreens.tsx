@@ -26,6 +26,9 @@ import iconChevronRight from "../../assets/mypage/icon-chevron-right.svg";
 import iconCaretDown from "../../assets/mypage/icon-caret-down.svg";
 import iconImagePlaceholder from "../../assets/mypage/icon-image-placeholder.svg";
 import iconItemPlaceholder from "../../assets/mypage/icon-item-placeholder.svg";
+import { captureOutfitCard } from "../../shared/outfitCardCapture.js";
+import { ProductQr } from "../../shared/ProductQr.js";
+import { productUrlLabel } from "../../shared/productUrl.js";
 import iconChevronDown from "../../assets/mypage/icon-chevron-down.svg";
 
 /**
@@ -574,6 +577,7 @@ export function MypageOutfitDetailScreen() {
   const [account, setAccount] = useState<{ displayName: string } | null>(null);
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [openSection, setOpenSection] = useState<"dna" | "request" | null>(null);
 
   useEffect(() => {
@@ -608,13 +612,17 @@ export function MypageOutfitDetailScreen() {
     // KPI: 이미지 저장 시도 (MEMO/KPI_측정_계획.md). U7과 같은 이벤트를 화면 이름으로 구분한다.
     trackEvent("outfit_image_save", "mypage_outfit");
     setSaving(true);
+    setSaveError("");
     try {
-      const { default: html2canvas } = await import("html2canvas");
-      const canvas = await html2canvas(cardRef.current, { backgroundColor: "#ffffff", scale: 2 });
+      const canvas = await captureOutfitCard(cardRef.current);
       const link = document.createElement("a");
       link.download = "Fitto-outfit-card.png";
       link.href = canvas.toDataURL("image/png");
       link.click();
+    } catch (error) {
+      // U7과 같은 이유다. 실패를 조용히 넘기면 사용자는 저장된 줄 안다.
+      console.log("[BiasFit 마이페이지] 코디 카드 이미지 저장 실패", error);
+      setSaveError("이미지를 저장하지 못했어요. 잠시 후 다시 시도해 주세요.");
     } finally {
       setSaving(false);
     }
@@ -682,12 +690,10 @@ export function MypageOutfitDetailScreen() {
                     {group.items.map((item, index) => (
                       <div
                         key={`${item.itemType}-${index}`}
-                        className="flex w-full items-center gap-[14px] rounded-[16px] bg-white p-[14px]"
+                        className="flex w-full items-center gap-[12px] rounded-[16px] bg-white p-[14px]"
                       >
-                        <span className="relative flex h-[76px] w-[60px] shrink-0 items-center justify-center rounded-[12px] bg-[#f2f2f5]">
-                          <img src={iconItemPlaceholder} alt="" className="size-[22px]" />
-                        </span>
-                        <div className="flex min-w-0 flex-1 flex-col gap-[7px]">
+                        {/* U7과 같은 이유로 이미지 자리를 두지 않는다 (shared/productUrl.ts 주석). */}
+                        <div className="flex min-w-0 flex-1 flex-col space-y-[7px]">
                           <p className="text-[11px] font-semibold tracking-[-0.055px] text-[#8e8e93]">
                             {item.itemType === "top" ? "상의" : "하의"}
                           </p>
@@ -698,11 +704,12 @@ export function MypageOutfitDetailScreen() {
                             href={item.url}
                             target="_blank"
                             rel="noreferrer"
-                            className="w-full truncate text-[11px] font-semibold tracking-[-0.055px] text-[#3c3c43] underline decoration-[#e8e8ec] underline-offset-2"
+                            className="w-full text-[11px] font-semibold tracking-[-0.055px] text-[#3c3c43] underline decoration-[#e8e8ec] underline-offset-2"
                           >
-                            {item.url}
+                            {productUrlLabel(item.url)}
                           </a>
                         </div>
+                        <ProductQr url={item.url} />
                       </div>
                     ))}
                   </div>
@@ -780,24 +787,20 @@ export function MypageOutfitDetailScreen() {
             </p>
             <div className="h-6" />
 
-            <div className="flex w-full gap-[10px]">
-              <button
-                type="button"
-                disabled={saving}
-                onClick={download}
-                className="flex min-h-[56px] flex-1 items-center justify-center rounded-[14px] bg-[#0a0a0a] text-[17px] font-bold text-white disabled:opacity-60"
-              >
-                {saving ? "이미지 만드는 중…" : "이미지 저장"}
-              </button>
-              <button
-                type="button"
-                disabled={saving}
-                onClick={download}
-                className="flex min-h-[56px] flex-1 items-center justify-center rounded-[14px] border border-[#e8e8ec] bg-white text-[15px] font-bold text-[#3c3c43] disabled:opacity-60"
-              >
-                다운로드
-              </button>
-            </div>
+            {/* U7과 같은 이유로 버튼을 하나만 둔다. 두 버튼이 같은 동작을 하고 있었다. */}
+            <button
+              type="button"
+              disabled={saving}
+              onClick={download}
+              className="flex min-h-[56px] w-full items-center justify-center rounded-[14px] bg-[#0a0a0a] text-[17px] font-bold text-white disabled:opacity-60"
+            >
+              {saving ? "이미지 만드는 중…" : "이미지 저장"}
+            </button>
+            {saveError ? (
+              <p className="mt-3 text-[13px] font-semibold text-[#0a0a0a]" aria-live="polite">
+                {saveError}
+              </p>
+            ) : null}
           </>
         )}
       </div>

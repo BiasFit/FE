@@ -1,6 +1,16 @@
 import { useNavigate } from "react-router-dom";
-import type { DiagnosisForm } from "../../app/types.js";
+import type { DiagnosisDraft } from "../../app/types.js";
 import { useAppState } from "../../app/AppStateProvider.js";
+import {
+  HEIGHT_MAX,
+  HEIGHT_MIN,
+  bodyStepReady,
+  budgetStepReady,
+  designStepReady,
+  fitStepReady,
+  itemStepReady,
+  styleStepReady,
+} from "../../domain/diagnosisComplete.js";
 import {
   avoidedElements,
   bodyTypes,
@@ -16,52 +26,15 @@ import {
 } from "../../data/options.js";
 import { MemberSwitch } from "../../shared/FlowShell.js";
 import { BudgetRangeSlider } from "../../shared/BudgetRangeSlider.js";
+import {
+  bodyTypeImageByName,
+  itemImage,
+  styleImageByName,
+  styleLookImage,
+} from "../../shared/optionImages.js";
 import { PrimaryCta, SelectChip, StepHeader } from "../../shared/AppShell.js";
 import iconAvatar from "../../assets/mypage/icon-avatar.svg";
 import iconCheck from "../../assets/mypage/icon-check.svg";
-
-/** 디자인 요소 26개·아이템 27개 참고 사진. 파일명이 `data/options.ts`의 항목 이름과 같아서
- * 번호 접두사만 떼면 바로 매칭된다 (2026-08-16). */
-const styleImageFiles = import.meta.glob("../../assets/design-elements/fashion_style_images_square_1x1/*.jpg", {
-  eager: true,
-  import: "default",
-}) as Record<string, string>;
-const itemImageFiles = import.meta.glob("../../assets/design-elements/fashion_item_images_square_1x1/*.jpg", {
-  eager: true,
-  import: "default",
-}) as Record<string, string>;
-
-function imageLookup(files: Record<string, string>) {
-  const map: Record<string, string> = {};
-  for (const [path, url] of Object.entries(files)) {
-    const file = path.split("/").pop() ?? "";
-    if (/^00_/.test(file)) continue;
-    const name = file.replace(/^\d+_/, "").replace(/\.jpg$/, "");
-    map[name] = url;
-  }
-  return map;
-}
-const styleImageByName = imageLookup(styleImageFiles);
-const itemImageByName = imageLookup(itemImageFiles);
-/** 파일명이 "H라인 미디·롱스커트"로 저장돼 있어 데이터의 "H라인 미디/롱스커트"와 문자만 다르다. */
-function itemImage(name: string) {
-  return itemImageByName[name] ?? itemImageByName[name.replace("/", "·")];
-}
-
-const lookImageFiles = import.meta.glob("../../assets/design-elements/fashion_reference_based_looks_3x4/*.jpg", {
-  eager: true,
-  import: "default",
-}) as Record<string, string>;
-const bodyTypeImageFiles = import.meta.glob("../../assets/design-elements/body_type_human_like_3x4/*.jpg", {
-  eager: true,
-  import: "default",
-}) as Record<string, string>;
-const lookImageByName = imageLookup(lookImageFiles);
-const bodyTypeImageByName = imageLookup(bodyTypeImageFiles);
-/** 파일명은 "비즈니스"인데 데이터는 "오피스 & 비즈니스캐주얼"이다. */
-function styleLookImage(name: string) {
-  return lookImageByName[name] ?? (name.includes("비즈니스") ? lookImageByName["비즈니스"] : undefined);
-}
 
 function useCurrentDiagnosis() {
   const { state, dispatch } = useAppState();
@@ -69,7 +42,7 @@ function useCurrentDiagnosis() {
     state.mode === "personal"
       ? state.personal
       : state.group.members[state.activeMember];
-  const update = (patch: Partial<DiagnosisForm>) => {
+  const update = (patch: Partial<DiagnosisDraft>) => {
     if (state.mode === "personal") {
       dispatch({ type: "updatePersonal", patch });
     } else {
@@ -145,10 +118,13 @@ export function BodyScreen() {
           <input
             aria-label="키"
             type="number"
-            min={130}
-            max={200}
-            value={form.height}
-            onChange={(event) => update({ height: Number(event.target.value) })}
+            min={HEIGHT_MIN}
+            max={HEIGHT_MAX}
+            // 비우면 값 자체를 지운다. Number("")는 0이라 그대로 두면 "0cm를 골랐다"가 된다.
+            value={form.height ?? ""}
+            onChange={(event) =>
+              update({ height: event.target.value === "" ? undefined : Number(event.target.value) })
+            }
             className="w-full bg-transparent text-[16px] font-semibold tracking-[-0.32px] text-[#0a0a0a] outline-none"
           />
           <span className="shrink-0 text-[13px] text-[#8e8e93]">cm</span>
@@ -226,9 +202,10 @@ export function BodyScreen() {
       <PrimaryCta
         onClick={() => navigate("/user/fit")}
         disabled={
-          state.mode === "group" &&
-          state.group.relationship === "other" &&
-          !state.group.relationshipOther.trim()
+          !bodyStepReady(form) ||
+          (state.mode === "group" &&
+            state.group.relationship === "other" &&
+            !state.group.relationshipOther.trim())
         }
       >
         다음
@@ -295,7 +272,9 @@ export function FitScreen() {
           placeholder="체형이나 핏과 관련해 평소 고민하는 부분을 자세히 적어주세요."
         />
       </div>
-      <PrimaryCta onClick={() => navigate("/user/style")}>다음</PrimaryCta>
+      <PrimaryCta onClick={() => navigate("/user/style")} disabled={!fitStepReady(form)}>
+        다음
+      </PrimaryCta>
     </section>
   );
 }
@@ -424,7 +403,7 @@ export function StyleScreen() {
           ))}
         </div>
       </div>
-      <PrimaryCta onClick={() => navigate("/user/design")} disabled={form.keywords.length !== 3}>
+      <PrimaryCta onClick={() => navigate("/user/design")} disabled={!styleStepReady(form)}>
         다음
       </PrimaryCta>
     </section>
@@ -539,7 +518,7 @@ export function DesignScreen() {
             <p className="text-[13px] text-[#8e8e93]">아직 고른 항목이 없어요.</p>
           )}
         </div>
-        <PrimaryCta onClick={() => navigate("/user/item")} disabled={form.designElements.length !== 3}>
+        <PrimaryCta onClick={() => navigate("/user/item")} disabled={!designStepReady(form)}>
           다음
         </PrimaryCta>
       </div>
@@ -679,7 +658,7 @@ export function ItemScreen() {
             <p className="text-[13px] text-[#8e8e93]">아직 고른 아이템이 없어요.</p>
           )}
         </div>
-        <PrimaryCta onClick={() => navigate("/user/budget")} disabled={form.preferredItems.length !== 3}>
+        <PrimaryCta onClick={() => navigate("/user/budget")} disabled={!itemStepReady(form)}>
           다음
         </PrimaryCta>
       </div>
@@ -692,6 +671,10 @@ export function ItemScreen() {
  * 그룹 모드에서는 TPO가 구성원별이 아니라 약속 하나라, `state.group.tpo`를 그대로 쓴다
  * (기존 TpoScreen의 분기 로직을 그대로 옮겼다).
  */
+/** 아직 예산을 고르지 않았을 때 슬라이더 손잡이가 서 있을 자리. 저장되는 값이 아니다. */
+const BUDGET_DISPLAY_MIN = 3;
+const BUDGET_DISPLAY_MAX = 4;
+
 export function BudgetScreen() {
   const navigate = useNavigate();
   const { state, dispatch, form, update } = useCurrentDiagnosis();
@@ -727,9 +710,11 @@ export function BudgetScreen() {
       />
       <div className="flex flex-1 flex-col px-5 pb-6 pt-[34px]">
         <MemberSwitch />
+        {/* 슬라이더는 손잡이 두 개가 항상 어딘가에 있어야 해서 표시 위치만 가운데로 둔다.
+            고르기 전에는 값을 저장하지 않고, 아래 안내와 다음 버튼으로 선택을 요구한다. */}
         <BudgetRangeSlider
-          minCode={form.budgetMinCode}
-          maxCode={form.budgetMaxCode}
+          minCode={form.budgetMinCode ?? BUDGET_DISPLAY_MIN}
+          maxCode={form.budgetMaxCode ?? BUDGET_DISPLAY_MAX}
           onChange={({ minCode, maxCode }) =>
             update({
               budgetMinCode: minCode,
@@ -738,6 +723,9 @@ export function BudgetScreen() {
             })
           }
         />
+        {form.budgetMinCode === undefined ? (
+          <p className="mt-3 text-[13px] text-[#8e8e93]">예산 범위를 움직여 선택해 주세요.</p>
+        ) : null}
 
         <div className="mt-9 flex items-center justify-between">
           <p className="text-[19px] font-bold tracking-[-0.38px] text-[#0a0a0a]">평소 구매 기준</p>
@@ -767,7 +755,12 @@ export function BudgetScreen() {
           ))}
         </div>
       </div>
-      <PrimaryCta onClick={() => navigate("/user/priority")}>다음</PrimaryCta>
+      <PrimaryCta
+        onClick={() => navigate("/user/priority")}
+        disabled={!budgetStepReady(form, tpoValue)}
+      >
+        다음
+      </PrimaryCta>
     </section>
   );
 }

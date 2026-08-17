@@ -24,10 +24,14 @@ export interface EvidenceText {
   evidenceRefs: string[];
 }
 
+/**
+ * 이번 요청의 `mode`에 해당하는 쪽만 채워 보낸다.
+ * 예전에는 두 쪽을 모두 필수로 두어, 쓰지도 않는 반대편에 페르소나 기본값이 실려 나갔다.
+ */
 export interface PriorityOptionsRequest {
   mode: "personal" | "group";
-  personal: DiagnosisForm;
-  group: {
+  personal?: DiagnosisForm;
+  group?: {
     relationship: "friend" | "family" | "other";
     relationshipOther: string;
     tpo: string;

@@ -38,6 +38,9 @@ import iconAvatar from "../../assets/mypage/icon-avatar.svg";
 import iconCheck from "../../assets/mypage/icon-check.svg";
 import iconChevronDown from "../../assets/mypage/icon-chevron-down.svg";
 import iconItemPlaceholder from "../../assets/mypage/icon-item-placeholder.svg";
+import { bodyTypeImageByName, styleLookImage } from "../../shared/optionImages.js";
+import { ProductQr } from "../../shared/ProductQr.js";
+import { productUrlLabel } from "../../shared/productUrl.js";
 
 /**
  * 빈 초안으로 시작한다.
@@ -65,7 +68,7 @@ const groupDefault: GroupOutfitDraft = {
 export function InfluencerLoginScreen() {
   const navigate = useNavigate();
   const { signIn } = useAuth();
-  const [loginId, setLoginId] = useState("stylemate01");
+  const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [loggingIn, setLoggingIn] = useState(false);
   const [loginError, setLoginError] = useState("");
@@ -98,11 +101,11 @@ export function InfluencerLoginScreen() {
           코디 카드를 전달하세요.
         </h1>
         <div className="h-3" />
-        <p className="text-[15px] text-[#3c3c43]">사전에 안내된 개인 테스트 계정으로 로그인해 주세요.</p>
+        <p className="text-[15px] text-[#3c3c43]">가입할 때 만든 아이디와 비밀번호로 로그인해 주세요.</p>
         <div className="h-[44px]" />
         <div className="flex flex-col gap-4">
           <label className="flex flex-col gap-2">
-            <span className="text-[12px] text-[#8e8e93]">테스트 아이디</span>
+            <span className="text-[12px] text-[#8e8e93]">아이디</span>
             <input
               type="text"
               autoComplete="username"
@@ -112,7 +115,7 @@ export function InfluencerLoginScreen() {
             />
           </label>
           <label className="flex flex-col gap-2">
-            <span className="text-[12px] text-[#8e8e93]">테스트 코드</span>
+            <span className="text-[12px] text-[#8e8e93]">비밀번호</span>
             <input
               type="password"
               autoComplete="current-password"
@@ -171,16 +174,21 @@ const COACHING_TYPE_LABEL: Record<CoachingSupport, string> = {
  * 서버에 저장해야 의미가 생기는 임시값이라 AppState까지 들고 가지 않고
  * 모듈 스코프에만 둔다 — 화면을 오가는 동안만 살아있으면 된다.
  */
-const influencerProfileDraft = {
-  primaryStyle: "로맨틱",
-  secondaryStyle: "캐주얼",
-  bodyType: "웨이브",
-  fitConcerns: ["밑위·하의 길이", "전체 기장·비율"] as string[],
-  budgetMinCode: 2,
-  budgetMaxCode: 3,
-  budgetApproach: budgetApproaches[0] as string,
-  tpos: ["new_semester", "daily", "travel"] as string[],
-  coachingType: "both" as CoachingSupport,
+const influencerProfileDraft: {
+  primaryStyle?: string;
+  secondaryStyle?: string;
+  bodyType?: string;
+  fitConcerns: string[];
+  budgetMinCode?: number;
+  budgetMaxCode?: number;
+  budgetApproach?: string;
+  tpos: string[];
+  coachingType?: CoachingSupport;
+} = {
+  // 빈 초안으로 시작한다. 예전에는 로맨틱·캐주얼·웨이브가 미리 골라져 있어서, 그 항목을
+  // 한 번도 보지 않은 인플루언서의 프로필이 그대로 저장되고 매칭 점수에 쓰였다.
+  fitConcerns: [],
+  tpos: [],
 };
 
 /** I2 · 프로필 1/3 대표 스타일. */
@@ -232,11 +240,17 @@ export function InfluencerProfileScreen() {
                 <span
                   className={
                     selected
-                      ? "relative flex h-[153px] w-[122px] items-center justify-center rounded-[14px] border-2 border-[#0a0a0a] bg-[#f2f2f5]"
-                      : "relative flex h-[153px] w-[122px] items-center justify-center rounded-[14px] bg-[#f2f2f5]"
+                      ? "relative flex h-[153px] w-[122px] items-center justify-center overflow-hidden rounded-[14px] border-2 border-[#0a0a0a] bg-[#f2f2f5]"
+                      : "relative flex h-[153px] w-[122px] items-center justify-center overflow-hidden rounded-[14px] bg-[#f2f2f5]"
                   }
                 >
-                  <img src={iconAvatar} alt="" className="size-6" />
+                  {/* 사용자 진단 화면(U3-3)과 같은 사진을 쓴다. 같은 항목을 서로 다르게 보면
+                      인플루언서가 고른 스타일과 사용자가 고른 스타일이 다른 뜻이 된다. */}
+                  {styleLookImage(style.name) ? (
+                    <img src={styleLookImage(style.name)} alt="" className="size-full object-cover" />
+                  ) : (
+                    <img src={iconAvatar} alt="" className="size-6" />
+                  )}
                   {selected ? <img src={iconCheck} alt="" className="absolute right-1.5 top-1.5 size-6" /> : null}
                 </span>
                 <span
@@ -273,7 +287,7 @@ export function InfluencerProfileScreen() {
           influencerProfileDraft.secondaryStyle = secondaryStyle;
           navigate("/influencer/profile/body");
         }}
-        disabled={primaryStyle === secondaryStyle}
+        disabled={!primaryStyle || !secondaryStyle || primaryStyle === secondaryStyle}
       >
         다음
       </PrimaryCta>
@@ -330,11 +344,16 @@ export function InfluencerProfileBodyScreen() {
                 <span
                   className={
                     selected
-                      ? "relative flex h-[139px] w-[111px] items-center justify-center rounded-[14px] border-2 border-[#0a0a0a] bg-[#f2f2f5]"
-                      : "relative flex h-[139px] w-[111px] items-center justify-center rounded-[14px] bg-[#f2f2f5]"
+                      ? "relative flex h-[139px] w-[111px] items-center justify-center overflow-hidden rounded-[14px] border-2 border-[#0a0a0a] bg-[#f2f2f5]"
+                      : "relative flex h-[139px] w-[111px] items-center justify-center overflow-hidden rounded-[14px] bg-[#f2f2f5]"
                   }
                 >
-                  <img src={iconAvatar} alt="" className="size-6" />
+                  {/* 사용자 진단 화면(U3-1)과 같은 체형 사진이다. */}
+                  {bodyTypeImageByName[type.name] ? (
+                    <img src={bodyTypeImageByName[type.name]} alt="" className="size-full object-cover" />
+                  ) : (
+                    <img src={iconAvatar} alt="" className="size-6" />
+                  )}
                   {selected ? <img src={iconCheck} alt="" className="absolute right-1.5 top-1.5 size-6" /> : null}
                 </span>
                 <span
@@ -371,13 +390,17 @@ export function InfluencerProfileBodyScreen() {
           influencerProfileDraft.fitConcerns = concerns;
           navigate("/influencer/profile/budget");
         }}
-        disabled={concerns.length === 0}
+        disabled={!bodyType || concerns.length === 0}
       >
         다음
       </PrimaryCta>
     </section>
   );
 }
+
+/** 아직 가격대를 고르지 않았을 때 슬라이더 손잡이가 서 있을 자리. 저장되는 값이 아니다. */
+const PROFILE_BUDGET_DISPLAY_MIN = 3;
+const PROFILE_BUDGET_DISPLAY_MAX = 4;
 
 /** I4 · 프로필 3/3 가격과 TPO. */
 export function InfluencerProfileBudgetScreen() {
@@ -386,7 +409,7 @@ export function InfluencerProfileBudgetScreen() {
   const [budgetMaxCode, setBudgetMaxCode] = useState(influencerProfileDraft.budgetMaxCode);
   const [budgetApproach, setBudgetApproach] = useState(influencerProfileDraft.budgetApproach);
   const [occasions, setOccasions] = useState<string[]>(influencerProfileDraft.tpos);
-  const [coachingType, setCoachingType] = useState<CoachingSupport>(influencerProfileDraft.coachingType);
+  const [coachingType, setCoachingType] = useState(influencerProfileDraft.coachingType);
   const [showError, setShowError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -400,21 +423,43 @@ export function InfluencerProfileBudgetScreen() {
   };
 
   // 강점 TPO는 사용자 TPO 후보와 같은 8개에서 정확히 고른다 (STYLE_SCORING_DRAFT.md 2.4).
-  const valid = occasions.length === REQUIRED_PROFILE_TPO_COUNT;
+  // 나머지도 고르지 않으면 저장하지 않는다 — 여기서 빠진 값은 매칭에서 조용히 0점이 된다.
+  const missing =
+    budgetMinCode === undefined || budgetMaxCode === undefined
+      ? "담당 가능한 가격대를 골라주세요."
+      : !budgetApproach
+        ? "예산 접근 방식을 골라주세요."
+        : occasions.length !== REQUIRED_PROFILE_TPO_COUNT
+          ? `강점 상황(TPO)을 정확히 ${REQUIRED_PROFILE_TPO_COUNT}개 골라주세요.`
+          : !coachingType
+            ? "지원 스타일링 유형을 골라주세요."
+            : null;
 
   const submit = () => {
-    if (!valid) {
+    if (
+      missing ||
+      budgetMinCode === undefined ||
+      budgetMaxCode === undefined ||
+      !budgetApproach ||
+      !coachingType
+    ) {
       setShowError(true);
+      return;
+    }
+    const { primaryStyle, secondaryStyle, bodyType, fitConcerns: draftConcerns } = influencerProfileDraft;
+    if (!primaryStyle || !secondaryStyle || !bodyType || draftConcerns.length === 0) {
+      // 새로고침 등으로 모듈 스코프 초안이 날아간 경우다. 빈 값으로 저장하지 않고 되돌린다.
+      setSaveError("앞 단계 입력이 남아 있지 않아요. 프로필 1/3부터 다시 작성해 주세요.");
       return;
     }
     setSaving(true);
     setSaveError("");
     // 서버에 저장해야 매칭 후보가 된다. localStorage에만 두면 아무도 찾지 못한다.
     void saveInfluencerProfile({
-      primaryStyle: influencerProfileDraft.primaryStyle,
-      secondaryStyle: influencerProfileDraft.secondaryStyle,
-      bodyType: influencerProfileDraft.bodyType,
-      fitConcerns: influencerProfileDraft.fitConcerns,
+      primaryStyle,
+      secondaryStyle,
+      bodyType,
+      fitConcerns: draftConcerns,
       budgetMinCode,
       budgetMaxCode,
       budgetApproach,
@@ -445,12 +490,15 @@ export function InfluencerProfileBudgetScreen() {
       />
       <div className="flex flex-1 flex-col px-5 pb-6 pt-[34px]">
         <p className="text-[30px] font-bold leading-[1.28] tracking-[-0.9px] text-[#0a0a0a]">
-          {budgetRangeLabel(budgetMinCode, budgetMaxCode)}
+          {budgetMinCode === undefined || budgetMaxCode === undefined
+            ? "가격대를 골라주세요"
+            : budgetRangeLabel(budgetMinCode, budgetMaxCode)}
         </p>
         <div className="mt-[18px]">
+          {/* 사용자 진단과 같은 방식이다. 손잡이 위치만 가운데로 두고, 움직이기 전에는 값을 잡지 않는다. */}
           <BudgetRangeSlider
-            minCode={budgetMinCode}
-            maxCode={budgetMaxCode}
+            minCode={budgetMinCode ?? PROFILE_BUDGET_DISPLAY_MIN}
+            maxCode={budgetMaxCode ?? PROFILE_BUDGET_DISPLAY_MAX}
             onChange={({ minCode, maxCode }) => {
               setBudgetMinCode(minCode);
               setBudgetMaxCode(maxCode);
@@ -500,8 +548,8 @@ export function InfluencerProfileBudgetScreen() {
         </div>
         <p className="mt-5 text-[12px] text-[#8e8e93]">지원 유형은 후보 자격만 판단하고 매칭 점수에는 들어가지 않아요.</p>
 
-        {showError && !valid ? (
-          <p className="mt-3 text-[13px] font-semibold text-[#0a0a0a]">강점 상황(TPO)을 정확히 {REQUIRED_PROFILE_TPO_COUNT}개 골라주세요.</p>
+        {showError && missing ? (
+          <p className="mt-3 text-[13px] font-semibold text-[#0a0a0a]">{missing}</p>
         ) : null}
         {saveError ? (
           <p className="mt-3 text-[13px] font-semibold text-[#0a0a0a]" aria-live="polite">
@@ -1207,11 +1255,10 @@ export function DeliveredOutfitCard({ card }: { card: OutfitCardView }) {
             <div className="h-[10px]" />
             <div className="flex flex-col gap-[10px]">
               {([["상의", top], ["하의", bottom]] as const).map(([label, item]) => (
-                <div key={label} className="flex w-full items-center gap-[14px] rounded-[16px] bg-white p-[14px]">
-                  <span className="relative flex h-[76px] w-[60px] shrink-0 items-center justify-center rounded-[12px] bg-[#f2f2f5]">
-                    <img src={iconItemPlaceholder} alt="" className="size-[22px]" />
-                  </span>
-                  <div className="flex min-w-0 flex-1 flex-col gap-[7px]">
+                <div key={label} className="flex w-full items-center gap-[12px] rounded-[16px] bg-white p-[14px]">
+                  {/* 사용자가 받는 카드(U7)와 같은 모양이어야 한다. 이미지 자리는 양쪽 모두 없앴고,
+                      사용자 카드에 들어가는 QR도 여기서 미리 보인다. */}
+                  <div className="flex min-w-0 flex-1 flex-col space-y-[7px]">
                     <p className="text-[11px] font-semibold text-[#8e8e93]">{label}</p>
                     <p className="text-[15px] font-medium text-[#0a0a0a]">{item?.name ?? "—"}</p>
                     {item ? (
@@ -1219,12 +1266,13 @@ export function DeliveredOutfitCard({ card }: { card: OutfitCardView }) {
                         href={item.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="truncate text-[11px] font-semibold text-[#3c3c43] underline decoration-[#e8e8ec] underline-offset-2"
+                        className="text-[11px] font-semibold text-[#3c3c43] underline decoration-[#e8e8ec] underline-offset-2"
                       >
-                        {item.url}
+                        {productUrlLabel(item.url)}
                       </a>
                     ) : null}
                   </div>
+                  {item ? <ProductQr url={item.url} /> : null}
                 </div>
               ))}
             </div>

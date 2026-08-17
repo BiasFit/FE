@@ -35,9 +35,14 @@ describe("BiasFit React flow", () => {
       }),
     ).toBeInTheDocument();
 
-    fireEvent.click(
-      screen.getByRole("button", { name: /P1 더미 계정으로 시작하기/ }),
-    );
+    // 더미 계정 바로가기 버튼은 없앴다. 실제 참가자와 같은 길로 로그인한다.
+    fireEvent.change(screen.getByLabelText("아이디"), {
+      target: { value: "minji01" },
+    });
+    fireEvent.change(screen.getByLabelText("비밀번호"), {
+      target: { value: "biasfit01" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "로그인" }));
     expect(
       await screen.findByRole("heading", {
         name: /어떤 스타일링을 원하나요/,
@@ -76,7 +81,7 @@ describe("BiasFit React flow", () => {
       screen.queryByRole("button", { name: "05 / 05" }),
     ).not.toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText(/테스트 이메일/), {
+    fireEvent.change(screen.getByLabelText(/^아이디 필수$/), {
       target: { value: "new-user" },
     });
     fireEvent.change(screen.getByLabelText(/닉네임/), {
@@ -117,7 +122,7 @@ describe("BiasFit React flow", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: /다음/ }));
 
-    fireEvent.change(screen.getByLabelText(/테스트 이메일/), {
+    fireEvent.change(screen.getByLabelText(/^아이디 필수$/), {
       target: { value: "new-stylemate" },
     });
     fireEvent.change(screen.getByLabelText(/활동명/), {
@@ -144,7 +149,7 @@ describe("BiasFit React flow", () => {
     window.location.hash = "#/user/signup";
     render(<App />);
 
-    fireEvent.change(screen.getByLabelText(/테스트 이메일/), {
+    fireEvent.change(screen.getByLabelText(/^아이디 필수$/), {
       target: { value: "new-user" },
     });
     fireEvent.change(screen.getByLabelText(/닉네임/), {

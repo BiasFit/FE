@@ -2,8 +2,11 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getPriorityOptions } from "../../lib/biasfitApi.js";
 import { useAppState } from "../../app/AppStateProvider.js";
+import type { AppState } from "../../app/appState.js";
 import { PrimaryCta, StepHeader } from "../../shared/AppShell.js";
 import type { MatchPriority } from "../../app/types.js";
+import type { PriorityOptionsRequest } from "../../domain/aiContracts.js";
+import { completeForm } from "../../domain/diagnosisComplete.js";
 import iconCheck from "../../assets/mypage/icon-check.svg";
 
 /**
@@ -16,6 +19,26 @@ import iconCheck from "../../assets/mypage/icon-check.svg";
  * 문장은 `label` 쪽이라 그걸 버리지 않고, 제목만 코드(4가지 고정값)로 붙였다 —
  * 매칭 로직/AI 응답 형식은 그대로 두고 화면에서만 두 줄로 나눠 보여주는 것이다.
  */
+/** 이번 모드의 진단 입력이 다 찼을 때만 요청을 만든다. 한 명이라도 비면 보내지 않는다. */
+function priorityRequest(state: AppState): PriorityOptionsRequest | null {
+  if (state.mode === "personal") {
+    const personal = completeForm(state.personal);
+    return personal ? { mode: "personal", personal } : null;
+  }
+  const memberA = completeForm(state.group.members.A, state.group.tpo);
+  const memberB = completeForm(state.group.members.B, state.group.tpo);
+  if (!memberA || !memberB || !state.group.tpo) return null;
+  return {
+    mode: "group",
+    group: {
+      relationship: state.group.relationship,
+      relationshipOther: state.group.relationshipOther,
+      tpo: state.group.tpo,
+      members: { A: memberA, B: memberB },
+    },
+  };
+}
+
 export const PRIORITY_CATEGORY_TITLE: Record<MatchPriority, string> = {
   style_first: "스타일이 가장 중요해요",
   fit_first: "핏이 가장 중요해요",
@@ -26,10 +49,15 @@ export function PriorityScreen() {
   const navigate = useNavigate();
   const { state, dispatch } = useAppState();
   const [retry, setRetry] = useState(0);
-  const request = { mode: state.mode, personal: state.personal, group: state.group };
+  // 다 채운 입력만 보낸다. 앞 단계가 막고 있어 평소에는 null이 나오지 않는다.
+  const request = priorityRequest(state);
   const requestKey = JSON.stringify(request);
 
   useEffect(() => {
+    if (!request) {
+      dispatch({ type: "setPriorityError" });
+      return;
+    }
     const controller = new AbortController();
     dispatch({ type: "setPriorityLoading" });
     void getPriorityOptions(request, controller.signal)

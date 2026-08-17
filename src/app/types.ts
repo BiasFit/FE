@@ -28,8 +28,11 @@ export interface SignupForm {
   snsAccount: string;
 }
 
+/**
+ * 진단 입력 **완성본**. 점수 계산·AI 요청·저장은 모두 이 모양만 받는다.
+ * 화면이 들고 다니는 작성 중 값은 `DiagnosisDraft`다.
+ */
 export interface DiagnosisForm {
-  personaId: "P1" | "P2" | "P3" | "P4" | "P5";
   height: number;
   topSize: string;
   bottomSize: string;
@@ -54,8 +57,26 @@ export interface DiagnosisForm {
   tpo: TpoCode;
 }
 
+/**
+ * 작성 중인 진단 입력. 아직 고르지 않은 항목은 **값이 없다**(`undefined`).
+ *
+ * 빈 문자열이나 0 같은 대체값을 넣지 않는다 — 그런 값은 사용자가 직접 고른 것과
+ * 구분되지 않아 그대로 저장돼 버린다. 예전에는 P1 페르소나 값을 미리 채워 두는 바람에
+ * 아무것도 안 고른 사람의 진단 결과가 P1의 몸·취향으로 남았다.
+ * 완성 여부 판정은 `src/domain/diagnosisComplete.ts` 한 곳에서만 한다.
+ */
+export type DiagnosisDraft = Partial<DiagnosisForm> &
+  Pick<
+    DiagnosisForm,
+    | "fitConcerns"
+    | "fitNote"
+    | "keywords"
+    | "designElements"
+    | "preferredItems"
+    | "avoidedElements"
+  >;
+
 export interface StyleDna {
-  personaId: DiagnosisForm["personaId"];
   scores: StyleScores;
   summary: string;
 }

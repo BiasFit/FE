@@ -10,11 +10,13 @@ import {
   trackEvent,
   type OutfitCardView,
 } from "../../lib/biasfitApi.js";
-import { buildResultSnapshot, saveDiagnosisOnce } from "./diagnosisSnapshot.js";
+import { buildResultSnapshot, completedForms, saveDiagnosisOnce } from "./diagnosisSnapshot.js";
 import { influencerPhotoStyle } from "../../shared/influencerPhoto.js";
 import { Pill, PrimaryCta, TopBar } from "../../shared/AppShell.js";
 import iconAvatar from "../../assets/mypage/icon-avatar.svg";
-import iconItemPlaceholder from "../../assets/mypage/icon-item-placeholder.svg";
+import { captureOutfitCard } from "../../shared/outfitCardCapture.js";
+import { ProductQr } from "../../shared/ProductQr.js";
+import { productUrlLabel } from "../../shared/productUrl.js";
 import bgAurora from "../../assets/mypage/bg-aurora.svg";
 import iconStepDone from "../../assets/mypage/icon-step-done.svg";
 import iconStepActive from "../../assets/mypage/icon-step-active.svg";
@@ -57,11 +59,13 @@ function useSelectedMate() {
  * 두 사람 값을 " · "로 합쳐 보여준다 — 값을 지어내지 않고 있는 값만 합친다.
  */
 function matchInfoRows(state: AppState) {
-  const isGroup = state.mode === "group";
-  const tpo = tpoLabel(isGroup ? state.group.tpo : state.personal.tpo);
+  const forms = completedForms(state);
+  // 진단이 덜 찼으면 지어내지 않고 빈 목록을 준다. 화면이 값을 만들어 낼 자리가 아니다.
+  if (!forms) return [];
+  const tpo = tpoLabel(forms.tpo);
 
-  if (!isGroup) {
-    const form = state.personal;
+  if (forms.mode === "personal") {
+    const form = forms.personal;
     return [
       { label: "스타일링 유형", value: "개인 스타일링" },
       { label: "필요한 상황", value: tpo },
@@ -72,7 +76,7 @@ function matchInfoRows(state: AppState) {
     ];
   }
 
-  const { A, B } = state.group.members;
+  const { A, B } = forms.members;
   return [
     { label: "스타일링 유형", value: "2인 그룹 스타일링" },
     { label: "필요한 상황", value: tpo },
@@ -122,7 +126,7 @@ export function MatchScreen() {
           <div className="min-w-0 flex-1">
             <p className="truncate text-[19px] font-bold tracking-[-0.38px] text-[#0a0a0a]">{mate.name}</p>
             <p className="mt-[6px] truncate text-[11px] font-semibold text-[#8e8e93]">
-              {mate.tagline} · {tpoLabel(state.mode === "group" ? state.group.tpo : state.personal.tpo)}
+              {mate.tagline} · {tpoLabel(completedForms(state)?.tpo ?? "")}
             </p>
           </div>
           <p className="shrink-0 text-[28px] font-bold tracking-[-0.84px] text-[#0a0a0a]">
@@ -186,7 +190,7 @@ export function RequestScreen() {
   const [sendError, setSendError] = useState("");
   // 진단 자체가 비어 안내만으로는 빠져나갈 수 없는 상태인지. 이때는 돌아가는 버튼을 함께 준다.
   const [needsDiagnosis, setNeedsDiagnosis] = useState(false);
-  const tpo = tpoLabel(state.mode === "personal" ? state.personal.tpo : state.group.tpo);
+  const tpo = tpoLabel(completedForms(state)?.tpo ?? "");
 
   /**
    * 저장된 진단 결과 id를 확보한다.
@@ -395,7 +399,7 @@ export function WaitScreen() {
                 <p className="truncate text-[16px] font-semibold tracking-[-0.32px] text-[#0a0a0a]">{mate.name}</p>
                 <p className="mt-[6px] truncate text-[11px] font-semibold text-[#8e8e93]">
                   {state.mode === "group" ? "그룹" : "개인"} ·{" "}
-                  {tpoLabel(state.mode === "group" ? state.group.tpo : state.personal.tpo)} · {sentOn} 요청
+                  {tpoLabel(completedForms(state)?.tpo ?? "")} · {sentOn} 요청
                 </p>
               </div>
               <Pill>작성 중</Pill>
@@ -480,6 +484,7 @@ export function OutfitScreen() {
   const navigate = useNavigate();
   const cardRef = useRef<HTMLDivElement>(null);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const { state } = useAppState();
   const [card, setCard] = useState<OutfitCardView | null>(null);
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
@@ -512,16 +517,18 @@ export function OutfitScreen() {
     // 그때도 "가져가려 했다"는 사실은 그대로다.
     trackEvent("outfit_image_save", "outfit");
     setSaving(true);
+    setSaveError("");
     try {
-      const { default: html2canvas } = await import("html2canvas");
-      const canvas = await html2canvas(cardRef.current, {
-        backgroundColor: "#ffffff",
-        scale: 2,
-      });
+      const canvas = await captureOutfitCard(cardRef.current);
       const link = document.createElement("a");
       link.download = "Fitto-outfit-card.png";
       link.href = canvas.toDataURL("image/png");
       link.click();
+    } catch (error) {
+      // 실패해도 아무 일 없는 것처럼 보이면 사용자는 저장된 줄 안다.
+      // 조용한 실패로 이미 한 번 크게 데였다 (MEMO/진단결과_저장_실패_사건_스터디.md).
+      console.log("[BiasFit 코디] 코디 카드 이미지 저장 실패", error);
+      setSaveError("이미지를 저장하지 못했어요. 잠시 후 다시 시도해 주세요.");
     } finally {
       setSaving(false);
     }
@@ -565,17 +572,18 @@ export function OutfitScreen() {
               <div className="h-[10px]" />
               <div className="flex flex-col gap-[10px]">
                 {card.items.map((item, index) => (
-                  <div key={`${item.itemType}-${index}`} className="flex w-full items-center gap-[14px] rounded-[16px] bg-white p-[14px]">
-                    <span className="relative flex h-[76px] w-[60px] shrink-0 items-center justify-center rounded-[12px] bg-[#f2f2f5]">
-                      <img src={iconItemPlaceholder} alt="" className="size-[22px]" />
-                    </span>
-                    <div className="flex min-w-0 flex-1 flex-col gap-[7px]">
+                  <div key={`${item.itemType}-${index}`} className="flex w-full items-center gap-[12px] rounded-[16px] bg-white p-[14px]">
+                    {/* 이미지 자리는 두지 않는다. outfit_card_items에 이미지가 없어 영원히 회색이고,
+                        사용자에게는 "사진을 못 불러왔다"로 보인다. 글자가 카드 폭을 다 쓴다. */}
+                    <div className="flex min-w-0 flex-1 flex-col space-y-[7px]">
                       <p className="text-[11px] font-semibold text-[#8e8e93]">{item.itemType === "top" ? "상의" : "하의"}</p>
                       <p className="text-[15px] font-medium text-[#0a0a0a]">{item.name}</p>
-                      <a href={item.url} target="_blank" rel="noreferrer" className="truncate text-[11px] font-semibold text-[#3c3c43] underline decoration-[#e8e8ec] underline-offset-2">
-                        {item.url}
+                      <a href={item.url} target="_blank" rel="noreferrer" className="text-[11px] font-semibold text-[#3c3c43] underline decoration-[#e8e8ec] underline-offset-2">
+                        {productUrlLabel(item.url)}
                       </a>
                     </div>
+                    {/* 저장한 그림에서 상품으로 가는 유일한 길이다 (shared/ProductQr.tsx). */}
+                    <ProductQr url={item.url} />
                   </div>
                 ))}
               </div>
@@ -604,24 +612,21 @@ export function OutfitScreen() {
       </div>
       {card ? (
         <div className="flex flex-col items-start overflow-clip px-5 pb-[26px] pt-[10px]">
-          <div className="flex w-full gap-[10px]">
-            <button
-              type="button"
-              disabled={saving}
-              onClick={download}
-              className="flex min-h-[56px] flex-1 items-center justify-center rounded-[14px] bg-[#0a0a0a] text-[17px] font-bold text-white disabled:opacity-60"
-            >
-              {saving ? "이미지 만드는 중…" : "이미지 저장"}
-            </button>
-            <button
-              type="button"
-              disabled={saving}
-              onClick={download}
-              className="flex min-h-[56px] flex-1 items-center justify-center rounded-[14px] border border-[#e8e8ec] bg-white text-[15px] font-bold text-[#3c3c43] disabled:opacity-60"
-            >
-              다운로드
-            </button>
-          </div>
+          {/* "이미지 저장"과 "다운로드" 두 버튼이 같은 함수를 부르고 있었다.
+              사용자에게는 서로 다른 기능처럼 보여 무엇을 눌러야 할지 멈칫하게 만든다. */}
+          <button
+            type="button"
+            disabled={saving}
+            onClick={download}
+            className="flex min-h-[56px] w-full items-center justify-center rounded-[14px] bg-[#0a0a0a] text-[17px] font-bold text-white disabled:opacity-60"
+          >
+            {saving ? "이미지 만드는 중…" : "이미지 저장"}
+          </button>
+          {saveError ? (
+            <p className="mt-3 text-[13px] font-semibold text-[#0a0a0a]" aria-live="polite">
+              {saveError}
+            </p>
+          ) : null}
         </div>
       ) : null}
     </section>

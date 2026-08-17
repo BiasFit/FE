@@ -137,7 +137,7 @@ export const LOCAL_DB_STUBS: Record<string, (body: unknown) => unknown> = {
         : [];
       return {
         memberLabel: member.memberId,
-        personaCode: member.form.personaId ?? null,
+        personaCode: null,
         heightCm: member.form.height ?? null,
         bodyType: member.form.bodyType,
         preferredStyle: member.form.preferredStyle,

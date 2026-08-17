@@ -192,7 +192,8 @@ export async function saveDiagnosis(
           diagnosis_session_id: sessionId,
           member_label: member.memberId,
           member_order: index + 1,
-          persona_code: member.form.personaId,
+          // 실제 참가자에게는 페르소나가 없다. 팀 내부 테스트에서만 쓰던 값이라 비워 둔다.
+          persona_code: null,
         },
         "구성원",
       );
