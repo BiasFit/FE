@@ -536,6 +536,92 @@ function explanationRequest(
   };
 }
 
+type PhotoPreview = {
+  name: string;
+  url: string;
+};
+
+function InfluencerPhotoButton({
+  name,
+  photoUrl,
+  size,
+  onOpen,
+}: {
+  name: string;
+  photoUrl: string | null | undefined;
+  size: "large" | "small";
+  onOpen: () => void;
+}) {
+  const sizeClass = size === "large" ? "size-14" : "size-11";
+
+  if (!photoUrl) {
+    return (
+      <span
+        className={`relative flex ${sizeClass} shrink-0 items-center justify-center rounded-full bg-[#f2f2f5]`}
+        style={influencerPhotoStyle(photoUrl)}
+      >
+        <img src={iconAvatar} alt="" className="size-[22px]" />
+      </span>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={`${name} 대표 사진 크게 보기`}
+      className={`group relative ${sizeClass} shrink-0 overflow-hidden rounded-full bg-cover bg-center shadow-sm`}
+      style={influencerPhotoStyle(photoUrl)}
+    >
+      <span
+        aria-hidden="true"
+        className="absolute bottom-0.5 right-0.5 flex size-5 items-center justify-center rounded-full bg-black/65 text-white shadow-sm transition-transform group-hover:scale-110"
+      >
+        <svg viewBox="0 0 24 24" className="size-3" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <circle cx="10.5" cy="10.5" r="5.5" />
+          <path d="m15 15 4 4" />
+        </svg>
+      </span>
+    </button>
+  );
+}
+
+function PhotoPreviewDialog({
+  preview,
+  onClose,
+}: {
+  preview: PhotoPreview | null;
+  onClose: () => void;
+}) {
+  if (!preview) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-5" onClick={onClose}>
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${preview.name} 대표 사진 확대 보기`}
+        className="relative w-full max-w-md rounded-2xl bg-white p-3 shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="사진 확대 보기 닫기"
+          className="absolute right-5 top-5 z-10 rounded-full bg-black/65 px-3 py-1.5 text-[13px] font-medium text-white"
+        >
+          닫기
+        </button>
+        <img
+          src={preview.url}
+          alt={`${preview.name} 대표 사진`}
+          className="max-h-[80vh] w-full rounded-xl object-contain"
+        />
+      </section>
+    </div>
+  );
+}
+
 export function Top3Screen() {
   const navigate = useNavigate();
   const { state, dispatch } = useAppState();
@@ -551,6 +637,7 @@ export function Top3Screen() {
   const [rankRetry, setRankRetry] = useState(0);
   const [reasonRetry, setReasonRetry] = useState(0);
   const [reasonsOpen, setReasonsOpen] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState<PhotoPreview | null>(null);
   const [saveStatus, setSaveStatus] = useState<AiRequestStatus>(
     state.savedResultId ? "success" : "idle",
   );
@@ -706,6 +793,15 @@ export function Top3Screen() {
     return () => controller.abort();
   }, [directoryLoaded]);
 
+  useEffect(() => {
+    if (!photoPreview) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setPhotoPreview(null);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [photoPreview]);
+
   if (!input || !priority || !weights) {
     return (
       <section className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col items-center justify-center gap-4 bg-white px-6 text-center">
@@ -736,7 +832,7 @@ export function Top3Screen() {
         </h1>
         <p className="mt-[10px] text-[15px] text-[#8e8e93]">내 Style DNA와 가장 잘 맞는 3명이에요.</p>
 
-        <div className="mt-7 flex flex-col gap-[10px]" role="radiogroup" aria-label="스타일메이트 TOP 3">
+        <div className="mt-7 flex flex-col gap-[10px]">
           {rankStatus === "idle" || rankStatus === "loading" ? (
             <p className="text-[13px] text-[#8e8e93]">Style DNA와 잘 맞는 인플루언서를 찾는 중이에요.</p>
           ) : null}
@@ -807,17 +903,18 @@ export function Top3Screen() {
               return (
                 <div
                   key={influencer.id}
-                  role="radio"
-                  aria-checked="true"
                   className="rounded-[20px] border-[1.6px] border-[#0a0a0a] bg-white p-5 shadow-[0_8px_22px_rgba(0,0,0,0.07)]"
                 >
                   <div className="flex items-center gap-[14px]">
-                    <span
-                      className="relative flex size-14 shrink-0 items-center justify-center rounded-full bg-[#f2f2f5]"
-                      style={influencerPhotoStyle(view?.profileImageUrl)}
-                    >
-                      {!view?.profileImageUrl ? <img src={iconAvatar} alt="" className="size-[22px]" /> : null}
-                    </span>
+                    <InfluencerPhotoButton
+                      name={influencer.name}
+                      photoUrl={view?.profileImageUrl}
+                      size="large"
+                      onOpen={() => {
+                        const url = view?.profileImageUrl;
+                        if (url) setPhotoPreview({ name: influencer.name, url });
+                      }}
+                    />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <Pill tone="dark">TOP {index + 1}</Pill>
@@ -891,37 +988,43 @@ export function Top3Screen() {
             }
 
             return (
-              <button
+              <div
                 key={influencer.id}
-                type="button"
-                role="radio"
-                aria-checked="false"
-                onClick={select}
-                className="flex items-center gap-[14px] rounded-[18px] bg-[#f5f5f7] px-[18px] py-4 text-left"
+                className="flex items-center gap-[14px] rounded-[18px] bg-[#f5f5f7] px-[18px] py-4"
               >
-                <span
-                  className="relative flex size-11 shrink-0 items-center justify-center rounded-full bg-[#f2f2f5]"
-                  style={influencerPhotoStyle(view?.profileImageUrl)}
+                <InfluencerPhotoButton
+                  name={influencer.name}
+                  photoUrl={view?.profileImageUrl}
+                  size="small"
+                  onOpen={() => {
+                    const url = view?.profileImageUrl;
+                    if (url) setPhotoPreview({ name: influencer.name, url });
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={select}
+                  aria-label={`TOP ${index + 1} ${influencer.name} 후보 선택`}
+                  className="flex min-w-0 flex-1 items-center gap-3 text-left"
                 >
-                  {!view?.profileImageUrl ? <img src={iconAvatar} alt="" className="size-[22px]" /> : null}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="shrink-0 text-[11px] text-[#8e8e93]">TOP {index + 1}</p>
-                    <p className="truncate text-[16px] font-semibold text-[#0a0a0a]">{influencer.name}</p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="shrink-0 text-[11px] text-[#8e8e93]">TOP {index + 1}</p>
+                      <p className="truncate text-[16px] font-semibold text-[#0a0a0a]">{influencer.name}</p>
+                    </div>
+                    <p className="mt-1 truncate text-[11px] text-[#8e8e93]">
+                      {view?.tagline} · {currentTpo}
+                    </p>
+                    <span className="sr-only">
+                      <MatchReason explanation={reasons[influencer.id]} status={reasonStatus} />
+                    </span>
                   </div>
-                  <p className="mt-1 truncate text-[11px] text-[#8e8e93]">
-                    {view?.tagline} · {currentTpo}
+                  <p className="shrink-0 text-[19px] font-bold tracking-[-0.38px] text-[#0a0a0a]">
+                    {breakdown.matchScore}
                   </p>
-                  <span className="sr-only">
-                    <MatchReason explanation={reasons[influencer.id]} status={reasonStatus} />
-                  </span>
-                </div>
-                <p className="shrink-0 text-[19px] font-bold tracking-[-0.38px] text-[#0a0a0a]">
-                  {breakdown.matchScore}
-                </p>
-                <img src={iconChevronDown} alt="" className="size-5 shrink-0 -rotate-90" />
-              </button>
+                  <img src={iconChevronDown} alt="" className="size-5 shrink-0 -rotate-90" />
+                </button>
+              </div>
             );
           })}
         </div>
@@ -941,6 +1044,7 @@ export function Top3Screen() {
           조건 수정 후 다시 추천
         </button>
       </div>
+      <PhotoPreviewDialog preview={photoPreview} onClose={() => setPhotoPreview(null)} />
     </section>
   );
 }

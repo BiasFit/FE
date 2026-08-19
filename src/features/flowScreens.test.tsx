@@ -7,6 +7,10 @@ import { personaForms } from "../data/personas.js";
 import { rankInfluencers } from "../domain/scoring.js";
 import { saveAppState } from "../storage/diagnosisSession.js";
 
+const originalProfileImageUrls = new Map(
+  influencers.map(({ id, profileImageUrl }) => [id, profileImageUrl]),
+);
+
 /**
  * 진단을 다 채운 상태에서 시작한다.
  *
@@ -121,6 +125,9 @@ beforeEach(() => {
   failDiagnosisSave = false;
   availableForSelect = true;
   failAvailability = false;
+  influencers.forEach((influencer) => {
+    influencer.profileImageUrl = originalProfileImageUrls.get(influencer.id) ?? null;
+  });
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -347,7 +354,7 @@ describe("user feature screens", () => {
         name: /스타일링을 받고 싶은\s*인플루언서를 선택해 주세요/,
       }),
     ).toBeInTheDocument();
-    expect(await screen.findAllByRole("radio")).toHaveLength(3);
+    expect(await screen.findAllByText(/^TOP [1-3]$/)).toHaveLength(3);
     expect(
       await screen.findAllByText(/실제 계산된 핏과 TPO 근거/),
     ).toHaveLength(3);
@@ -493,6 +500,32 @@ describe("user feature screens", () => {
     });
     fireEvent.click(await screen.findByRole("button", { name: "전송하기" }));
   }
+
+  it("대표 사진을 누르면 후보를 선택하지 않고 확대 모달을 연다", async () => {
+    influencers.forEach((influencer) => {
+      influencer.profileImageUrl = `/assets/influencers/${influencer.id}.jpg`;
+    });
+    await walkToTopThree();
+    await screen.findAllByText(/실제 계산된 핏과 TPO 근거/);
+
+    const [photoButton] = screen.getAllByRole("button", {
+      name: /대표 사진 크게 보기/,
+    });
+    fireEvent.click(photoButton);
+
+    expect(
+      await screen.findByRole("dialog", { name: /대표 사진 확대 보기/ }),
+    ).toBeVisible();
+    expect(window.location.hash).toBe("#/user/top3");
+
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: /대표 사진 확대 보기/ }),
+      ).not.toBeInTheDocument(),
+    );
+  });
 
   it("진단 결과가 실제 저장되기 전에는 스타일메이트를 확정할 수 없다", async () => {
     holdDiagnosisSave();
