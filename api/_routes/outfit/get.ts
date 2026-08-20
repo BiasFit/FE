@@ -7,6 +7,7 @@ import {
   type ApiRequest,
   type ApiResponse,
 } from "../../_lib/http.js";
+import type { ReviewStatus } from "../../../src/domain/aiContracts.js";
 import type { MemberLabel } from "./deliver.js";
 
 /**
@@ -18,11 +19,15 @@ import type { MemberLabel } from "./deliver.js";
  */
 type Client = ReturnType<typeof supabaseAdmin>;
 
+type OutfitCardReviewStatus = "pending" | ReviewStatus;
+
 export interface OutfitCardItemView {
   memberLabel: MemberLabel;
   itemType: "top" | "bottom";
   name: string;
   url: string;
+  linkCheckStatus: "pending" | "pass" | "operations_review" | "failed";
+  linkCheckReason: string | null;
 }
 
 export interface OutfitCardView {
@@ -36,6 +41,8 @@ export interface OutfitCardView {
   budgetLabel: string;
   budgetApproach: string;
   influencerName: string;
+  reviewStatus: OutfitCardReviewStatus;
+  status: "draft" | "reviewing" | "delivered";
   deliveredAt: string | null;
   items: OutfitCardItemView[];
 }
@@ -82,13 +89,17 @@ async function assertViewer(
   }
 }
 
-const CARD_COLUMNS = `id, match_result_id, coaching_type, title, message_to_user, delivered_at, status,
+const CARD_COLUMNS = `id, match_result_id, coaching_type, title, message_to_user,
+   delivered_at, status, review_status,
    influencer_profiles!inner ( display_name ),
    tpo:diagnosis_options!outfit_cards_representative_tpo_option_id_fkey ( code ),
    budget_min:diagnosis_options!outfit_cards_budget_min_option_id_fkey ( code ),
    budget_max:diagnosis_options!outfit_cards_budget_max_option_id_fkey ( code ),
    strategy:diagnosis_options!outfit_cards_budget_strategy_option_id_fkey ( code ),
-   outfit_card_items ( session_member_id, item_type, item_name, product_url, sort_order )`;
+   outfit_card_items (
+     session_member_id, item_type, item_name, product_url, final_url,
+     link_check_status, link_check_reason, link_checked_at, sort_order
+   )`;
 
 /**
  * `matchResultId`를 주면 그 요청의 카드를, 주지 않으면 **사용자 본인의 가장 최근 전달 카드**를
@@ -111,7 +122,11 @@ export async function loadOutfitCard(
     throw new AuthError("요청 id가 필요합니다.", 400);
   }
 
-  const query = client.from("outfit_cards").select(CARD_COLUMNS).eq("status", "delivered");
+  const query =
+  viewer.role === "user"
+    ? client.from("outfit_cards").select(CARD_COLUMNS).eq("status", "delivered")
+    : client.from("outfit_cards").select(CARD_COLUMNS);
+
   const { data, error } = matchResultId
     ? await query.eq("match_result_id", matchResultId).maybeSingle()
     : await query
@@ -156,6 +171,12 @@ export async function loadOutfitCard(
       itemType: item.item_type as "top" | "bottom",
       name: item.item_name as string,
       url: item.product_url as string,
+      linkCheckStatus: item.link_check_status as
+        | "pending"
+        | "pass"
+        | "operations_review"
+        | "failed",
+      linkCheckReason: item.link_check_reason ?? null,
     }));
 
   return {
@@ -173,6 +194,8 @@ export async function loadOutfitCard(
       ),
       budgetApproach: code(row.strategy),
       influencerName: one<{ display_name: string }>(row.influencer_profiles)?.display_name ?? "",
+      reviewStatus: row.review_status as OutfitCardReviewStatus,
+      status: row.status as "draft" | "reviewing" | "delivered",
       deliveredAt: row.delivered_at ?? null,
       items,
     },
