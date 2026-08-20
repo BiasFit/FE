@@ -982,49 +982,23 @@ export function InfluencerDetailScreen() {
               {diagnosisStatus === "error" ? <p className="text-[13px] text-[#8e8e93]">진단 결과를 불러오지 못했어요.</p> : null}
               {diagnosis ? (
                 <>
-                  <p className="text-[15px] leading-[1.52] text-[#0a0a0a]">{diagnosis.styleDnaSummary}</p>
-                  {diagnosis.members[0]?.keywords.length ? (
-                    <div className="mt-3 flex flex-wrap gap-[6px]">
-                      {diagnosis.members[0].keywords.map((keyword) => (
-                        <Pill key={keyword}>#{keyword}</Pill>
-                      ))}
-                    </div>
-                  ) : null}
-                  <div className="mt-2 flex flex-col">
-                    {diagnosis.members.map((member) => (
-                      <div key={member.memberLabel} className="flex gap-[14px] py-[11px]">
-                        <p className="w-[92px] shrink-0 text-[12px] text-[#8e8e93]">
-                          {member.memberLabel === "self" ? "핏 고민" : `${member.memberLabel} 핏 고민`}
-                        </p>
-                        <p className="flex-1 text-[15px] text-[#0a0a0a]">{member.fitConcerns.join(" / ") || "—"}</p>
-                      </div>
-                    ))}
-                    {diagnosis.members.map((member) => (
-                      <div key={`${member.memberLabel}-pref`} className="flex gap-[14px] py-[11px]">
-                        <p className="w-[92px] shrink-0 text-[12px] text-[#8e8e93]">
-                          {member.memberLabel === "self" ? "선호 / 비선호" : `${member.memberLabel} 선호/비선호`}
-                        </p>
-                        <p className="flex-1 text-[15px] text-[#0a0a0a]">
-                          {member.preferredStyle} / {member.avoidedStyle}
-                        </p>
+                  <p className="text-[15px] leading-[1.52] text-[#0a0a0a]">
+                    {diagnosis.styleDnaSummary}
+                  </p>
+              
+                  <div className="mt-4 flex flex-col gap-5">
+                    {diagnosis.members.map((member, index) => (
+                      <div
+                        key={member.memberLabel}
+                        className={index > 0 ? "border-t border-[#e8e8ec] pt-5" : ""}
+                      >
+                        <DiagnosisMemberDetails
+                          member={member}
+                          showMemberLabel={diagnosis.members.length > 1}
+                        />
                       </div>
                     ))}
                   </div>
-                  {diagnosis.members[0]?.preferredItems.length ? (
-                    <>
-                      <p className="mt-1 text-[11px] font-semibold text-[#8e8e93]">선호 아이템</p>
-                      <div className="mt-[10px] flex gap-[10px]">
-                        {diagnosis.members[0].preferredItems.map((item) => (
-                          <div key={item} className="flex flex-col items-center gap-[7px]">
-                            <span className="flex size-14 items-center justify-center rounded-[12px] bg-[#f2f2f5]">
-                              <img src={iconItemPlaceholder} alt="" className="size-[22px]" />
-                            </span>
-                            <p className="max-w-[70px] text-center text-[11px] font-semibold text-[#3c3c43]">{item}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  ) : null}
                 </>
               ) : null}
             </>
