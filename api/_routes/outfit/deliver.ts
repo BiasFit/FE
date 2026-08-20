@@ -99,12 +99,12 @@ export function validateDeliverInput(value: unknown): DeliverOutfitInput {
   });
 
   return { matchResultId, title, message, cards };
-}
+  }
 
-function persistedLinkStatus(status: LinkCheck["status"]) {
-  // DB의 link_check_status에는 needs_revision이 없으므로 failed로 저장한다.
-  return status === "needs_revision" ? "failed" : status;
-}
+  function persistedLinkStatus(status: LinkCheck["status"]) {
+    // DB의 link_check_status에는 needs_revision이 없으므로 failed로 저장한다.
+    return status === "needs_revision" ? "failed" : status;
+  }
 
 /** 전달에 필요한 요청 맥락. 전부 저장된 값에서 읽고 다시 계산하지 않는다. */
 interface DeliveryContext {
