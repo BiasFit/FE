@@ -484,8 +484,9 @@ export async function deliverOutfitCard(
   if (matched.error) console.error("[BiasFit 코디] 매칭 상태 갱신 실패", matched.error);
 
   return { delivered: isDelivered, outfitCardId, review };
+  }
 
-export default async function handler(request: ApiRequest, response: ApiResponse) {
+  export default async function handler(request: ApiRequest, response: ApiResponse) {
   if (!requirePost(request, response)) return;
   try {
     const account = requireRole(await requireAccount(request), "influencer");
