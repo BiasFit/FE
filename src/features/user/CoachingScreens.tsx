@@ -520,10 +520,20 @@ export function OutfitScreen() {
     setSaveError("");
     try {
       const canvas = await captureOutfitCard(cardRef.current);
-      const link = document.createElement("a");
-      link.download = "Fitto-outfit-card.png";
-      link.href = canvas.toDataURL("image/png");
-      link.click();
+      const blob = await new Promise<Blob>((resolve, reject) =>
+  canvas.toBlob(
+    (value) => (value ? resolve(value) : reject(new Error("PNG 생성 실패"))),
+    "image/png",
+  ),
+);
+const url = URL.createObjectURL(blob);
+
+const link = document.createElement("a");
+link.download = "Fitto-outfit-card.png";
+link.href = url;
+link.click();
+
+window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
     } catch (error) {
       // 실패해도 아무 일 없는 것처럼 보이면 사용자는 저장된 줄 안다.
       // 조용한 실패로 이미 한 번 크게 데였다 (MEMO/진단결과_저장_실패_사건_스터디.md).
