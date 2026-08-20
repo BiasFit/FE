@@ -1,4 +1,8 @@
-import type { OutfitReviewRequest, OutfitReviewResponse } from "../../../src/domain/aiContracts.js";
+import type {
+  LinkCheck,
+  OutfitReviewRequest,
+  OutfitReviewResponse,
+} from "../../../src/domain/aiContracts.js";
 import { AuthError, requireAccount, requireRole, sendAuthAwareError } from "../../_lib/auth.js";
 import { supabaseAdmin } from "../../_lib/supabase.js";
 import {
@@ -95,6 +99,11 @@ export function validateDeliverInput(value: unknown): DeliverOutfitInput {
   });
 
   return { matchResultId, title, message, cards };
+}
+
+function persistedLinkStatus(status: LinkCheck["status"]) {
+  // DB의 link_check_status에는 needs_revision이 없으므로 failed로 저장한다.
+  return status === "needs_revision" ? "failed" : status;
 }
 
 /** 전달에 필요한 요청 맥락. 전부 저장된 값에서 읽고 다시 계산하지 않는다. */
@@ -267,61 +276,120 @@ export async function deliverOutfitCard(
     );
   }
 
-  // 요청 1건당 1회. outfit_cards.match_result_id에 unique가 걸려 있지만
-  // 여기서 먼저 막아야 "검수만 통과하고 저장에서 터지는" 흐름이 안 생긴다.
-  const existing = await client
+    const existing = await client
     .from("outfit_cards")
-    .select("id, status")
+    .select("id, status, review_status")
     .eq("match_result_id", input.matchResultId)
     .maybeSingle();
-  if (existing.data) {
+
+  if (existing.error) {
+    console.error("[BiasFit 코디] 기존 outfit_cards 조회 실패", existing.error);
+    throw new Error("코디 카드 상태를 확인하지 못했어요.");
+  }
+
+  const existingCard = existing.data as {
+    id: string;
+    status: string;
+    review_status: string | null;
+  } | null;
+
+  if (existingCard?.status === "delivered") {
     throw new AuthError("이미 전달한 코디 카드예요. 수정하거나 다시 보낼 수 없어요.", 409);
   }
 
-  // 1·2단계 — 링크 검사와 안전 표현 검수. 통과 전에는 아무것도 저장하지 않는다.
+  if (existingCard?.status === "reviewing") {
+    throw new AuthError("코디 카드가 운영진 확인 중이에요.", 409);
+  }
+
+  // 운영진 반려 카드만 다시 제출할 수 있다.
+  if (
+    existingCard &&
+    !(
+      existingCard.status === "draft" &&
+      existingCard.review_status === "needs_revision"
+    )
+  ) {
+    throw new AuthError("현재 코디 카드를 다시 제출할 수 없어요.", 409);
+  }
+
   const review = await dependencies.review({
     mode: context.coachingType,
     coachingMessage: input.message,
     cards: input.cards,
   });
 
-  if (review.reviewStatus !== "pass") {
+  const isOperationsReview = review.reviewStatus === "operations_review";
+  const isDelivered = review.reviewStatus === "pass";
+
+  // 링크 수정·문구 수정이 필요한 자동 검수 실패는 기존처럼 저장하지 않는다.
+  if (!isDelivered && !isOperationsReview) {
     return { delivered: false, outfitCardId: null, review };
   }
 
-  // 3단계 — 통과했을 때만 저장하고, 저장과 동시에 전달 상태가 된다.
   const now = new Date().toISOString();
-  const card = await client
-    .from("outfit_cards")
-    .insert({
-      match_result_id: input.matchResultId,
-      request_card_id: context.requestCardId,
-      style_dna_result_id: context.styleDnaResultId,
-      user_account_id: context.userAccountId,
-      influencer_profile_id: context.influencerProfileId,
-      coaching_type: context.coachingType,
-      title: input.title,
-      representative_tpo_option_id: context.tpoOptionId,
-      budget_min_option_id: context.budgetMinOptionId,
-      budget_max_option_id: context.budgetMaxOptionId,
-      budget_strategy_option_id: context.budgetStrategyOptionId,
-      message_to_user: input.message,
-      review_status: "pass",
-      safe_language_issues: null,
-      reviewed_at: now,
-      status: "delivered",
-      delivered_at: now,
-    })
-    .select("id")
-    .single();
 
-  if (card.error || typeof (card.data as { id?: unknown } | null)?.id !== "string") {
-    console.error("[BiasFit 코디] outfit_cards insert 실패", card.error);
-    throw new Error("코디 카드를 전달하지 못했어요.");
+  /*
+   * 카드와 아이템이 모두 저장된 뒤에만 delivered/reviewing 상태로 바꾼다.
+   * 중간 실패 시 사용자가 빈 카드를 보지 못하게 한다.
+   */
+  const draftCardValues = {
+    match_result_id: input.matchResultId,
+    request_card_id: context.requestCardId,
+    style_dna_result_id: context.styleDnaResultId,
+    user_account_id: context.userAccountId,
+    influencer_profile_id: context.influencerProfileId,
+    coaching_type: context.coachingType,
+    title: input.title,
+    representative_tpo_option_id: context.tpoOptionId,
+    budget_min_option_id: context.budgetMinOptionId,
+    budget_max_option_id: context.budgetMaxOptionId,
+    budget_strategy_option_id: context.budgetStrategyOptionId,
+    message_to_user: input.message,
+    review_status: "pending",
+    safe_language_issues:
+      review.safeLanguageIssues.length > 0 ? review.safeLanguageIssues : null,
+    reviewed_at: now,
+    status: "draft",
+    delivered_at: null,
+  };
+
+  const preparedCard = existingCard
+    ? await client
+        .from("outfit_cards")
+        .update(draftCardValues)
+        .eq("id", existingCard.id)
+        .select("id")
+        .single()
+    : await client
+        .from("outfit_cards")
+        .insert(draftCardValues)
+        .select("id")
+        .single();
+
+  if (
+    preparedCard.error ||
+    typeof (preparedCard.data as { id?: unknown } | null)?.id !== "string"
+  ) {
+    console.error("[BiasFit 코디] outfit_cards 저장 실패", preparedCard.error);
+    throw new Error("코디 카드를 제출하지 못했어요.");
   }
-  const outfitCardId = (card.data as { id: string }).id;
+
+  const outfitCardId = (preparedCard.data as { id: string }).id;
+  const createdCard = !existingCard;
 
   try {
+    if (existingCard) {
+      const removed = await client
+        .from("outfit_card_items")
+        .delete()
+        .eq("outfit_card_id", outfitCardId);
+
+      if (removed.error) {
+        console.error("[BiasFit 코디] 기존 outfit_card_items 삭제 실패", removed.error);
+        throw new Error("기존 코디 카드 내용을 정리하지 못했어요.");
+      }
+    }
+
     const linkOf = (memberId: MemberLabel, itemType: "top" | "bottom") =>
       review.linkChecks.find(
         (check) => check.memberId === memberId && check.itemType === itemType,
@@ -330,9 +398,9 @@ export async function deliverOutfitCard(
     const items = input.cards.flatMap((entry, cardIndex) =>
       (["top", "bottom"] as const).map((itemType, index) => {
         const link = linkOf(entry.memberId, itemType);
+
         return {
           outfit_card_id: outfitCardId,
-          // 개인 카드는 구성원을 나누지 않는다. 그룹일 때만 채운다.
           session_member_id:
             context.coachingType === "group"
               ? context.memberIds.get(entry.memberId) ?? null
@@ -341,44 +409,81 @@ export async function deliverOutfitCard(
           item_name: entry[itemType].name,
           product_url: entry[itemType].url,
           final_url: link?.finalUrl ?? null,
-          // 검수를 통과했으므로 pass다. 근거는 검사기가 준 문장을 그대로 남긴다.
-          link_check_status: "pass",
-          link_check_reason: link?.reason ?? null,
+          link_check_status: link
+            ? persistedLinkStatus(link.status)
+            : "failed",
+          link_check_reason: link?.reason ?? "링크 검사 결과가 없습니다.",
           link_checked_at: now,
           sort_order: cardIndex * 2 + index + 1,
         };
       }),
     );
 
-    const saved = await client.from("outfit_card_items").insert(items);
-    if (saved.error) {
-      console.error("[BiasFit 코디] outfit_card_items insert 실패", saved.error);
-      throw new Error("코디 카드를 전달하지 못했어요.");
+    const savedItems = await client.from("outfit_card_items").insert(items);
+
+    if (savedItems.error) {
+      console.error("[BiasFit 코디] outfit_card_items 저장 실패", savedItems.error);
+      throw new Error("코디 카드 항목을 저장하지 못했어요.");
+    }
+
+    const finalized = await client
+      .from("outfit_cards")
+      .update({
+        review_status: review.reviewStatus,
+        safe_language_issues:
+          review.safeLanguageIssues.length > 0 ? review.safeLanguageIssues : null,
+        reviewed_at: now,
+        status: isDelivered ? "delivered" : "reviewing",
+        delivered_at: isDelivered ? now : null,
+      })
+      .eq("id", outfitCardId);
+
+    if (finalized.error) {
+      console.error("[BiasFit 코디] outfit_cards 최종 상태 갱신 실패", finalized.error);
+      throw new Error("코디 카드 상태를 갱신하지 못했어요.");
     }
   } catch (error) {
-    // 아이템 없는 카드를 남기지 않는다. 자식은 cascade로 함께 지워진다.
-    const cleanup = await client.from("outfit_cards").delete().eq("id", outfitCardId);
-    if (cleanup.error) {
-      console.error("[BiasFit 코디] 실패한 코디 카드 정리 실패", cleanup.error);
+    if (createdCard) {
+      const cleanup = await client
+        .from("outfit_cards")
+        .delete()
+        .eq("id", outfitCardId);
+
+      if (cleanup.error) {
+        console.error("[BiasFit 코디] 실패한 코디 카드 정리 실패", cleanup.error);
+      }
+    } else {
+      await client
+        .from("outfit_cards")
+        .update({
+          review_status: "pending",
+          status: "draft",
+          delivered_at: null,
+        })
+        .eq("id", outfitCardId);
     }
+
     throw error;
   }
 
-  // 여기서 실패해도 카드는 이미 전달됐다. 되돌리지 않고 로그만 남긴다.
   const read = await client
     .from("request_cards")
     .update({ status: "read", updated_at: now })
     .eq("id", context.requestCardId);
+
   if (read.error) console.error("[BiasFit 코디] 요청 읽음 처리 실패", read.error);
 
   const matched = await client
     .from("match_results")
-    .update({ status: "outfit_completed", updated_at: now })
+    .update({
+      status: isDelivered ? "outfit_completed" : "outfit_pending",
+      updated_at: now,
+    })
     .eq("id", input.matchResultId);
+
   if (matched.error) console.error("[BiasFit 코디] 매칭 상태 갱신 실패", matched.error);
 
-  return { delivered: true, outfitCardId, review };
-}
+  return { delivered: isDelivered, outfitCardId, review };
 
 export default async function handler(request: ApiRequest, response: ApiResponse) {
   if (!requirePost(request, response)) return;
