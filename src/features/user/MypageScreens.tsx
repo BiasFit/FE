@@ -615,10 +615,20 @@ export function MypageOutfitDetailScreen() {
     setSaveError("");
     try {
       const canvas = await captureOutfitCard(cardRef.current);
-      const link = document.createElement("a");
-      link.download = "Fitto-outfit-card.png";
-      link.href = canvas.toDataURL("image/png");
-      link.click();
+      const blob = await new Promise<Blob>((resolve, reject) =>
+  canvas.toBlob(
+    (value) => (value ? resolve(value) : reject(new Error("PNG 생성 실패"))),
+    "image/png",
+  ),
+);
+const url = URL.createObjectURL(blob);
+
+const link = document.createElement("a");
+link.download = "Fitto-outfit-card.png";
+link.href = url;
+link.click();
+
+window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
     } catch (error) {
       // U7과 같은 이유다. 실패를 조용히 넘기면 사용자는 저장된 줄 안다.
       console.log("[BiasFit 마이페이지] 코디 카드 이미지 저장 실패", error);
