@@ -1,4 +1,5 @@
 import { tpoLabel } from "../../../src/data/options.js";
+import type { ReviewStatus } from "../../../src/domain/aiContracts.js";
 import { requireAccount, requireRole, sendAuthAwareError } from "../../_lib/auth.js";
 import { supabaseAdmin } from "../../_lib/supabase.js";
 import {
@@ -22,8 +23,8 @@ export interface AssignedRequestView {
   tpoLabel: string;
   status: "draft" | "sent" | "read";
   sentAt: string | null;
-  /** 코디 카드가 이미 전달됐는지. 목록에서 작성 필요/전달 완료를 가른다. */
   delivered: boolean;
+  outfitReviewStatus: "pending" | ReviewStatus | null;
 }
 
 function one<T>(value: T | T[] | null | undefined): T | null {
@@ -53,7 +54,7 @@ export async function loadAssignedRequests(
        match_results!inner (
          diagnosis_session_id,
          diagnosis_sessions!inner ( coaching_type ),
-         outfit_cards ( status )
+         outfit_cards ( status, review_status )
        )`,
     )
     .eq("receiver_influencer_profile_id", (profile.data as { id: string }).id)
@@ -79,7 +80,10 @@ export async function loadAssignedRequests(
         : match?.outfit_cards
           ? [match.outfit_cards]
           : []
-    ) as Array<{ status: string }>;
+    ) as Array<{
+      status: string;
+      review_status: "pending" | ReviewStatus | null;
+    }>;
 
     // TPO는 세션 단위로 한 건 저장돼 있다.
     const tpo = await client
@@ -100,6 +104,7 @@ export async function loadAssignedRequests(
       status: row.status,
       sentAt: row.sent_at,
       delivered: outfits.some((card) => card.status === "delivered"),
+      outfitReviewStatus: outfits[0]?.review_status ?? null,
     });
   }
 
