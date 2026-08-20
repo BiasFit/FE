@@ -22,6 +22,7 @@ import {
   getOutfitCard,
   saveInfluencerProfile,
   type AssignedRequestView,
+  type DiagnosisMemberView,
   type DiagnosisResultView,
   type OutfitCardView,
 } from "../../lib/biasfitApi.js";
@@ -37,7 +38,6 @@ import { Pill, PrimaryCta, SelectChip, StepHeader, TopBar } from "../../shared/A
 import iconAvatar from "../../assets/mypage/icon-avatar.svg";
 import iconCheck from "../../assets/mypage/icon-check.svg";
 import iconChevronDown from "../../assets/mypage/icon-chevron-down.svg";
-import iconItemPlaceholder from "../../assets/mypage/icon-item-placeholder.svg";
 import { bodyTypeImageByName, styleLookImage } from "../../shared/optionImages.js";
 import { ProductQr } from "../../shared/ProductQr.js";
 import { productUrlLabel } from "../../shared/productUrl.js";
@@ -722,7 +722,87 @@ export function InfluencerRequestsScreen() {
 function isGroupDraft(draft: OutfitDraft): draft is GroupOutfitDraft {
   return "memberA" in draft;
 }
+function topStyleScores(member: DiagnosisMemberView) {
+  return [...member.styleScores]
+    .sort((left, right) => right.score - left.score || left.rank - right.rank)
+    .slice(0, 2);
+}
 
+function DiagnosisMemberDetails({
+  member,
+  showMemberLabel,
+}: {
+  member: DiagnosisMemberView;
+  showMemberLabel: boolean;
+}) {
+  const styles = topStyleScores(member);
+
+  return (
+    <section>
+      {showMemberLabel ? (
+        <p className="text-[15px] font-bold text-[#0a0a0a]">{member.memberLabel}의 진단 결과</p>
+      ) : null}
+
+      <div className={showMemberLabel ? "mt-4" : ""}>
+        <div className="flex gap-[14px] py-[11px]">
+          <p className="w-[92px] shrink-0 text-[12px] text-[#8e8e93]">추구하는 스타일</p>
+          {styles.length ? (
+            <div className="flex flex-1 flex-col gap-4">
+              {styles.map((style) => (
+                <div key={style.style}>
+                  <div className="flex items-center gap-3">
+                    <p className="flex-1 text-[15px] text-[#0a0a0a]">{style.style}</p>
+                    <p className="text-[15px] text-[#0a0a0a]">{style.score}</p>
+                  </div>
+                  <span className="mt-2 block h-[10px] overflow-hidden rounded-full bg-[#e8e8ec]">
+                    <span
+                      className="block h-full rounded-full bg-[#0a0a0a]"
+                      style={{ width: `${Math.min(100, Math.max(0, style.score))}%` }}
+                    />
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="flex-1 text-[15px] text-[#8e8e93]">—</p>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-col">
+        <div className="flex gap-[14px] py-[11px]">
+          <p className="w-[92px] shrink-0 text-[12px] text-[#8e8e93]">체형</p>
+          <p className="flex-1 text-[15px] text-[#0a0a0a]">{member.bodyType || "—"}</p>
+        </div>
+        <div className="flex gap-[14px] py-[11px]">
+          <p className="w-[92px] shrink-0 text-[12px] text-[#8e8e93]">핏 고민</p>
+          <p className="flex-1 text-[15px] text-[#0a0a0a]">{member.fitConcerns.join(" / ") || "—"}</p>
+        </div>
+        <div className="flex gap-[14px] py-[11px]">
+          <p className="w-[92px] shrink-0 text-[12px] text-[#8e8e93]">선호 / 비선호</p>
+          <p className="flex-1 text-[15px] text-[#0a0a0a]">
+            {member.preferredStyle} / {member.avoidedStyle}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex gap-[14px] py-[11px]">
+        <p className="w-[92px] shrink-0 text-[12px] text-[#8e8e93]">선호 키워드</p>
+        {member.keywords.length ? (
+          <div className="flex flex-1 flex-wrap gap-[6px]">
+            {member.keywords.map((keyword) => (
+              <Pill key={keyword}>#{keyword}</Pill>
+            ))}
+          </div>
+        ) : (
+          <p className="flex-1 text-[15px] text-[#8e8e93]">—</p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+const INITIAL_DETAIL_OPEN_SECTION: "dna" | "request" | null = null;
 export function InfluencerDetailScreen() {
   const navigate = useNavigate();
   const { state } = useAppState();
@@ -764,7 +844,7 @@ export function InfluencerDetailScreen() {
   const [reviewStatus, setReviewStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [reviewResult, setReviewResult] = useState<OutfitReviewResponse | null>(null);
   const [deliverError, setDeliverError] = useState("");
-  const [openSection, setOpenSection] = useState<"dna" | "request" | null>("dna");
+  const [openSection, setOpenSection] = useState<"dna" | "request" | null>(INITIAL_DETAIL_OPEN_SECTION);
   const draftValid = isValidOutfitDraft(draft);
 
   useEffect(() => {
