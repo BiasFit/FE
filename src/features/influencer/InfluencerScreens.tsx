@@ -22,6 +22,7 @@ import {
   getOutfitCard,
   saveInfluencerProfile,
   type AssignedRequestView,
+  type DiagnosisMemberView,
   type DiagnosisResultView,
   type OutfitCardView,
 } from "../../lib/biasfitApi.js";
@@ -37,7 +38,6 @@ import { Pill, PrimaryCta, SelectChip, StepHeader, TopBar } from "../../shared/A
 import iconAvatar from "../../assets/mypage/icon-avatar.svg";
 import iconCheck from "../../assets/mypage/icon-check.svg";
 import iconChevronDown from "../../assets/mypage/icon-chevron-down.svg";
-import iconItemPlaceholder from "../../assets/mypage/icon-item-placeholder.svg";
 import { bodyTypeImageByName, styleLookImage } from "../../shared/optionImages.js";
 import { ProductQr } from "../../shared/ProductQr.js";
 import { productUrlLabel } from "../../shared/productUrl.js";
@@ -601,7 +601,9 @@ export function InfluencerRequestsScreen() {
   }, [account?.accountId]);
 
   const visibleRequests = requests.filter((request) => {
-    if (filter === "needed") return !request.delivered;
+    if (filter === "needed") {
+      return !request.delivered && request.outfitReviewStatus !== "operations_review";
+    }
     if (filter === "delivered") return request.delivered;
     return true;
   });
@@ -670,49 +672,74 @@ export function InfluencerRequestsScreen() {
               <p className="mt-1 text-[13px] text-[#8e8e93]">사용자가 부탁해요 카드를 보내면 여기에 표시돼요.</p>
             </div>
           ) : null}
-          {visibleRequests.map((request) => (
-            <button
-              key={request.requestCardId}
-              type="button"
-              aria-label={`요청 ${request.delivered ? "전달 완료" : "작성 필요"}`}
-              onClick={() => {
-                // 상세 화면이 이 매칭 id로 사용자 진단 결과를 조회한다.
-                dispatch({ type: "selectRequest", requestId: request.matchResultId });
-                navigate(request.delivered ? "/influencer/delivered" : "/influencer/detail");
-              }}
-              className={
-                request.delivered
-                  ? "flex flex-col items-start rounded-[20px] bg-[#f5f5f7] px-5 pb-[18px] pt-5 text-left"
-                  : "flex flex-col items-start rounded-[20px] border-[1.6px] border-[#0a0a0a] bg-white px-5 pb-[18px] pt-5 text-left shadow-[0_6px_18px_rgba(0,0,0,0.06)]"
-              }
-            >
-              <div className="flex w-full items-center gap-[10px]">
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#ededf0]">
-                  <img src={iconAvatar} alt="" className="size-[22px]" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[16px] font-semibold tracking-[-0.32px] text-[#0a0a0a]">
-                    {request.coachingType === "group" ? "2인 그룹 스타일링" : "개인 스타일링"}
-                  </p>
-                  <p className="truncate text-[11px] text-[#8e8e93]">{requestSentAtLabel(request.sentAt)}</p>
+          {visibleRequests.map((request) => {
+            const isOperationsReview =
+              request.outfitReviewStatus === "operations_review";
+          
+            const isRevisionNeeded =
+              request.outfitReviewStatus === "needs_revision";
+          
+            const statusLabel = request.delivered
+              ? "전달 완료"
+              : isOperationsReview
+                ? "운영진 확인 중"
+                : isRevisionNeeded
+                  ? "링크 수정 필요"
+                  : "작성 필요";
+          
+            return (
+              <button
+                key={request.requestCardId}
+                type="button"
+                aria-label={`요청 ${statusLabel}`}
+                onClick={() => {
+                  dispatch({ type: "selectRequest", requestId: request.matchResultId });
+                  navigate(request.delivered ? "/influencer/delivered" : "/influencer/detail");
+                }}
+                className={
+                  request.delivered || isOperationsReview
+                    ? "flex flex-col items-start rounded-[20px] bg-[#f5f5f7] px-5 pb-[18px] pt-5 text-left"
+                    : "flex flex-col items-start rounded-[20px] border-[1.6px] border-[#0a0a0a] bg-white px-5 pb-[18px] pt-5 text-left shadow-[0_6px_18px_rgba(0,0,0,0.06)]"
+                }
+              >
+                <div className="flex w-full items-center gap-[10px]">
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#ededf0]">
+                    <img src={iconAvatar} alt="" className="size-[22px]" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[16px] font-semibold tracking-[-0.32px] text-[#0a0a0a]">
+                      {request.coachingType === "group" ? "2인 그룹 스타일링" : "개인 스타일링"}
+                    </p>
+                    <p className="truncate text-[11px] text-[#8e8e93]">
+                      {requestSentAtLabel(request.sentAt)}
+                    </p>
+                  </div>
+                  <Pill tone={request.delivered || isOperationsReview ? "light" : "dark"}>
+                    {statusLabel}
+                  </Pill>
                 </div>
-                <Pill tone={request.delivered ? "light" : "dark"}>{request.delivered ? "전달 완료" : "작성 필요"}</Pill>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-[6px]">
-                <Pill>{request.coachingType === "group" ? "2인 그룹" : "개인"}</Pill>
-                <Pill>{request.tpoLabel}</Pill>
-              </div>
-              <div className="mt-[14px] flex w-full items-center gap-[6px] border-t border-[#e8e8ec] pt-[14px]">
-                <span className="text-[12px] text-[#0a0a0a]">
-                  {request.delivered ? "전달한 카드 보기" : "요청 내용 보기"}
-                </span>
-                <div className="flex-1" />
-                <span aria-hidden="true" className="text-[#8e8e93]">
-                  ›
-                </span>
-              </div>
-            </button>
-          ))}
+          
+                <div className="mt-4 flex flex-wrap gap-[6px]">
+                  <Pill>{request.coachingType === "group" ? "2인 그룹" : "개인"}</Pill>
+                  <Pill>{request.tpoLabel}</Pill>
+                </div>
+          
+                <div className="mt-[14px] flex w-full items-center gap-[6px] border-t border-[#e8e8ec] pt-[14px]">
+                  <span className="text-[12px] text-[#0a0a0a]">
+                    {request.delivered
+                      ? "전달한 카드 보기"
+                      : isOperationsReview
+                        ? "제출한 카드 보기"
+                        : isRevisionNeeded
+                          ? "링크 수정하기"
+                          : "요청 내용 보기"}
+                  </span>
+                  <div className="flex-1" />
+                  <span aria-hidden="true" className="text-[#8e8e93]">›</span>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
     </section>
@@ -723,6 +750,126 @@ function isGroupDraft(draft: OutfitDraft): draft is GroupOutfitDraft {
   return "memberA" in draft;
 }
 
+function draftFromOutfitCard(card: OutfitCardView): OutfitDraft {
+  const fieldsFor = (memberLabel: "self" | "A" | "B") => ({
+    top: {
+      name:
+        card.items.find(
+          (item) => item.memberLabel === memberLabel && item.itemType === "top",
+        )?.name ?? "",
+      url:
+        card.items.find(
+          (item) => item.memberLabel === memberLabel && item.itemType === "top",
+        )?.url ?? "",
+    },
+    bottom: {
+      name:
+        card.items.find(
+          (item) => item.memberLabel === memberLabel && item.itemType === "bottom",
+        )?.name ?? "",
+      url:
+        card.items.find(
+          (item) => item.memberLabel === memberLabel && item.itemType === "bottom",
+        )?.url ?? "",
+    },
+  });
+
+  if (card.coachingType === "group") {
+    return {
+      title: card.title,
+      message: card.message,
+      memberA: fieldsFor("A"),
+      memberB: fieldsFor("B"),
+    };
+  }
+
+  return {
+    title: card.title,
+    message: card.message,
+    ...fieldsFor("self"),
+  };
+}
+function topStyleScores(member: DiagnosisMemberView) {
+  return [...member.styleScores]
+    .sort((left, right) => right.score - left.score || left.rank - right.rank)
+    .slice(0, 2);
+}
+
+function DiagnosisMemberDetails({
+  member,
+  showMemberLabel,
+}: {
+  member: DiagnosisMemberView;
+  showMemberLabel: boolean;
+}) {
+  const styles = topStyleScores(member);
+
+  return (
+    <section>
+      {showMemberLabel ? (
+        <p className="text-[15px] font-bold text-[#0a0a0a]">{member.memberLabel}의 진단 결과</p>
+      ) : null}
+
+      <div className={showMemberLabel ? "mt-4" : ""}>
+        <div className="flex gap-[14px] py-[11px]">
+          <p className="w-[92px] shrink-0 text-[12px] text-[#8e8e93]">추구하는 스타일</p>
+          {styles.length ? (
+            <div className="flex flex-1 flex-col gap-4">
+              {styles.map((style) => (
+                <div key={style.style}>
+                  <div className="flex items-center gap-3">
+                    <p className="flex-1 text-[15px] text-[#0a0a0a]">{style.style}</p>
+                    <p className="text-[15px] text-[#0a0a0a]">{style.score}</p>
+                  </div>
+                  <span className="mt-2 block h-[10px] overflow-hidden rounded-full bg-[#e8e8ec]">
+                    <span
+                      className="block h-full rounded-full bg-[#0a0a0a]"
+                      style={{ width: `${Math.min(100, Math.max(0, style.score))}%` }}
+                    />
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="flex-1 text-[15px] text-[#8e8e93]">—</p>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-col">
+        <div className="flex gap-[14px] py-[11px]">
+          <p className="w-[92px] shrink-0 text-[12px] text-[#8e8e93]">체형</p>
+          <p className="flex-1 text-[15px] text-[#0a0a0a]">{member.bodyType || "—"}</p>
+        </div>
+        <div className="flex gap-[14px] py-[11px]">
+          <p className="w-[92px] shrink-0 text-[12px] text-[#8e8e93]">핏 고민</p>
+          <p className="flex-1 text-[15px] text-[#0a0a0a]">{member.fitConcerns.join(" / ") || "—"}</p>
+        </div>
+        <div className="flex gap-[14px] py-[11px]">
+          <p className="w-[92px] shrink-0 text-[12px] text-[#8e8e93]">선호 / 비선호</p>
+          <p className="flex-1 text-[15px] text-[#0a0a0a]">
+            {member.preferredStyle} / {member.avoidedStyle}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex gap-[14px] py-[11px]">
+        <p className="w-[92px] shrink-0 text-[12px] text-[#8e8e93]">선호 키워드</p>
+        {member.keywords.length ? (
+          <div className="flex flex-1 flex-wrap gap-[6px]">
+            {member.keywords.map((keyword) => (
+              <Pill key={keyword}>#{keyword}</Pill>
+            ))}
+          </div>
+        ) : (
+          <p className="flex-1 text-[15px] text-[#8e8e93]">—</p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+const INITIAL_DETAIL_OPEN_SECTION: "dna" | "request" | null = null;
 export function InfluencerDetailScreen() {
   const navigate = useNavigate();
   const { state } = useAppState();
@@ -735,22 +882,45 @@ export function InfluencerDetailScreen() {
   const [diagnosisStatus, setDiagnosisStatus] =
     useState<"loading" | "success" | "error">("loading");
 
+  const [savedCard, setSavedCard] = useState<OutfitCardView | null>(null);
+
   useEffect(() => {
-    if (!state.activeRequestId) return;
-    const controller = new AbortController();
-    setDiagnosisStatus("loading");
-    void getDiagnosisResult(state.activeRequestId, controller.signal)
-      .then((result) => {
-        setDiagnosis(result);
-        setDiagnosisStatus("success");
-      })
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-        console.log("[BiasFit 인플루언서] 진단 결과 조회 실패", error);
-        setDiagnosisStatus("error");
-      });
-    return () => controller.abort();
-  }, [state.activeRequestId]);
+  if (!state.activeRequestId) return;
+  const controller = new AbortController();
+
+  setDiagnosisStatus("loading");
+  void getDiagnosisResult(state.activeRequestId, controller.signal)
+    .then((result) => {
+      setDiagnosis(result);
+      setDiagnosisStatus("success");
+    })
+    .catch((error: unknown) => {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      console.log("[BiasFit 인플루언서] 진단 결과 조회 실패", error);
+      setDiagnosisStatus("error");
+    });
+
+  return () => controller.abort();
+}, [state.activeRequestId]);
+
+useEffect(() => {
+  if (!state.activeRequestId) {
+    setSavedCard(null);
+    return;
+  }
+
+  const controller = new AbortController();
+
+  void getOutfitCard(state.activeRequestId, controller.signal)
+    .then((result) => setSavedCard(result.card))
+    .catch((error: unknown) => {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      console.log("[BiasFit 인플루언서] 저장 코디 카드 조회 실패", error);
+      setSavedCard(null);
+    });
+
+  return () => controller.abort();
+}, [state.activeRequestId]);
 
   const group = diagnosis ? diagnosis.coachingType === "group" : state.mode === "group";
   const initial = useMemo(() => {
@@ -760,12 +930,23 @@ export function InfluencerDetailScreen() {
   }, [draftOwner, group, state.activeRequestId]);
   const [draft, setDraft] = useState<OutfitDraft>(initial);
   const [draftState, setDraftState] = useState("모든 변경사항 저장됨");
+
+  useEffect(() => {
+    if (savedCard?.reviewStatus !== "needs_revision") return;
+  
+    clearDraft(draftOwner, state.activeRequestId);
+    setDraft(draftFromOutfitCard(savedCard));
+    setDraftState("반려된 카드 내용을 불러왔어요.");
+  }, [draftOwner, savedCard, state.activeRequestId]);
   const [modal, setModal] = useState(false);
   const [reviewStatus, setReviewStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [reviewResult, setReviewResult] = useState<OutfitReviewResponse | null>(null);
   const [deliverError, setDeliverError] = useState("");
-  const [openSection, setOpenSection] = useState<"dna" | "request" | null>("dna");
+  const [openSection, setOpenSection] = useState<"dna" | "request" | null>(INITIAL_DETAIL_OPEN_SECTION);
   const draftValid = isValidOutfitDraft(draft);
+
+  const isOperationsReviewResult =
+    reviewResult?.reviewStatus === "operations_review";
 
   useEffect(() => {
     setReviewStatus("idle");
@@ -800,10 +981,15 @@ export function InfluencerDetailScreen() {
       });
       setReviewResult(result.review);
       setReviewStatus("success");
-      if (result.delivered) {
-        // 전달됐으니 이 요청의 임시저장은 지운다 (INFLUENCER_SCREEN_SPEC.md 3.4).
+      if (
+        result.delivered ||
+        result.review.reviewStatus === "operations_review"
+      ) {
         clearDraft(draftOwner, state.activeRequestId);
-        navigate("/influencer/delivered");
+      
+        if (result.delivered) {
+          navigate("/influencer/delivered");
+        }
       }
     } catch (error) {
       setReviewStatus("error");
@@ -838,7 +1024,41 @@ export function InfluencerDetailScreen() {
       });
     }
   };
-
+  
+  if (savedCard?.reviewStatus === "operations_review") {
+    return (
+      <section className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col bg-white">
+        <TopBar onBack={() => navigate("/influencer/requests")} />
+        <div className="flex flex-1 flex-col px-5 py-8">
+          <Pill tone="dark">운영진 확인 중</Pill>
+          <div className="h-[18px]" />
+          <h1 className="m-0 text-[30px] font-bold leading-[1.28] tracking-[-0.9px] text-[#0a0a0a]">
+            코디 카드가
+            <br />
+            제출되었습니다.
+          </h1>
+          <div className="h-3" />
+          <p className="text-[15px] leading-[1.55] text-[#3c3c43]">
+            링크 확인 후 사용자에게 전달됩니다.
+            <br />
+            확인이 끝날 때까지 수정하거나 다시 제출할 수 없어요.
+          </p>
+  
+          <div className="mt-8 rounded-[18px] bg-[#f5f5f7] p-5">
+            <p className="text-[12px] text-[#8e8e93]">제출한 코디 카드</p>
+            <p className="mt-2 text-[17px] font-bold text-[#0a0a0a]">
+              {savedCard.title}
+            </p>
+          </div>
+        </div>
+  
+        <PrimaryCta onClick={() => navigate("/influencer/requests")}>
+          요청 목록으로 돌아가기
+        </PrimaryCta>
+      </section>
+    );
+  }
+  
   return (
     <>
       <section className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col bg-white">
@@ -852,10 +1072,40 @@ export function InfluencerDetailScreen() {
               : "요청 내용을 불러오는 중이에요."}
           </p>
           <div className="flex-1" />
-          <Pill tone="dark">작성 필요</Pill>
+          <Pill tone="dark">
+            {savedCard?.reviewStatus === "needs_revision"
+              ? "링크 수정 필요"
+              : "작성 필요"}
+          </Pill>
         </div>
         <div className="flex flex-1 flex-col px-5 pb-6 pt-5">
-          <h1 className="m-0 text-[24px] font-bold tracking-[-0.6px] text-[#0a0a0a]">코디 카드 작성</h1>
+          <h1 className="m-0 text-[24px] font-bold tracking-[-0.6px] text-[#0a0a0a]">
+            코디 카드 작성
+          </h1>
+          
+          {savedCard?.reviewStatus === "needs_revision" ? (
+            <div className="mt-4 rounded-[14px] bg-[#f5f5f7] p-4">
+              <p className="text-[14px] font-bold text-[#0a0a0a]">
+                링크 수정 필요
+              </p>
+          
+              <div className="mt-2 flex flex-col gap-1">
+                {savedCard.items
+                  .filter((item) => item.linkCheckStatus === "failed")
+                  .map((item) => (
+                    <p
+                      key={`${item.memberLabel}-${item.itemType}`}
+                      className="text-[12px] leading-[1.5] text-[#3c3c43]"
+                    >
+                      {item.memberLabel === "self" ? "" : `${item.memberLabel} `}
+                      {item.itemType === "top" ? "상의" : "하의"}:{" "}
+                      {item.linkCheckReason ?? "링크를 확인해 주세요."}
+                    </p>
+                  ))}
+              </div>
+            </div>
+          ) : null}
+          
           <div className="h-5" />
 
           {(
@@ -902,49 +1152,23 @@ export function InfluencerDetailScreen() {
               {diagnosisStatus === "error" ? <p className="text-[13px] text-[#8e8e93]">진단 결과를 불러오지 못했어요.</p> : null}
               {diagnosis ? (
                 <>
-                  <p className="text-[15px] leading-[1.52] text-[#0a0a0a]">{diagnosis.styleDnaSummary}</p>
-                  {diagnosis.members[0]?.keywords.length ? (
-                    <div className="mt-3 flex flex-wrap gap-[6px]">
-                      {diagnosis.members[0].keywords.map((keyword) => (
-                        <Pill key={keyword}>#{keyword}</Pill>
-                      ))}
-                    </div>
-                  ) : null}
-                  <div className="mt-2 flex flex-col">
-                    {diagnosis.members.map((member) => (
-                      <div key={member.memberLabel} className="flex gap-[14px] py-[11px]">
-                        <p className="w-[92px] shrink-0 text-[12px] text-[#8e8e93]">
-                          {member.memberLabel === "self" ? "핏 고민" : `${member.memberLabel} 핏 고민`}
-                        </p>
-                        <p className="flex-1 text-[15px] text-[#0a0a0a]">{member.fitConcerns.join(" / ") || "—"}</p>
-                      </div>
-                    ))}
-                    {diagnosis.members.map((member) => (
-                      <div key={`${member.memberLabel}-pref`} className="flex gap-[14px] py-[11px]">
-                        <p className="w-[92px] shrink-0 text-[12px] text-[#8e8e93]">
-                          {member.memberLabel === "self" ? "선호 / 비선호" : `${member.memberLabel} 선호/비선호`}
-                        </p>
-                        <p className="flex-1 text-[15px] text-[#0a0a0a]">
-                          {member.preferredStyle} / {member.avoidedStyle}
-                        </p>
+                  <p className="text-[15px] leading-[1.52] text-[#0a0a0a]">
+                    {diagnosis.styleDnaSummary}
+                  </p>
+              
+                  <div className="mt-4 flex flex-col gap-5">
+                    {diagnosis.members.map((member, index) => (
+                      <div
+                        key={member.memberLabel}
+                        className={index > 0 ? "border-t border-[#e8e8ec] pt-5" : ""}
+                      >
+                        <DiagnosisMemberDetails
+                          member={member}
+                          showMemberLabel={diagnosis.members.length > 1}
+                        />
                       </div>
                     ))}
                   </div>
-                  {diagnosis.members[0]?.preferredItems.length ? (
-                    <>
-                      <p className="mt-1 text-[11px] font-semibold text-[#8e8e93]">선호 아이템</p>
-                      <div className="mt-[10px] flex gap-[10px]">
-                        {diagnosis.members[0].preferredItems.map((item) => (
-                          <div key={item} className="flex flex-col items-center gap-[7px]">
-                            <span className="flex size-14 items-center justify-center rounded-[12px] bg-[#f2f2f5]">
-                              <img src={iconItemPlaceholder} alt="" className="size-[22px]" />
-                            </span>
-                            <p className="max-w-[70px] text-center text-[11px] font-semibold text-[#3c3c43]">{item}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  ) : null}
                 </>
               ) : null}
             </>
@@ -1067,8 +1291,17 @@ export function InfluencerDetailScreen() {
       {modal ? (
         <div className="modal-backdrop open" role="presentation">
           <div className="modal" role="dialog" aria-modal="true" aria-labelledby="deliver-title">
-            <h2 id="deliver-title">코디 카드를 전달할까요?</h2>
-            <p>안전 표현과 상의·하의 상품 링크 검수를 통과한 뒤에만 전달돼요. 전달 후에는 수정하거나 다시 보낼 수 없어요.</p>
+            <h2 id="deliver-title">
+              {isOperationsReviewResult
+                ? "코디 카드가 제출되었습니다."
+                : "코디 카드를 전달할까요?"}
+            </h2>
+            
+            <p>
+              {isOperationsReviewResult
+                ? "링크 확인 후 사용자에게 전달됩니다. 확인이 끝날 때까지 수정하거나 다시 제출할 수 없어요."
+                : "안전 표현과 상의·하의 상품 링크 검수를 통과한 뒤에만 전달돼요. 전달 후에는 수정하거나 다시 보낼 수 없어요."}
+            </p>
             <div className="soft-card">
               <strong>{draft.title}</strong>
               <p className="helper">{draft.message}</p>
@@ -1091,19 +1324,41 @@ export function InfluencerDetailScreen() {
               </>
             ) : null}
             <div className="modal-actions">
-              <button className="btn-secondary" type="button" onClick={() => setModal(false)}>계속 작성</button>
-              <button
-                className="btn-primary"
-                type="button"
-                disabled={reviewStatus === "loading" || !draftValid}
-                onClick={() => void deliver()}
-              >
-                {reviewStatus === "loading"
-                  ? "전달하는 중이에요."
-                  : reviewResult || deliverError
-                    ? "수정 후 다시 전달"
-                    : "전달 확정"}
-              </button>
+              {isOperationsReviewResult ? (
+                <button
+                  className="btn-primary"
+                  type="button"
+                  onClick={() => {
+                    setModal(false);
+                    navigate("/influencer/requests");
+                  }}
+                >
+                  요청 목록으로 돌아가기
+                </button>
+              ) : (
+                <>
+                  <button
+                    className="btn-secondary"
+                    type="button"
+                    onClick={() => setModal(false)}
+                  >
+                    계속 작성
+                  </button>
+            
+                  <button
+                    className="btn-primary"
+                    type="button"
+                    disabled={reviewStatus === "loading" || !draftValid}
+                    onClick={() => void deliver()}
+                  >
+                    {reviewStatus === "loading"
+                      ? "전달하는 중이에요."
+                      : reviewResult || deliverError
+                        ? "수정 후 다시 전달"
+                        : "전달 확정"}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
