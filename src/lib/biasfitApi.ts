@@ -5,6 +5,7 @@ import type {
   OutfitReviewResponse,
   PriorityOptionsRequest,
   PriorityOptionsResponse,
+  ReviewStatus,
   StyleDnaExplanationRequest,
   StyleDnaExplanationResponse,
 } from "../domain/aiContracts.js";
@@ -113,11 +114,15 @@ export function reviewOutfit(
   return postJson<OutfitReviewResponse>("/api/outfit/review", input, signal);
 }
 
+export type OutfitCardReviewStatus = "pending" | ReviewStatus;
+
 export interface OutfitCardItemView {
   memberLabel: "self" | "A" | "B";
   itemType: "top" | "bottom";
   name: string;
   url: string;
+  linkCheckStatus: "pending" | "pass" | "operations_review" | "failed";
+  linkCheckReason: string | null;
 }
 
 export interface OutfitCardView {
@@ -131,13 +136,16 @@ export interface OutfitCardView {
   budgetLabel: string;
   budgetApproach: string;
   influencerName: string;
+  reviewStatus: OutfitCardReviewStatus;
+  status: "draft" | "reviewing" | "delivered";
   deliveredAt: string | null;
   items: OutfitCardItemView[];
 }
 
 /**
- * 코디 카드를 전달한다. 검수를 통과하지 못하면 오류가 아니라
- * `delivered: false`와 검수 내역이 온다. 그때는 아무것도 저장되지 않았다.
+ * 코디 카드를 제출한다.
+ * pass면 즉시 전달되고, operations_review면 카드가 저장돼 운영진 확인을 기다린다.
+ * needs_revision/blocked면 저장하지 않고 검수 내역만 돌려준다.
  */
 export function deliverOutfitCard(
   input: {
@@ -307,6 +315,7 @@ export interface AssignedRequestView {
   status: "draft" | "sent" | "read";
   sentAt: string | null;
   delivered: boolean;
+  outfitReviewStatus: OutfitCardReviewStatus | null;
 }
 
 /** 로그인한 인플루언서에게 배정된 요청만 돌려준다. */
