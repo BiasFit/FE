@@ -834,6 +834,11 @@ function DiagnosisMemberDetails({
             <p className="flex-1 text-[15px] text-[#8e8e93]">—</p>
           )}
         </div>
+
+        <div className="flex gap-[14px] py-[11px]">
+          <p className="w-[92px] shrink-0 text-[12px] text-[#8e8e93]">비선호 스타일</p>
+          <p className="flex-1 text-[15px] text-[#0a0a0a]">{member.avoidedStyle || "—"}</p>
+        </div>
       </div>
 
       <div className="mt-4 flex flex-col">
@@ -854,12 +859,6 @@ function DiagnosisMemberDetails({
         <div className="flex gap-[14px] py-[11px]">
           <p className="w-[92px] shrink-0 text-[12px] text-[#8e8e93]">핏 고민</p>
           <p className="flex-1 text-[15px] text-[#0a0a0a]">{member.fitConcerns.join(" / ") || "—"}</p>
-        </div>
-        <div className="flex gap-[14px] py-[11px]">
-          <p className="w-[92px] shrink-0 text-[12px] text-[#8e8e93]">선호 / 비선호</p>
-          <p className="flex-1 text-[15px] text-[#0a0a0a]">
-            {member.preferredStyle} / {member.avoidedStyle}
-          </p>
         </div>
       </div>
 
