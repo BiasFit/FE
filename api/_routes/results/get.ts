@@ -22,6 +22,8 @@ export interface DiagnosisMemberView {
   memberLabel: "self" | "A" | "B";
   personaCode: string | null;
   heightCm: number | null;
+  topSize: string | null;
+  bottomSize: string | null;
   bodyType: string;
   preferredStyle: string;
   avoidedStyle: string;
@@ -158,7 +160,7 @@ export async function loadDiagnosisResult(
     const input = await client
       .from("member_style_inputs")
       .select(
-        `id, height_cm, fit_note,
+        `id, height_cm, top_size, bottom_size, fit_note,
          body_type:diagnosis_options!member_style_inputs_body_type_option_id_fkey(code),
          preferred:diagnosis_options!member_style_inputs_preferred_style_option_id_fkey(code),
          avoided:diagnosis_options!member_style_inputs_avoid_style_option_id_fkey(code),
@@ -197,6 +199,8 @@ export async function loadDiagnosisResult(
       memberLabel: member.member_label,
       personaCode: member.persona_code,
       heightCm: inputRow.height_cm,
+      topSize: inputRow.top_size ?? null,
+      bottomSize: inputRow.bottom_size ?? null,
       bodyType: code(inputRow.body_type),
       preferredStyle: code(inputRow.preferred),
       avoidedStyle: code(inputRow.avoided),

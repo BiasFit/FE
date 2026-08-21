@@ -332,6 +332,8 @@ export interface DiagnosisMemberView {
   memberLabel: "self" | "A" | "B";
   personaCode: string | null;
   heightCm: number | null;
+  topSize: string | null;
+  bottomSize: string | null;
   bodyType: string;
   preferredStyle: string;
   avoidedStyle: string;
