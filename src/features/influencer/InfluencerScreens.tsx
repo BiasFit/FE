@@ -1355,9 +1355,10 @@ useEffect(() => {
                   <button
                     className="btn-secondary"
                     type="button"
+                    disabled={reviewStatus === "loading"}
                     onClick={() => setModal(false)}
                   >
-                    계속 작성
+                    {reviewStatus === "loading" ? "전달하는 중이에요." : "계속 작성"}
                   </button>
             
                   <button
