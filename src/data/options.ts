@@ -1,9 +1,9 @@
 import type { StyleName } from "../domain/scoring.js";
 
 export const bodyTypes = [
-  { name: "스트레이트", description: "상체와 하체의 균형감을 바탕으로 깔끔한 실루엣을 보는 유형", tone: "#F1F4FF" },
-  { name: "웨이브", description: "부드러운 곡선과 하체 비율을 함께 보는 유형", tone: "#F6F1FF" },
-  { name: "내추럴", description: "여유 있는 실루엣과 자연스러운 소재감을 보는 유형", tone: "#EEF8F7" },
+  { name: "스트레이트", description: "몸통에 입체감이 있어 가슴부터 골반까지의 선이 비교적 곧고 균형 있게 이어지는 체형입니다. 허리의 굴곡보다 단정하고 탄탄한 세로선이 먼저 눈에 들어옵니다.", tone: "#F1F4FF" },
+  { name: "웨이브", description: "가늘고 여린 상체에 비해 허리 아래, 골반과 힙 쪽으로 무게감이 모이는 체형입니다. 위쪽은 가볍고 아래쪽으로 부드러운 곡선이 이어져, 전체 실루엣이 완만한 S자 또는 X자 곡선으로 보이는 것이 핵심입니다.", tone: "#F6F1FF" },
+  { name: "내추럴", description: "직각으로 뻗은 넓은 어깨와 선명한 쇄골, 긴 팔다리가 가장 먼저 보입니다. 허리의 굴곡보다 어깨에서 아래로 곧고 넓게 이어지는 라인이 두드러져, 전체적으로 시원하고 각진 프레임처럼 보입니다.", tone: "#EEF8F7" },
 ] as const;
 
 export const fitConcerns = [
