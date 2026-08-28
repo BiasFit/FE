@@ -163,12 +163,6 @@ export function InfluencerLoginScreen() {
 /** 인플루언서 강점 TPO는 정확히 3개다 (STYLE_SCORING_DRAFT.md 2.4, README 제품 규칙). */
 const REQUIRED_PROFILE_TPO_COUNT = 3;
 
-const COACHING_TYPE_LABEL: Record<CoachingSupport, string> = {
-  personal_only: "개인 스타일링만",
-  group_only: "2인 그룹 스타일링만",
-  both: "개인·2인 그룹 모두",
-};
-
 /**
  * I2~I4 세 화면(프로필 1/3·2/3·3/3)에 걸쳐 쓰는 초안.
  * 서버에 저장해야 의미가 생기는 임시값이라 AppState까지 들고 가지 않고
@@ -415,7 +409,10 @@ export function InfluencerProfileBudgetScreen() {
   );
   const [budgetApproach, setBudgetApproach] = useState(influencerProfileDraft.budgetApproach);
   const [occasions, setOccasions] = useState<string[]>(influencerProfileDraft.tpos);
-  const [coachingType, setCoachingType] = useState(influencerProfileDraft.coachingType);
+  // 2인 그룹 스타일링 기능을 제거하면서 지원 유형 선택 UI도 없앴다.
+  // 인플루언서는 이제 전부 개인 스타일링만 지원한다 — 서버 스키마·매칭 후보 필터가
+  // 이 값을 그대로 쓰고 있어 필드 자체는 남기고 고정값만 보낸다.
+  const coachingType: CoachingSupport = "personal_only";
   const [showError, setShowError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -437,17 +434,14 @@ export function InfluencerProfileBudgetScreen() {
         ? "예산 접근 방식을 골라주세요."
         : occasions.length !== REQUIRED_PROFILE_TPO_COUNT
           ? `강점 상황(TPO)을 정확히 ${REQUIRED_PROFILE_TPO_COUNT}개 골라주세요.`
-          : !coachingType
-            ? "지원 스타일링 유형을 골라주세요."
-            : null;
+          : null;
 
   const submit = () => {
     if (
       missing ||
       budgetMinCode === undefined ||
       budgetMaxCode === undefined ||
-      !budgetApproach ||
-      !coachingType
+      !budgetApproach
     ) {
       setShowError(true);
       return;
@@ -540,19 +534,6 @@ export function InfluencerProfileBudgetScreen() {
             </SelectChip>
           ))}
         </div>
-
-        <div className="mt-9 flex items-center justify-between">
-          <p className="text-[19px] font-bold tracking-[-0.38px] text-[#0a0a0a]">지원 스타일링 유형</p>
-          <p className="text-[12px] text-[#8e8e93]">1개 선택</p>
-        </div>
-        <div className="mt-[14px] flex flex-wrap gap-2">
-          {(Object.keys(COACHING_TYPE_LABEL) as CoachingSupport[]).map((value) => (
-            <SelectChip key={value} selected={coachingType === value} onClick={() => setCoachingType(value)}>
-              {COACHING_TYPE_LABEL[value]}
-            </SelectChip>
-          ))}
-        </div>
-        <p className="mt-5 text-[12px] text-[#8e8e93]">지원 유형은 후보 자격만 판단하고 매칭 점수에는 들어가지 않아요.</p>
 
         {showError && missing ? (
           <p className="mt-3 text-[13px] font-semibold text-[#0a0a0a]">{missing}</p>
