@@ -3,7 +3,6 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useAppState } from "../../app/AppStateProvider.js";
 import { useAuth } from "../../app/AuthProvider.js";
 import { BottomTabBar, TopBar } from "../../shared/AppShell.js";
-import iconCheck from "../../assets/mypage/icon-check.svg";
 import iconAvatar from "../../assets/mypage/icon-avatar.svg";
 import lookVintage from "../../assets/design-elements/fashion_reference_based_looks_3x4/03_빈티지.jpg";
 import lookRomantic from "../../assets/design-elements/fashion_reference_based_looks_3x4/04_로맨틱.jpg";
@@ -379,95 +378,20 @@ export function UserLoginScreen() {
 
 /**
  * U2 · 스타일링 유형 (피그마 `10 · v3 · 사용자 화면`).
- * 로그인한 사용자의 실질적인 "홈"이라, 하단 탭바(홈=이 화면·기록=마이페이지)를 여기서부터 둔다.
+ *
+ * 2인 그룹 스타일링 기능을 제거하면서 "개인 / 그룹 중 선택" UI 자체가 의미가 없어졌다.
+ * 화면을 보여주는 대신 mode를 personal로 고정하고 바로 다음 단계(체형 입력)로 넘긴다.
+ * 라우트와 함수 이름은 그대로 둬서, 이 화면으로 향하던 기존 navigate("/user/coaching")
+ * 호출부(마이페이지 "새 진단 시작" 등)를 전부 고칠 필요가 없게 했다.
  */
 export function CoachingScreen() {
   const navigate = useNavigate();
-  const { state, dispatch } = useAppState();
+  const { dispatch } = useAppState();
 
-  const options = [
-    {
-      mode: "personal" as const,
-      title: "개인 스타일링",
-      copy: "내 체형·취향·예산·TPO를 기준으로 나와 잘 맞는 패션 인플루언서를 연결해요.",
-      caption: "체형 · 핏 고민 · 취향 · 예산 · TPO 1개",
-    },
-    {
-      mode: "group" as const,
-      title: "2인 그룹 스타일링",
-      copy: "각자의 취향은 그대로 살리면서 함께 어울리는 시밀러룩을 받아요.",
-      caption: "관계 유형 · 약속 TPO 1개 · 두 사람의 취향",
-    },
-  ];
+  useEffect(() => {
+    dispatch({ type: "setMode", mode: "personal" });
+    navigate("/user/body", { replace: true });
+  }, [dispatch, navigate]);
 
-  return (
-    <section className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col bg-white">
-      <TopBar onBack={() => navigate("/user/login")} />
-      <div className="px-5">
-        <div className="h-[3px] w-full rounded-full bg-[#ededef]" />
-      </div>
-      <div className="flex flex-1 flex-col px-5 pb-6 pt-[22px]">
-        <h1 className="m-0 text-[24px] font-bold leading-[1.34] tracking-[-0.6px] text-[#0a0a0a]">
-          어떤 스타일링을 원하나요?
-        </h1>
-        <div className="h-[10px]" />
-        <p className="text-[15px] font-medium leading-[1.52] tracking-[-0.225px] text-[#8e8e93]">
-          혼자 입을 코디와 둘이 맞춰 입을 코디는
-          <br />
-          추천 방식이 달라요.
-        </p>
-        <div className="h-[30px]" />
-
-        <div className="flex w-full flex-col gap-3" role="radiogroup" aria-label="스타일링 유형">
-          {options.map((option) => {
-            const selected = state.mode === option.mode;
-            return (
-              <button
-                key={option.mode}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                onClick={() => dispatch({ type: "setMode", mode: option.mode })}
-                className={
-                  selected
-                    ? "w-full rounded-[18px] border-[1.6px] border-[#0a0a0a] bg-white px-5 py-[22px] text-left shadow-[0_6px_18px_rgba(0,0,0,0.06)]"
-                    : "w-full rounded-[18px] bg-[#f5f5f7] px-5 py-[22px] text-left"
-                }
-              >
-                <div className="flex w-full items-center gap-[10px]">
-                  <p className="text-[19px] font-bold tracking-[-0.38px] text-[#0a0a0a]">{option.title}</p>
-                  <div className="flex-1" />
-                  {selected ? <img src={iconCheck} alt="" className="size-[22px]" /> : null}
-                </div>
-                <div className="h-2" />
-                <p className="text-[15px] font-medium leading-[1.52] tracking-[-0.225px] text-[#3c3c43]">
-                  {option.copy}
-                </p>
-                <div className="h-[14px]" />
-                <p className="text-[13px] font-medium tracking-[-0.195px] text-[#8e8e93]">{option.caption}</p>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="h-5" />
-        <p className="text-[13px] font-medium leading-[1.5] tracking-[-0.195px] text-[#8e8e93]">
-          두 사람의 취향은 각각 저장돼요.
-          <br />
-          한 사람의 취향이 다른 사람을 덮어쓰지 않아요.
-        </p>
-      </div>
-      <div className="px-5 pb-[10px] pt-[10px]">
-        <button
-          type="button"
-          onClick={() => navigate("/user/body")}
-          className="flex min-h-[56px] w-full items-center justify-center rounded-[14px] bg-[#0a0a0a] text-[17px] font-bold text-white"
-        >
-          다음
-        </button>
-      </div>
-      {/* '홈'을 눌러도 이 화면(U2)으로 돌아오지 않으니(A1로 간다) 활성 탭을 표시하지 않는다. */}
-      <BottomTabBar />
-    </section>
-  );
+  return null;
 }
